@@ -1,7 +1,13 @@
 import { authMiddleware } from "@clerk/nextjs/server";
 
 export default authMiddleware({
-  publicRoutes: ["/", "/about", "/features", "/contact"],
+  publicRoutes: [
+    "/",
+    "/about",
+    "/features",
+    "/contact",
+    "/api/insights/search",
+  ],
   afterAuth(auth, req) {
     // If the user is logged in and trying to access the home page,
     // redirect them to the dashboard

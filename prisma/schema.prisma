@@ -1,0 +1,58 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Insight {
+  id          String     @id @default(cuid())
+  title       String
+  summary     String
+  content     String     @db.Text
+  category    Category   @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  savedBy     SavedInsight[]
+  tags        String[]
+  readTime    Int        // in minutes
+  source      String?    // URL or reference
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  insights    Insight[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model SavedInsight {
+  id          String    @id @default(cuid())
+  userId      String    // Clerk user ID
+  insight     Insight   @relation(fields: [insightId], references: [id])
+  insightId   String
+  projectId   String?   // Optional project association
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, insightId])
+}
+
+model Project {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  userId      String    // Clerk user ID
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
