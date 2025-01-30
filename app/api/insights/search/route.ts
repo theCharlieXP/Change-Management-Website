@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY?.replace('Bearer ', '')
 
-type CategoryKey = 
+type InsightFocusArea = 
   | 'challenges-barriers'
   | 'strategies-solutions'
   | 'outcomes-results'
@@ -15,103 +15,142 @@ type CategoryKey =
   | 'metrics-performance'
   | 'risk-management'
   | 'technology-tools'
+  | 'cultural-transformation'
+  | 'change-leadership'
+  | 'employee-training'
+  | 'change-sustainability'
 
-const CATEGORIES: Record<CategoryKey, string> = {
-  'challenges-barriers': 'Challenges & Barriers',
-  'strategies-solutions': 'Strategies & Solutions',
-  'outcomes-results': 'Outcomes & Results',
-  'stakeholders-roles': 'Key Stakeholders & Roles',
-  'best-practices': 'Best Practices & Methodologies',
-  'lessons-learned': 'Lessons Learned & Insights',
-  'implementation-tactics': 'Implementation Tactics',
-  'communication-engagement': 'Communication & Engagement',
-  'metrics-performance': 'Metrics & Performance Indicators',
-  'risk-management': 'Risk Management & Mitigation',
-  'technology-tools': 'Technology & Tools'
+const INSIGHT_FOCUS_AREAS: Record<InsightFocusArea, { label: string, description: string, keywords: string[] }> = {
+  'challenges-barriers': {
+    label: 'Challenges & Barriers',
+    description: 'Resistance to change, resource constraints, technological limitations',
+    keywords: ['resistance', 'constraints', 'limitations', 'barriers', 'challenges', 'obstacles', 'difficulties']
+  },
+  'strategies-solutions': {
+    label: 'Strategies & Solutions',
+    description: 'Approaches to overcome obstacles, implementation methods, innovative practices',
+    keywords: ['strategy', 'solution', 'approach', 'method', 'practice', 'implementation', 'innovation']
+  },
+  'outcomes-results': {
+    label: 'Outcomes & Results',
+    description: 'ROI, productivity improvements, employee satisfaction metrics',
+    keywords: ['ROI', 'results', 'outcomes', 'improvements', 'metrics', 'success', 'impact']
+  },
+  'stakeholders-roles': {
+    label: 'Key Stakeholders & Roles',
+    description: 'Leadership involvement, employee participation, external partners',
+    keywords: ['stakeholder', 'role', 'leadership', 'participation', 'involvement', 'responsibility']
+  },
+  'best-practices': {
+    label: 'Best Practices & Methodologies',
+    description: 'Agile, Kotter\'s 8-Step Process, ADKAR model',
+    keywords: ['best practice', 'methodology', 'framework', 'model', 'process', 'approach']
+  },
+  'lessons-learned': {
+    label: 'Lessons Learned & Insights',
+    description: 'Successes and failures, actionable takeaways, case study reflections',
+    keywords: ['lesson', 'insight', 'learning', 'takeaway', 'reflection', 'experience']
+  },
+  'implementation-tactics': {
+    label: 'Implementation Tactics',
+    description: 'Training programs, communication plans, technology deployment',
+    keywords: ['implementation', 'tactic', 'deployment', 'execution', 'rollout', 'adoption']
+  },
+  'communication-engagement': {
+    label: 'Communication & Engagement',
+    description: 'Stakeholder communication strategies, employee engagement techniques, feedback mechanisms',
+    keywords: ['communication', 'engagement', 'feedback', 'messaging', 'dialogue', 'interaction']
+  },
+  'metrics-performance': {
+    label: 'Metrics & Performance Indicators',
+    description: 'Key Performance Indicators (KPIs), performance metrics, adoption rates',
+    keywords: ['metric', 'KPI', 'performance', 'measurement', 'indicator', 'benchmark']
+  },
+  'risk-management': {
+    label: 'Risk Management & Mitigation',
+    description: 'Risk identification, mitigation strategies, contingency planning',
+    keywords: ['risk', 'mitigation', 'contingency', 'prevention', 'management', 'control']
+  },
+  'technology-tools': {
+    label: 'Technology & Tools',
+    description: 'Project management software, communication platforms, analytics tools',
+    keywords: ['technology', 'tool', 'software', 'platform', 'system', 'application']
+  },
+  'cultural-transformation': {
+    label: 'Cultural Transformation',
+    description: 'Shifting organizational culture, values alignment, behavior change',
+    keywords: ['culture', 'transformation', 'values', 'behavior', 'mindset', 'alignment']
+  },
+  'change-leadership': {
+    label: 'Change Leadership',
+    description: 'Leadership roles in change, leadership training, change champions',
+    keywords: ['leadership', 'champion', 'sponsor', 'executive', 'management', 'guidance']
+  },
+  'employee-training': {
+    label: 'Employee Training & Development',
+    description: 'Skill development programs, training initiatives, continuous learning',
+    keywords: ['training', 'development', 'learning', 'skill', 'education', 'capability']
+  },
+  'change-sustainability': {
+    label: 'Change Sustainability',
+    description: 'Ensuring long-term change, embedding change into organizational processes',
+    keywords: ['sustainability', 'long-term', 'embedding', 'sustaining', 'maintaining', 'reinforcing']
+  }
 }
 
-async function searchTavily(query: string, timeframe?: string, industry?: string, category?: CategoryKey, startDate?: string, endDate?: string) {
+async function searchTavily(
+  query: string, 
+  focusArea: InsightFocusArea,
+  industries?: string[],
+  changeFocus?: string[],
+  timeframe?: string
+) {
   if (!TAVILY_API_KEY) {
     throw new Error('Tavily API key not configured')
   }
 
-  // Handle date ranges
+  // Handle time ranges - convert our timeframe values to Tavily's format
   let time_range: string | undefined
-  if (startDate && endDate) {
-    // Custom date range - convert to Tavily's format
-    const start = new Date(startDate)
-    const end = new Date(endDate)
-    const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24))
-    
-    if (daysDiff <= 1) time_range = 'day'
-    else if (daysDiff <= 7) time_range = 'week'
-    else if (daysDiff <= 30) time_range = 'month'
-    else time_range = 'year'
-  } else {
-    // Predefined ranges
-    switch (timeframe) {
-      case 'last_day': time_range = 'day'; break
-      case 'last_week': time_range = 'week'; break
-      case 'last_month': time_range = 'month'; break
-      case 'last_year': time_range = 'year'; break
-      default: time_range = undefined
-    }
+  switch (timeframe) {
+    case 'last_day': time_range = 'day'; break
+    case 'last_week': time_range = 'week'; break
+    case 'last_month': time_range = 'month'; break
+    case 'last_year': time_range = 'year'; break
+    // For longer periods, default to 'year' as that's the maximum Tavily supports
+    case 'last_5_years':
+    case 'last_10_years':
+    case 'last_20_years':
+      time_range = 'year'; break
+    default: time_range = undefined
   }
 
-  // Construct the search query with industry and category context
-  let searchQuery = query
+  // Construct the search query with all context
   const queryParts = []
   
-  if (industry && industry !== 'All') {
-    queryParts.push(`${industry} industry`)
+  // Add the user's search query if provided
+  if (query) {
+    queryParts.push(query)
   }
   
-  if (category && CATEGORIES[category]) {
-    const categoryName = CATEGORIES[category]
-    queryParts.push(`"${categoryName}"`)
-    
-    // Add relevant keywords based on category
-    switch (category) {
-      case 'challenges-barriers':
-        queryParts.push('challenges obstacles barriers resistance limitations')
-        break
-      case 'strategies-solutions':
-        queryParts.push('strategies solutions approaches methods practices')
-        break
-      case 'outcomes-results':
-        queryParts.push('ROI metrics results outcomes improvements success')
-        break
-      case 'stakeholders-roles':
-        queryParts.push('stakeholders leadership roles responsibilities teams')
-        break
-      case 'best-practices':
-        queryParts.push('best practices methodologies frameworks models')
-        break
-      case 'lessons-learned':
-        queryParts.push('lessons learned insights findings takeaways')
-        break
-      case 'implementation-tactics':
-        queryParts.push('implementation deployment training execution tactics')
-        break
-      case 'communication-engagement':
-        queryParts.push('communication engagement feedback stakeholder management')
-        break
-      case 'metrics-performance':
-        queryParts.push('KPIs metrics measurements performance indicators')
-        break
-      case 'risk-management':
-        queryParts.push('risk management mitigation contingency planning')
-        break
-      case 'technology-tools':
-        queryParts.push('technology tools software platforms systems')
-        break
-    }
+  // Add focus area keywords
+  const focusAreaInfo = INSIGHT_FOCUS_AREAS[focusArea]
+  queryParts.push(`"${focusAreaInfo.label}"`)
+  queryParts.push(...focusAreaInfo.keywords)
+  
+  // Add industries if specified
+  if (industries && industries.length > 0) {
+    queryParts.push(`(${industries.map(industry => `"${industry}"`).join(' OR ')})`)
+  }
+  
+  // Add change focus areas if specified
+  if (changeFocus && changeFocus.length > 0) {
+    queryParts.push(`(${changeFocus.map(focus => `"${focus}"`).join(' OR ')})`)
   }
 
-  if (queryParts.length > 0) {
-    searchQuery = `${searchQuery} ${queryParts.join(' ')}`
-  }
+  // Add "change management" to ensure relevance
+  queryParts.push('"change management"')
 
+  const searchQuery = queryParts.join(' ')
   console.log('Final search query:', searchQuery)
 
   const searchParams = {
@@ -119,29 +158,30 @@ async function searchTavily(query: string, timeframe?: string, industry?: string
     search_depth: "advanced",
     include_answer: true,
     max_results: 15,
-    ...(time_range && { time_range }),
-    search_type: "keyword"
+    search_type: "keyword",
+    ...(time_range && { time_range })
   }
 
   try {
-    console.log('Making Tavily API request with params:', searchParams)
+    console.log('Making Tavily API request with params:', JSON.stringify(searchParams, null, 2))
     const response = await fetch('https://api.tavily.com/search', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${TAVILY_API_KEY}`
       },
-      body: JSON.stringify(searchParams)
+      body: JSON.stringify(searchParams),
+      cache: 'no-store'
     })
 
-    const responseText = await response.text()
-    console.log('Tavily API response:', responseText)
-
     if (!response.ok) {
-      throw new Error(`Tavily API error: ${responseText}`)
+      const errorText = await response.text()
+      console.error('Tavily API error response:', errorText)
+      throw new Error(`Tavily API error: ${errorText}`)
     }
 
-    const data = JSON.parse(responseText)
+    const data = await response.json()
+    console.log('Tavily API success response:', JSON.stringify(data, null, 2))
     return data.results || []
   } catch (error) {
     console.error('Error in searchTavily:', error)
@@ -202,33 +242,31 @@ ${content.substring(0, 1000)} // Limit content length for title generation`
   }
 }
 
-async function summarizeWithDeepseek(content: string, category: string) {
+async function summarizeWithDeepseek(content: string, focusArea: InsightFocusArea) {
   const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
   if (!DEEPSEEK_API_KEY) {
     console.warn('Deepseek API key not configured, skipping summarization')
     return content
   }
 
+  const focusAreaInfo = INSIGHT_FOCUS_AREAS[focusArea]
+
   try {
-    const systemMessage = `You are an expert in change management and business transformation. 
-Your task is to analyze and summarize case studies and insights related to ${category}.
-Create a structured summary with the following format:
+    const systemMessage = `You are an expert in change management, focusing specifically on ${focusAreaInfo.label}.
+Your task is to extract only the most relevant insights related to ${focusAreaInfo.label} from the content.
+Create 3-5 clear, concise bullet points that specifically address: ${focusAreaInfo.description}
 
-Key Insights:
-• [2-3 bullet points of main takeaways]
+Rules:
+- Only include information directly related to ${focusAreaInfo.label}
+- Each bullet point should be 1-2 lines maximum
+- Be direct and actionable
+- Remove any quotes or speech marks
+- Skip any information not relevant to ${focusAreaInfo.label}
+- It's okay to have fewer points if there isn't enough relevant information
+- Do not include any headers or categories
+- Start each bullet point with •`
 
-Challenges:
-• [1-2 bullet points of key challenges]
-
-Solutions:
-• [1-2 bullet points of implemented solutions]
-
-Outcomes:
-• [1-2 bullet points of results and impact]
-
-Keep each bullet point concise and focused on actionable insights.`
-
-    const userContent = `Please summarize the following content in a structured format with bullet points:
+    const userContent = `Extract insights about ${focusAreaInfo.label} from the following content:
 
 ${content}`
 
@@ -265,95 +303,108 @@ ${content}`
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const query = searchParams.get('query')
+    const query = searchParams.get('query') ?? ''
+    const focusArea = searchParams.get('focusArea') as InsightFocusArea
+    const industries = searchParams.get('industries')?.split(',').filter(Boolean)
+    const changeFocus = searchParams.get('changeFocus')?.split(',').filter(Boolean)
     const timeframe = searchParams.get('timeframe') || undefined
-    const industry = searchParams.get('industry') || undefined
-    const category = searchParams.get('category') as CategoryKey || undefined
-    const startDate = searchParams.get('startDate') || undefined
-    const endDate = searchParams.get('endDate') || undefined
 
     console.log('Received search request:', { 
-      query, timeframe, industry, category, startDate, endDate 
+      query, focusArea, industries, changeFocus, timeframe
     })
 
-    if (!query) {
-      return NextResponse.json({ error: 'Query parameter is required' }, { status: 400 })
+    if (!focusArea) {
+      return NextResponse.json({ error: 'Focus Area is required' }, { status: 400 })
+    }
+
+    if (!TAVILY_API_KEY) {
+      return NextResponse.json({ error: 'Search API is not configured' }, { status: 500 })
     }
 
     // Search using Tavily with all parameters
     const searchResults = await searchTavily(
-      query, 
-      timeframe, 
-      industry, 
-      category,
-      startDate,
-      endDate
+      query,
+      focusArea,
+      industries,
+      changeFocus,
+      timeframe
     )
     
-    console.log('Received search results:', searchResults.length)
+    console.log('Raw search results count:', searchResults.length)
 
-    // Filter out results with low relevance scores if available
-    const relevantResults = searchResults.filter((result: any) => {
-      // Check if the result matches the search criteria
-      const content = (result.content || result.description || '').toLowerCase()
-      const title = (result.title || '').toLowerCase()
-      const searchTerms = query.toLowerCase().split(' ')
-      
-      // Result must contain at least one search term in title or content
-      const hasSearchTerm = searchTerms.some(term => 
-        title.includes(term) || content.includes(term)
-      )
+    if (!Array.isArray(searchResults)) {
+      console.error('Invalid search results format:', searchResults)
+      return NextResponse.json({ error: 'Invalid search results format' }, { status: 500 })
+    }
 
-      // If category is selected, result must contain category-related terms
-      if (category && CATEGORIES[category]) {
-        const categoryTerms = CATEGORIES[category].toLowerCase().split(' ')
-        const hasCategoryTerm = categoryTerms.some(term =>
-          title.includes(term) || content.includes(term)
-        )
-        return hasSearchTerm && hasCategoryTerm
-      }
-
-      return hasSearchTerm
-    })
+    if (searchResults.length === 0) {
+      return NextResponse.json([])
+    }
 
     // Process and transform results
     const insights = await Promise.all(
-      relevantResults.map(async (result: any) => {
-        const categoryName = category ? CATEGORIES[category] : (result.category || 'General')
-        const categoryObj = {
-          id: category || 'web-search',
-          name: categoryName
-        }
-
-        // Generate a proper title
-        const title = await generateTitle(result.content || result.description, result.title)
-
-        // Generate a summary using Deepseek if content is available
-        let summary = result.description
-        if (result.content) {
-          try {
-            summary = await summarizeWithDeepseek(result.content, categoryObj.name)
-          } catch (error) {
-            console.error('Error summarizing content:', error)
-            summary = result.description
+      searchResults.map(async (result: any) => {
+        try {
+          // Ensure we have content to work with
+          const content = result.content || result.description || ''
+          if (!content) {
+            console.log('Skipping result with no content:', result.url)
+            return null
           }
-        }
 
-        return {
-          id: result.url,
-          title,
-          summary,
-          content: result.content || result.description,
-          category: categoryObj,
-          createdAt: result.published_date || new Date().toISOString(),
-          readTime: Math.ceil((result.content?.length || 0) / 1000),
-          source: result.url,
-          tags: result.keywords || []
+          // Generate a proper title
+          let title = result.title
+          try {
+            title = await generateTitle(content, result.title)
+            console.log('Generated title:', title)
+          } catch (error) {
+            console.error('Error generating title:', error)
+          }
+
+          // Generate a summary using Deepseek
+          let summary = content
+          try {
+            summary = await summarizeWithDeepseek(content, focusArea)
+            console.log('Generated summary length:', summary.length)
+          } catch (error) {
+            console.error('Error generating summary:', error)
+          }
+
+          // Extract relevant tags
+          const tags = new Set<string>()
+          tags.add(INSIGHT_FOCUS_AREAS[focusArea].label)
+          if (industries) {
+            industries.forEach(industry => tags.add(industry))
+          }
+          if (changeFocus) {
+            changeFocus.forEach(focus => tags.add(focus))
+          }
+
+          return {
+            id: result.url,
+            title,
+            summary,
+            content,
+            focusArea,
+            createdAt: result.published_date || new Date().toISOString(),
+            readTime: Math.ceil(content.length / 1000),
+            source: result.url,
+            tags: Array.from(tags)
+          }
+        } catch (error) {
+          console.error('Error processing result:', error)
+          return null
         }
       })
-    )
+    ).then(results => results.filter((result): result is NonNullable<typeof result> => result !== null))
 
-    console.log('Processed insights:', insights.length)
+    console.log('Final processed insights count:', insights.length)
+    
+    if (insights.length === 0) {
+      console.log('No insights after processing, returning empty array')
+      return NextResponse.json([])
+    }
+
     return NextResponse.json(insights)
   } catch (error) {
     console.error('Search error:', error)
