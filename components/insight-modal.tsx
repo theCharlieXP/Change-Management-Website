@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ExternalLink, BookmarkPlus, X } from 'lucide-react'
 import { Link } from '@/components/ui/link'
 import { cn } from '@/lib/utils'
-import type { InsightFocusArea } from '@/app/dashboard/insights/page'
+import type { InsightFocusArea } from '@/types/insights'
 
 interface InsightModalProps {
   insight: {
@@ -44,14 +44,6 @@ export function InsightModal({ insight, focusAreaInfo, isOpen, onClose, onSave }
                 {focusAreaInfo.label}
               </Badge>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="shrink-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
 
           {/* Content */}

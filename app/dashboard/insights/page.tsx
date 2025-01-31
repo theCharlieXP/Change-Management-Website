@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Loader2, CalendarIcon, ChevronDown, ChevronUp, ExternalLink, BookmarkPlus } from "lucide-react"
 import { format } from "date-fns"
+import type { InsightFocusArea, Insight } from "@/types/insights"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,23 +16,7 @@ import { cn } from "../../../lib/utils"
 import { DashboardLayout } from "../../../components/dashboard-layout"
 import { MultiSelect } from "../../../components/ui/multi-select"
 import { InsightModal } from '@/components/insight-modal'
-
-type InsightFocusArea = 
-  | 'challenges-barriers'
-  | 'strategies-solutions'
-  | 'outcomes-results'
-  | 'stakeholders-roles'
-  | 'best-practices'
-  | 'lessons-learned'
-  | 'implementation-tactics'
-  | 'communication-engagement'
-  | 'metrics-performance'
-  | 'risk-management'
-  | 'technology-tools'
-  | 'cultural-transformation'
-  | 'change-leadership'
-  | 'employee-training'
-  | 'change-sustainability'
+import { Textarea } from "@/components/ui/textarea"
 
 type TimeframeValue = 
   | 'last_day'
@@ -163,22 +148,6 @@ const CHANGE_FOCUS = [
   'Product Development'
 ]
 
-interface Insight {
-  id: string
-  title: string
-  summary: string
-  content: string
-  category: {
-    id: string
-    name: string
-  }
-  createdAt: string
-  readTime: number
-  source: string
-  tags: string[]
-  focusArea: InsightFocusArea
-}
-
 export default function InsightsPage() {
   const [query, setQuery] = useState("")
   const [focusArea, setFocusArea] = useState<InsightFocusArea | undefined>(undefined)
@@ -196,6 +165,9 @@ export default function InsightsPage() {
   // Add state for modal
   const [selectedInsight, setSelectedInsight] = useState<string | null>(null)
   const [insightNotes, setInsightNotes] = useState<Record<string, string>>({})
+  const [generatedSummary, setGeneratedSummary] = useState<string | null>(null)
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false)
+  const [summaryFocusArea, setSummaryFocusArea] = useState<InsightFocusArea | null>(null)
 
   const resetFilters = () => {
     // Reset all state values
@@ -422,6 +394,120 @@ export default function InsightsPage() {
             </Button>
           </div>
 
+          {/* Generate Summary Button - Only show when there are insights */}
+          {insights.length > 0 && (
+            <div className="flex justify-end mt-4">
+              <Button
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={async () => {
+                  setIsGeneratingSummary(true);
+                  try {
+                    // Store the current focus area for the summary
+                    setSummaryFocusArea(focusArea!);
+                    
+                    const response = await fetch('/api/insights/summary', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        insights: insights.map(insight => ({
+                          title: insight.title,
+                          summary: insight.summary,
+                          focusArea: insight.focusArea,
+                        })),
+                      }),
+                    });
+
+                    if (!response.ok) {
+                      throw new Error('Failed to generate summary');
+                    }
+
+                    const data = await response.json();
+                    setGeneratedSummary(data.summary);
+                  } catch (error) {
+                    console.error('Error generating summary:', error);
+                    setError('Failed to generate summary. Please try again.');
+                  } finally {
+                    setIsGeneratingSummary(false);
+                  }
+                }}
+                disabled={isGeneratingSummary}
+              >
+                {isGeneratingSummary ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating Summary...
+                  </>
+                ) : (
+                  'Generate Summary'
+                )}
+              </Button>
+            </div>
+          )}
+
+          {/* Generated Summary Section */}
+          {generatedSummary && summaryFocusArea && (
+            <div className="mt-6 p-6 bg-white rounded-lg border shadow-sm">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-lg font-semibold">Generated Summary</h3>
+                  <Badge className={cn("shrink-0", INSIGHT_FOCUS_AREAS[summaryFocusArea].color)}>
+                    {INSIGHT_FOCUS_AREAS[summaryFocusArea].label}
+                  </Badge>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(generatedSummary);
+                      // You might want to add a toast notification here
+                    }}
+                  >
+                    Copy to Clipboard
+                  </Button>
+                </div>
+              </div>
+              <div className="prose max-w-none mb-6">
+                {generatedSummary.split('\n').map((point, index) => (
+                  <div key={index} className="flex items-start gap-2 mt-2">
+                    <span className="text-muted-foreground">•</span>
+                    <p className="mt-0 mb-0">{point.replace(/^[•-]\s*/, '')}</p>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Notes Section */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Notes
+                </label>
+                <Textarea
+                  placeholder="Add your notes here..."
+                  value={insightNotes['summary'] || ''}
+                  onChange={(e) => setInsightNotes(prev => ({ ...prev, 'summary': e.target.value }))}
+                  className="min-h-[100px]"
+                />
+                <div className="flex justify-end mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const summaryId = 'summary-' + Date.now();
+                      handleSaveWithNotes(summaryId, insightNotes['summary'] || '');
+                      setGeneratedSummary(null); // Clear the summary after saving
+                      setSummaryFocusArea(null); // Clear the summary focus area
+                    }}
+                  >
+                    <BookmarkPlus className="h-4 w-4 mr-1" />
+                    Save to Project
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Error Message */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
@@ -453,13 +539,18 @@ export default function InsightsPage() {
 
                     {/* Preview */}
                     <div className="flex-grow">
-                      <p className="text-muted-foreground line-clamp-2">
+                      <p className="text-sm text-muted-foreground line-clamp-3">
                         {insight.summary.split('\n')[0]?.replace(/^[•-]\s*/, '')}
                       </p>
                     </div>
 
                     {/* Actions */}
-                    <div className="mt-4 pt-4 border-t flex items-end justify-between">
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge className={cn("shrink-0", INSIGHT_FOCUS_AREAS[insight.focusArea].color)}>
+                          {INSIGHT_FOCUS_AREAS[insight.focusArea].label}
+                        </Badge>
+                      </div>
                       <div className="flex items-center gap-2">
                         <Button
                           variant="ghost"
@@ -493,9 +584,6 @@ export default function InsightsPage() {
                           Save
                         </Button>
                       </div>
-                      <Badge className={cn("shrink-0", INSIGHT_FOCUS_AREAS[insight.focusArea].color)}>
-                        {INSIGHT_FOCUS_AREAS[insight.focusArea].label}
-                      </Badge>
                     </div>
                   </div>
                 </div>
