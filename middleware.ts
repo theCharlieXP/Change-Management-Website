@@ -8,7 +8,7 @@ export default authMiddleware({
     "/contact",
     "/api/insights/search",
   ],
-  afterAuth(auth, req) {
+  afterAuth(auth, req, evt) {
     // If the user is logged in and trying to access the home page,
     // redirect them to the dashboard
     if (auth.userId && req.nextUrl.pathname === "/") {
