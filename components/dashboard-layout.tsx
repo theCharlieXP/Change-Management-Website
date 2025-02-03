@@ -11,13 +11,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const sidebarItems = [
     {
       name: "Projects",
-      href: "/dashboard",
+      href: "/dashboard/projects",
       icon: FolderKanban,
+      matchPaths: ['/dashboard/projects', '/dashboard/projects/[projectId]']
     },
     {
       name: "Insights",
       href: "/dashboard/insights",
       icon: Brain,
+      matchPaths: ['/dashboard/insights']
     },
   ]
 
@@ -34,7 +36,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         
         <nav className="p-4 space-y-2">
           {sidebarItems.map((item) => {
-            const isActive = pathname === item.href
+            const isActive = item.matchPaths.some(path => {
+              if (path.includes('[')) {
+                // Convert [projectId] to regex pattern
+                const pattern = path.replace(/\[.*?\]/g, '[^/]+')
+                return new RegExp(`^${pattern}$`).test(pathname)
+              }
+              return pathname === path
+            })
             const Icon = item.icon
             
             return (
