@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useAuthenticatedSupabase } from '@/lib/supabase/hooks'
 import type { Project, ProjectInsight, ProjectSummary, ProjectTask, ProjectNote } from '@/types/projects'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { ProjectTasks } from '@/components/projects/project-tasks'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { Loader2 } from 'lucide-react'
 
 interface ProjectPageProps {
   params: {
@@ -24,17 +25,16 @@ const STATUS_COLORS = {
 
 export default function ProjectPage({ params }: ProjectPageProps) {
   const [project, setProject] = useState<Project | null>(null)
-  const [insights, setInsights] = useState<ProjectInsight[]>([])
-  const [summaries, setSummaries] = useState<ProjectSummary[]>([])
   const [tasks, setTasks] = useState<ProjectTask[]>([])
   const [notes, setNotes] = useState<ProjectNote[]>([])
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const supabase = createClient()
+  const { supabase, loading: clientLoading } = useAuthenticatedSupabase()
 
   useEffect(() => {
     const fetchProjectData = async () => {
+      if (!supabase) return
+
       try {
         // Fetch project details
         const { data: projectData, error: projectError } = await supabase
@@ -45,24 +45,6 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
         if (projectError) throw projectError
         setProject(projectData)
-
-        // Fetch project insights
-        const { data: insightsData, error: insightsError } = await supabase
-          .from('project_insights')
-          .select('*')
-          .eq('project_id', params.projectId)
-
-        if (insightsError) throw insightsError
-        setInsights(insightsData)
-
-        // Fetch project summaries
-        const { data: summariesData, error: summariesError } = await supabase
-          .from('project_summaries')
-          .select('*')
-          .eq('project_id', params.projectId)
-
-        if (summariesError) throw summariesError
-        setSummaries(summariesData)
 
         // Fetch project tasks
         const { data: tasksData, error: tasksError } = await supabase
@@ -79,6 +61,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
           .from('project_notes')
           .select('*')
           .eq('project_id', params.projectId)
+          .order('created_at', { ascending: false })
 
         if (notesError) throw notesError
         setNotes(notesData)
@@ -86,55 +69,78 @@ export default function ProjectPage({ params }: ProjectPageProps) {
       } catch (error) {
         console.error('Error fetching project data:', error)
         setError('Failed to load project data')
-      } finally {
-        setLoading(false)
       }
     }
 
-    fetchProjectData()
+    if (supabase) {
+      fetchProjectData()
 
-    // Set up real-time subscriptions
-    const projectSubscription = supabase
-      .channel('project-changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'projects',
-        filter: `id=eq.${params.projectId}`
-      }, (payload) => {
-        if (payload.eventType === 'UPDATE') {
-          setProject(payload.new as Project)
-        }
-      })
-      .subscribe()
+      // Set up real-time subscriptions
+      const projectSubscription = supabase
+        .channel('project-changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'projects',
+          filter: `id=eq.${params.projectId}`
+        }, (payload) => {
+          if (payload.eventType === 'UPDATE') {
+            setProject(payload.new as Project)
+          }
+        })
+        .subscribe()
 
-    const tasksSubscription = supabase
-      .channel('tasks-changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'project_tasks',
-        filter: `project_id=eq.${params.projectId}`
-      }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setTasks(prev => [payload.new as ProjectTask, ...prev])
-        } else if (payload.eventType === 'DELETE') {
-          setTasks(prev => prev.filter(task => task.id !== payload.old.id))
-        } else if (payload.eventType === 'UPDATE') {
-          setTasks(prev => prev.map(task => 
-            task.id === payload.new.id ? payload.new as ProjectTask : task
-          ))
-        }
-      })
-      .subscribe()
+      const tasksSubscription = supabase
+        .channel('tasks-changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'project_tasks',
+          filter: `project_id=eq.${params.projectId}`
+        }, (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setTasks(prev => [payload.new as ProjectTask, ...prev])
+          } else if (payload.eventType === 'DELETE') {
+            setTasks(prev => prev.filter(task => task.id !== payload.old.id))
+          } else if (payload.eventType === 'UPDATE') {
+            setTasks(prev => prev.map(task => 
+              task.id === payload.new.id ? payload.new as ProjectTask : task
+            ))
+          }
+        })
+        .subscribe()
 
-    return () => {
-      projectSubscription.unsubscribe()
-      tasksSubscription.unsubscribe()
+      const notesSubscription = supabase
+        .channel('notes-changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'project_notes',
+          filter: `project_id=eq.${params.projectId}`
+        }, (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setNotes(prev => [payload.new as ProjectNote, ...prev])
+          } else if (payload.eventType === 'DELETE') {
+            setNotes(prev => prev.filter(note => note.id !== payload.old.id))
+          } else if (payload.eventType === 'UPDATE') {
+            setNotes(prev => prev.map(note => 
+              note.id === payload.new.id ? payload.new as ProjectNote : note
+            ))
+          }
+        })
+        .subscribe()
+
+      return () => {
+        projectSubscription.unsubscribe()
+        tasksSubscription.unsubscribe()
+        notesSubscription.unsubscribe()
+      }
     }
-  }, [params.projectId, supabase])
+  }, [supabase, params.projectId])
 
   const handleAddTask = async (task: Omit<ProjectTask, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!supabase) return
+
     const { error } = await supabase
       .from('project_tasks')
       .insert([task])
@@ -143,6 +149,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   }
 
   const handleUpdateTask = async (id: string, task: Partial<ProjectTask>) => {
+    if (!supabase) return
+
     const { error } = await supabase
       .from('project_tasks')
       .update(task)
@@ -152,6 +160,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   }
 
   const handleDeleteTask = async (id: string) => {
+    if (!supabase) return
+
     const { error } = await supabase
       .from('project_tasks')
       .delete()
@@ -160,12 +170,12 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     if (error) throw error
   }
 
-  if (loading) {
+  if (clientLoading) {
     return (
       <DashboardLayout>
         <div className="container mx-auto py-6">
           <div className="flex items-center justify-center h-64">
-            <p>Loading project details...</p>
+            <Loader2 className="h-8 w-8 animate-spin" />
           </div>
         </div>
       </DashboardLayout>
@@ -229,7 +239,14 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                   <p className="text-muted-foreground">No notes added yet</p>
                 ) : (
                   <div className="space-y-4">
-                    {/* TODO: Implement notes list */}
+                    {notes.map((note) => (
+                      <div key={note.id} className="bg-muted p-4 rounded-lg">
+                        <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {new Date(note.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
