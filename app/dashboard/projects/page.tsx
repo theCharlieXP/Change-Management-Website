@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
-import { createClient } from '@/lib/supabase/client'
+import { useSupabaseClient } from '@/lib/supabase/client'
 import type { Project } from '@/types/projects'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { CreateProjectDialog } from '@/components/projects/create-project-dialog'
@@ -26,7 +26,7 @@ export default function ProjectsPage() {
   const [error, setError] = useState<string | null>(null)
   
   const { user } = useUser()
-  const supabase = createClient()
+  const supabase = useSupabaseClient()
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -88,26 +88,42 @@ export default function ProjectsPage() {
     )
   }
 
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="container mx-auto py-6">
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="container mx-auto py-6">
+          <div className="flex items-center justify-center h-64">
+            <p className="text-red-500">{error}</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   return (
     <DashboardLayout>
       <div className="container mx-auto py-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Projects</h1>
+          <h1 className="text-2xl font-bold">Your Projects</h1>
           <CreateProjectDialog />
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : error ? (
-          <div className="flex items-center justify-center h-64">
-            <p className="text-red-500">{error}</p>
-          </div>
-        ) : projects.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 space-y-4">
-            <p className="text-muted-foreground">No projects yet</p>
-            <p className="text-sm text-muted-foreground">Click the "New Project" button above to create your first project</p>
+        {projects.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground mb-4">No projects yet</p>
+            <CreateProjectDialog />
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -115,12 +131,12 @@ export default function ProjectsPage() {
               <Link 
                 key={project.id} 
                 href={`/dashboard/projects/${project.id}`}
-                className="block transition-all duration-200 hover:shadow-lg"
+                className="block transition-transform hover:scale-[1.02]"
               >
                 <Card>
                   <CardHeader>
-                    <div className="flex justify-between items-start gap-4">
-                      <CardTitle className="line-clamp-1">{project.title}</CardTitle>
+                    <div className="flex items-start justify-between gap-4">
+                      <CardTitle className="line-clamp-2">{project.title}</CardTitle>
                       <Badge className={STATUS_COLORS[project.status]}>
                         {project.status.replace('-', ' ')}
                       </Badge>
@@ -130,11 +146,9 @@ export default function ProjectsPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">
-                        Created {new Date(project.created_at).toLocaleDateString()}
-                      </span>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>Created {new Date(project.created_at).toLocaleDateString()}</span>
+                      <ArrowRight className="h-4 w-4" />
                     </div>
                   </CardContent>
                 </Card>

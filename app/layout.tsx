@@ -1,12 +1,13 @@
 import { ClerkProvider } from '@clerk/nextjs'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { ErrorBoundary } from '@/components/error-boundary'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
-  title: 'Change Buddy - AI-Powered Change Management',
-  description: 'Transform your change management process with AI-powered insights and tools.',
+  title: 'Change Management',
+  description: 'Track and manage organizational changes effectively',
 }
 
 export default function RootLayout({
@@ -15,18 +16,14 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <ClerkProvider
-      appearance={{
-        elements: {
-          footer: 'hidden',
-        }
-      }}
-      afterSignInUrl="/dashboard"
-      afterSignUpUrl="/dashboard"
-    >
-      <html lang="en">
-        <body className={inter.className}>{children}</body>
-      </html>
-    </ClerkProvider>
+    <html lang="en">
+      <body className={inter.className}>
+        <ClerkProvider>
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
+        </ClerkProvider>
+      </body>
+    </html>
   )
 }
