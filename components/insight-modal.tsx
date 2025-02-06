@@ -44,14 +44,6 @@ export function InsightModal({ insight, focusAreaInfo, isOpen, onClose, onSave }
                 {focusAreaInfo.label}
               </Badge>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="shrink-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
 
           {/* Content */}
