@@ -1,7 +1,13 @@
 import { auth } from "@clerk/nextjs"
 import { redirect } from "next/navigation"
 import dynamic from 'next/dynamic'
-import { Sidebar } from "@/components/dashboard/sidebar"
+
+const Sidebar = dynamic(() => import('@/components/dashboard/sidebar').then(mod => mod.Sidebar), {
+  ssr: false,
+  loading: () => (
+    <div className="w-64 bg-gray-200 animate-pulse" />
+  )
+})
 
 const UserNav = dynamic(() => import('@/components/user-nav').then(mod => mod.UserNav), {
   ssr: false,

@@ -67,17 +67,14 @@ const ProjectsPage: React.FC = () => {
               href={`/dashboard/projects/${project.id}`}
               className="block transition-transform hover:scale-[1.02]"
             >
-              <Card>
-                <CardHeader>
+              <Card className="h-[160px]">
+                <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-4">
-                    <CardTitle className="line-clamp-2">{project.title}</CardTitle>
-                    <Badge className={STATUS_COLORS[project.status]}>
+                    <CardTitle className="text-base font-medium flex-1">{project.title}</CardTitle>
+                    <Badge className={`${STATUS_COLORS[project.status]} text-xs px-2 py-0.5 whitespace-nowrap shrink-0`}>
                       {project.status.replace('-', ' ')}
                     </Badge>
                   </div>
-                  <CardDescription className="line-clamp-2">
-                    {project.description || 'No description'}
-                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between text-sm text-muted-foreground">

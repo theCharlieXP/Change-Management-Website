@@ -68,8 +68,11 @@ export function CreateProjectForm({ onSuccess, onProjectCreated }: CreateProject
           disabled={loading}
           autoFocus
           minLength={1}
-          maxLength={100}
+          maxLength={40}
         />
+        <p className="text-xs text-muted-foreground">
+          {title.length}/40 characters
+        </p>
       </div>
 
       {error && (

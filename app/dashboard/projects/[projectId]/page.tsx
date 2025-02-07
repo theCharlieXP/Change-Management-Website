@@ -1,13 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { CalendarDays, ListTodo, MessageSquare, Lightbulb, Settings, Plus, ArrowLeft } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ArrowLeft } from 'lucide-react'
 import { format } from 'date-fns'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import type { Project } from '@/types/projects'
 
 // Mock data for development
@@ -45,6 +52,7 @@ export default function ProjectPage() {
   const router = useRouter()
   const projectId = params.projectId as string
   const project = MOCK_PROJECTS[projectId]
+  const [status, setStatus] = useState(project?.status || 'planning')
 
   if (!project) {
     return (
@@ -58,153 +66,91 @@ export default function ProjectPage() {
 
   return (
     <div className="container mx-auto py-6 space-y-6">
-      {/* Project Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <div className="flex items-center gap-4 mb-2">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => router.push('/dashboard/projects')}
-              className="hover:bg-gray-100"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Projects
-            </Button>
-          </div>
-          <h1 className="text-2xl font-bold mb-2">{project.title}</h1>
-          <p className="text-muted-foreground mb-4">{project.description || 'No description'}</p>
-          <div className="flex items-center gap-4">
-            <Badge className={STATUS_COLORS[project.status]}>
-              {project.status.replace('-', ' ')}
-            </Badge>
-            <span className="text-sm text-muted-foreground">
-              Created {format(new Date(project.created_at), 'MMM d, yyyy')}
-            </span>
-          </div>
+      {/* Back Button */}
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        onClick={() => router.push('/dashboard/projects')}
+        className="hover:bg-gray-100"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Back to Projects
+      </Button>
+
+      {/* Project Title and Status */}
+      <div className="space-y-4">
+        <h1 className="text-3xl font-bold">{project.title}</h1>
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-muted-foreground">
+            Created {format(new Date(project.created_at), 'MMM d, yyyy')}
+          </span>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className={`w-[180px] ${STATUS_COLORS[status as keyof typeof STATUS_COLORS]}`}>
+              <SelectValue placeholder="Select stage" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="planning">Planning</SelectItem>
+              <SelectItem value="in-progress">In Progress</SelectItem>
+              <SelectItem value="on-hold">On Hold</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Button variant="outline">
-          <Settings className="h-4 w-4 mr-2" />
-          Settings
-        </Button>
       </div>
 
-      {/* Project Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">
-            <CalendarDays className="h-4 w-4 mr-2" />
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="tasks">
-            <ListTodo className="h-4 w-4 mr-2" />
-            Tasks
-          </TabsTrigger>
-          <TabsTrigger value="insights">
-            <Lightbulb className="h-4 w-4 mr-2" />
-            Insights
-          </TabsTrigger>
-          <TabsTrigger value="notes">
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Notes
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium">Tasks</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">0</div>
-                <p className="text-xs text-muted-foreground">tasks created</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium">Insights</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">0</div>
-                <p className="text-xs text-muted-foreground">insights collected</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium">Notes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">0</div>
-                <p className="text-xs text-muted-foreground">notes added</p>
-              </CardContent>
-            </Card>
+      {/* Tasks Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Tasks</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Textarea placeholder="Add a new task..." className="w-full" />
+            <Button>Add Task</Button>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">No tasks added yet</p>
+            </div>
           </div>
+        </CardContent>
+      </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Your project's latest updates and changes</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">No recent activity</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
+      {/* Saved Insights Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Saved Insights</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">No insights saved to this project yet</p>
+          </div>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="tasks">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Tasks</CardTitle>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Task
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">No tasks created yet</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
+      {/* Insight Summaries Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Insight Summaries</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">No summaries generated yet</p>
+          </div>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="insights">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Insights</CardTitle>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Insight
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">No insights collected yet</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="notes">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Notes</CardTitle>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Note
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">No notes added yet</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Notes Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Notes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Textarea 
+            placeholder="Add your project notes here..." 
+            className="w-full min-h-[200px]"
+          />
+        </CardContent>
+      </Card>
     </div>
   )
 } 
