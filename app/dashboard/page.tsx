@@ -1,24 +1,16 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { DashboardLayout } from "@/components/dashboard-layout"
+import { useUser } from "@clerk/nextjs"
+import { redirect } from "next/navigation"
 
 export default function DashboardPage() {
-  const router = useRouter()
+  const { user, isLoaded } = useUser()
 
-  useEffect(() => {
-    // Redirect to projects page
-    router.push('/dashboard/projects')
-  }, [router])
+  // Wait for the user data to load
+  if (!isLoaded) {
+    return null
+  }
 
-  return (
-    <DashboardLayout>
-      <div className="container mx-auto py-6">
-        <div className="flex items-center justify-center h-64">
-          <p>Redirecting to projects...</p>
-        </div>
-      </div>
-    </DashboardLayout>
-  )
+  // Redirect to projects page
+  redirect('/dashboard/projects')
 } 

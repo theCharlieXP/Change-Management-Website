@@ -6,6 +6,11 @@ export async function createSupabaseClient(token?: string | null) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false
+      },
       global: {
         headers: token ? {
           Authorization: `Bearer ${token}`

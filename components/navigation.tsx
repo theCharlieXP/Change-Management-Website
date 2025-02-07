@@ -1,7 +1,8 @@
 import React from 'react'
 import Link from 'next/link'
-import { SignedIn, UserButton } from "@clerk/nextjs"
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs"
 import { NavigationMenu, NavigationMenuItem, NavigationMenuList } from "@/components/ui/navigation-menu"
+import { Button } from "@/components/ui/button"
 
 export function Navigation() {
   return (
@@ -41,6 +42,13 @@ export function Navigation() {
                 }}
               />
             </SignedIn>
+            <SignedOut>
+              <Link href="/sign-in">
+                <Button variant="ghost" className="text-sm">
+                  Sign In
+                </Button>
+              </Link>
+            </SignedOut>
           </NavigationMenuItem>
         </NavigationMenuList>
       </NavigationMenu>

@@ -38,7 +38,7 @@ export function InsightModal({ insight, focusAreaInfo, isOpen, onClose, onSave }
           <div className="flex justify-between items-start gap-4 mb-6">
             <div>
               <h2 className="text-xl font-semibold mb-2">
-                {insight.title}
+                {insight.title.replace(/["']/g, '')}
               </h2>
               <Badge className={cn("shrink-0", focusAreaInfo.color)}>
                 {focusAreaInfo.label}

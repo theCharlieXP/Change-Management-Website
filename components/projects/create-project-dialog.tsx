@@ -5,8 +5,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import { CreateProjectForm } from './create-project-form'
+import type { Project } from '@/types/projects'
 
-export function CreateProjectDialog() {
+interface CreateProjectDialogProps {
+  onProjectCreated?: (project: Project) => void
+}
+
+export function CreateProjectDialog({ onProjectCreated }: CreateProjectDialogProps) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -21,7 +26,10 @@ export function CreateProjectDialog() {
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>
         </DialogHeader>
-        <CreateProjectForm onSuccess={() => setOpen(false)} />
+        <CreateProjectForm 
+          onSuccess={() => setOpen(false)} 
+          onProjectCreated={onProjectCreated}
+        />
       </DialogContent>
     </Dialog>
   )
