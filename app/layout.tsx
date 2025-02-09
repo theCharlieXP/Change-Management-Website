@@ -1,6 +1,7 @@
 import { ClerkProvider } from '@clerk/nextjs'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { ProfileCreator } from '@/components/auth/profile-creator'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -18,6 +19,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} min-h-screen bg-background antialiased`} suppressHydrationWarning>
         <ClerkProvider>
+          <ProfileCreator />
           {children}
         </ClerkProvider>
       </body>

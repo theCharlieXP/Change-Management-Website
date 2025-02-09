@@ -1,38 +1,50 @@
--- Create custom types
-CREATE TYPE project_status AS ENUM (
-  'planning',
-  'in-progress',
-  'on-hold',
-  'completed',
-  'cancelled'
-);
+-- Create custom types if they don't exist
+DO $$ BEGIN
+    CREATE TYPE project_status AS ENUM (
+      'planning',
+      'in-progress',
+      'on-hold',
+      'completed',
+      'cancelled'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
-CREATE TYPE task_status AS ENUM (
-  'todo',
-  'in-progress',
-  'completed',
-  'blocked'
-);
+DO $$ BEGIN
+    CREATE TYPE task_status AS ENUM (
+      'todo',
+      'in-progress',
+      'completed',
+      'blocked'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
-CREATE TYPE insight_focus_area AS ENUM (
-  'challenges-barriers',
-  'strategies-solutions',
-  'outcomes-results',
-  'stakeholders-roles',
-  'best-practices',
-  'lessons-learned',
-  'implementation-tactics',
-  'communication-engagement',
-  'metrics-performance',
-  'risk-management',
-  'technology-tools',
-  'cultural-transformation',
-  'change-leadership',
-  'employee-training',
-  'change-sustainability'
-);
+DO $$ BEGIN
+    CREATE TYPE insight_focus_area AS ENUM (
+      'challenges-barriers',
+      'strategies-solutions',
+      'outcomes-results',
+      'stakeholders-roles',
+      'best-practices',
+      'lessons-learned',
+      'implementation-tactics',
+      'communication-engagement',
+      'metrics-performance',
+      'risk-management',
+      'technology-tools',
+      'cultural-transformation',
+      'change-leadership',
+      'employee-training',
+      'change-sustainability'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- Create updated_at function
+-- Create updated_at function if it doesn't exist
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -41,8 +53,8 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Create projects table
-CREATE TABLE projects (
+-- Create projects table if it doesn't exist
+CREATE TABLE IF NOT EXISTS projects (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   description TEXT,
@@ -52,10 +64,11 @@ CREATE TABLE projects (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_projects_user_id ON projects(user_id);
+-- Create index if it doesn't exist
+CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
 
--- Create project_insights table
-CREATE TABLE project_insights (
+-- Create project_insights table if it doesn't exist
+CREATE TABLE IF NOT EXISTS project_insights (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   insight_id TEXT NOT NULL,
@@ -67,10 +80,10 @@ CREATE TABLE project_insights (
   added_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_project_insights_project_id ON project_insights(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_insights_project_id ON project_insights(project_id);
 
--- Create project_summaries table
-CREATE TABLE project_summaries (
+-- Create project_summaries table if it doesn't exist
+CREATE TABLE IF NOT EXISTS project_summaries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
@@ -79,10 +92,10 @@ CREATE TABLE project_summaries (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_project_summaries_project_id ON project_summaries(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_summaries_project_id ON project_summaries(project_id);
 
--- Create project_tasks table
-CREATE TABLE project_tasks (
+-- Create project_tasks table if it doesn't exist
+CREATE TABLE IF NOT EXISTS project_tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -93,10 +106,10 @@ CREATE TABLE project_tasks (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_project_tasks_project_id ON project_tasks(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_tasks_project_id ON project_tasks(project_id);
 
--- Create project_notes table
-CREATE TABLE project_notes (
+-- Create project_notes table if it doesn't exist
+CREATE TABLE IF NOT EXISTS project_notes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
@@ -104,9 +117,13 @@ CREATE TABLE project_notes (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_project_notes_project_id ON project_notes(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_notes_project_id ON project_notes(project_id);
 
--- Create updated_at triggers
+-- Drop triggers if they exist and recreate them
+DROP TRIGGER IF EXISTS update_projects_updated_at ON projects;
+DROP TRIGGER IF EXISTS update_project_tasks_updated_at ON project_tasks;
+DROP TRIGGER IF EXISTS update_project_notes_updated_at ON project_notes;
+
 CREATE TRIGGER update_projects_updated_at
     BEFORE UPDATE ON projects
     FOR EACH ROW
@@ -128,6 +145,12 @@ ALTER TABLE project_insights ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_summaries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_notes ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can only see their own projects" ON projects;
+DROP POLICY IF EXISTS "Users can only insert their own projects" ON projects;
+DROP POLICY IF EXISTS "Users can only update their own projects" ON projects;
+DROP POLICY IF EXISTS "Users can only delete their own projects" ON projects;
 
 -- Create RLS policies
 CREATE POLICY "Users can only see their own projects"

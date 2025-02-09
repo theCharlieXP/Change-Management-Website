@@ -1,0 +1,14 @@
+# Next Steps
+
+Suggestions for building out user management and billing:
+- Add a way to view/edit the profile:
+  - Create a profile settings page
+  - Allow users to update their tier or view their credits
+- Add credit management:
+  - Track credit usage when users use features
+  - Add a way to purchase more credits
+  - Add notifications when credits are low
+- Add tier-based features:
+  - Restrict certain features based on tier
+  - Add upgrade paths from free to paid tiers
+
