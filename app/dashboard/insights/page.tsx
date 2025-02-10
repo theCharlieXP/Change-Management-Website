@@ -1,20 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Loader2, CalendarIcon, ChevronDown, ChevronUp, ExternalLink, BookmarkPlus } from "lucide-react"
 import { format } from "date-fns"
-
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Link } from "@/components/ui/link"
-import { cn } from "@/lib/utils"
 import { MultiSelect } from "@/components/ui/multi-select"
 import { InsightModal } from '@/components/insight-modal'
 import type { Insight, InsightFocusArea } from '@/types/insights'
+import type { Project } from '@prisma/client'
+import { fetchWithAuth } from '@/lib/fetch-utils'
+import { toast } from "@/components/ui/use-toast"
+import { createClient } from '@supabase/supabase-js'
+import { useToast } from '@/components/ui/use-toast'
 
 type TimeframeValue = 
   | 'last_day'
@@ -23,35 +27,80 @@ type TimeframeValue =
   | 'last_year'
 
 const INSIGHT_FOCUS_AREAS: Record<InsightFocusArea, { label: string; color: string; description: string }> = {
-  'general': { 
-    label: 'General', 
-    color: 'bg-gray-100 text-gray-800 border-gray-200',
-    description: 'General change management concepts and principles'
-  },
-  'stakeholder-impact': { 
-    label: 'Stakeholder Impact', 
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
-    description: 'Understanding and managing stakeholder impact'
-  },
-  'risk-assessment': { 
-    label: 'Risk Assessment', 
+  ['challenges-barriers']: { 
+    label: 'Challenges & Barriers', 
     color: 'bg-red-100 text-red-800 border-red-200',
-    description: 'Identifying and mitigating risks in change initiatives'
+    description: 'Resistance to change, resource constraints, technological limitations'
   },
-  'communication': { 
-    label: 'Communication', 
+  ['strategies-solutions']: { 
+    label: 'Strategies & Solutions', 
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    description: 'Approaches to overcome obstacles, implementation methods, innovative practices'
+  },
+  ['outcomes-results']: { 
+    label: 'Outcomes & Results', 
     color: 'bg-green-100 text-green-800 border-green-200',
-    description: 'Effective communication strategies during change'
+    description: 'ROI, productivity improvements, employee satisfaction metrics'
   },
-  'timeline': { 
-    label: 'Timeline', 
-    color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    description: 'Planning and managing change timelines'
-  },
-  'resources': { 
-    label: 'Resources', 
+  ['key-stakeholders-roles']: { 
+    label: 'Key Stakeholders & Roles', 
     color: 'bg-purple-100 text-purple-800 border-purple-200',
-    description: 'Resource allocation and management for change'
+    description: 'Leadership involvement, employee participation, external partners'
+  },
+  ['best-practices-methodologies']: { 
+    label: 'Best Practices & Methodologies', 
+    color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    description: 'Agile, Kotter\'s 8-Step Process, ADKAR model'
+  },
+  ['lessons-learned-insights']: { 
+    label: 'Lessons Learned & Insights', 
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    description: 'Successes and failures, actionable takeaways, case study reflections'
+  },
+  ['implementation-tactics']: { 
+    label: 'Implementation Tactics', 
+    color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    description: 'Training programs, communication plans, technology deployment'
+  },
+  ['communication-engagement']: { 
+    label: 'Communication & Engagement', 
+    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    description: 'Stakeholder communication strategies, employee engagement techniques, feedback mechanisms'
+  },
+  ['metrics-performance']: { 
+    label: 'Metrics & Performance Indicators', 
+    color: 'bg-pink-100 text-pink-800 border-pink-200',
+    description: 'Key Performance Indicators (KPIs), performance metrics, adoption rates'
+  },
+  ['risk-management']: { 
+    label: 'Risk Management & Mitigation', 
+    color: 'bg-rose-100 text-rose-800 border-rose-200',
+    description: 'Risk identification, mitigation strategies, contingency planning'
+  },
+  ['technology-tools']: { 
+    label: 'Technology & Tools', 
+    color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    description: 'Project management software, communication platforms, analytics tools'
+  },
+  ['cultural-transformation']: { 
+    label: 'Cultural Transformation', 
+    color: 'bg-teal-100 text-teal-800 border-teal-200',
+    description: 'Shifting organizational culture, values alignment, behavior change'
+  },
+  ['change-leadership']: { 
+    label: 'Change Leadership', 
+    color: 'bg-violet-100 text-violet-800 border-violet-200',
+    description: 'Leadership roles in change, leadership training, change champions'
+  },
+  ['employee-training']: { 
+    label: 'Employee Training & Development', 
+    color: 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200',
+    description: 'Skill development programs, training initiatives, continuous learning'
+  },
+  ['change-sustainability']: { 
+    label: 'Change Sustainability', 
+    color: 'bg-sky-100 text-sky-800 border-sky-200',
+    description: 'Ensuring long-term change, embedding change into organizational processes'
   }
 }
 
@@ -116,23 +165,64 @@ interface InsightData {
   updated_at: string
 }
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
 export default function InsightsPage() {
   const [query, setQuery] = useState("")
   const [focusArea, setFocusArea] = useState<InsightFocusArea | undefined>(undefined)
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([])
   const [selectedChangeFocus, setSelectedChangeFocus] = useState<string[]>([])
   const [timeframe, setTimeframe] = useState<TimeframeValue | undefined>(undefined)
-  const [insights, setInsights] = useState<InsightData[]>([])
+  const [insights, setInsights] = useState<Insight[]>([])
   const [loading, setLoading] = useState(false)
-  const [loadingStage, setLoadingStage] = useState<string>("")
+  const [loadingStage, setLoadingStage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-
-  // Force a re-render when resetting
   const [resetKey, setResetKey] = useState(0)
-
-  // Add state for modal
   const [selectedInsight, setSelectedInsight] = useState<string | null>(null)
   const [insightNotes, setInsightNotes] = useState<Record<string, string>>({})
+  const [projects, setProjects] = useState<Project[]>([])
+  const { toast } = useToast()
+
+  // Add key to force remount on hot reload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Clean up any resources if needed
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [])
+
+  // Fetch projects when component mounts
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const response = await fetchWithAuth('/api/projects', {
+          method: 'GET'
+        })
+
+        if (!response) {
+          return
+        }
+
+        const data = await response.json()
+        setProjects(data)
+      } catch (error) {
+        console.error('Error fetching projects:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch projects',
+          variant: 'destructive'
+        })
+      }
+    }
+
+    fetchProjects()
+  }, [toast, resetKey])
 
   const resetFilters = () => {
     // Reset all state values
@@ -153,7 +243,7 @@ export default function InsightsPage() {
 
     setError(null)
     setLoading(true)
-    setInsights([])
+    // Don't clear insights immediately to prevent UI flicker
     
     try {
       // Step 1: Prepare search
@@ -165,34 +255,81 @@ export default function InsightsPage() {
       if (selectedChangeFocus.length > 0) params.append('changeFocus', selectedChangeFocus.join(','))
       if (timeframe) params.append('timeframe', timeframe)
 
+      console.log('Search parameters:', Object.fromEntries(params.entries()))
+
       // Step 2: Search
       setLoadingStage("Searching for relevant content...")
-      const response = await fetch(`/api/insights/search?${params.toString()}`)
+      const response = await fetch(`/api/insights/search?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include' // This ensures cookies are sent with the request
+      })
+      
+      // Log response status
+      console.log('Search response status:', response.status)
+
+      const data = await response.json()
       
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('API Error:', errorText)
-        throw new Error(`Failed to fetch insights: ${errorText}`)
+        console.error('Search error response:', data)
+        throw new Error(data.error || data.details || `HTTP error! status: ${response.status}`)
+      }
+
+      if ('error' in data) {
+        console.error('Search error in response data:', data)
+        throw new Error(data.error)
       }
 
       // Step 3: Process results
       setLoadingStage("Processing search results...")
-      const data = await response.json()
       
-      if ('error' in data) {
-        throw new Error(data.error)
-      }
-
       // Step 4: Format results
       setLoadingStage("Formatting insights...")
-      setInsights(Array.isArray(data) ? data : [])
+      const formattedInsights = Array.isArray(data) ? data : []
+      console.log('Formatted insights:', {
+        count: formattedInsights.length,
+        firstInsight: formattedInsights[0] ? {
+          title: formattedInsights[0].title,
+          focusArea: formattedInsights[0].focus_area,
+          hasContent: !!formattedInsights[0].content
+        } : null
+      })
+      
+      // Only update insights if we have results or explicitly got an empty array
+      if (formattedInsights || data.length === 0) {
+        setInsights(formattedInsights)
+      }
+
+      // Show success message if we got results
+      if (formattedInsights.length > 0) {
+        toast({
+          title: "Search Complete",
+          description: `Found ${formattedInsights.length} relevant insights`,
+        })
+      } else {
+        toast({
+          title: "No Results",
+          description: "Try adjusting your search criteria or selecting different filters",
+          variant: "destructive"
+        })
+      }
     } catch (err) {
       console.error('Search error:', err)
-      setError(err instanceof Error ? err.message : 'An error occurred')
-      setInsights([])
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred'
+      setError(errorMessage)
+      // Don't clear insights on error
+      
+      // Show toast with error
+      toast({
+        title: "Search Error",
+        description: errorMessage,
+        variant: "destructive"
+      })
     } finally {
       setLoading(false)
-      setLoadingStage("")
+      setLoadingStage(null)
     }
   }
 
@@ -265,10 +402,9 @@ export default function InsightsPage() {
         )}
 
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" key={resetKey}>
-          {/* Insight Focus Area */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
+            <label className="text-sm font-medium">
               Insight Focus Area <span className="text-red-500">*</span>
             </label>
             <Select
@@ -291,7 +427,7 @@ export default function InsightsPage() {
 
           {/* Industry Multi-select */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
+            <label className="text-sm font-medium">
               Industry
             </label>
             <MultiSelect
@@ -306,7 +442,7 @@ export default function InsightsPage() {
 
           {/* Change Focus Multi-select */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
+            <label className="text-sm font-medium">
               Change Focus
             </label>
             <MultiSelect
@@ -319,9 +455,8 @@ export default function InsightsPage() {
             />
           </div>
 
-          {/* Time Range */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
+            <label className="text-sm font-medium">
               Time Range
             </label>
             <Select
@@ -339,9 +474,6 @@ export default function InsightsPage() {
                 <SelectItem value="last_year">Last Year</SelectItem>
               </SelectContent>
             </Select>
-            <div className="text-xs text-muted-foreground mt-1">
-              Note: Search results are limited to content from the past year due to API limitations.
-            </div>
           </div>
         </div>
 
@@ -440,9 +572,9 @@ export default function InsightsPage() {
       {selectedInsight && (
         <InsightModal
           insight={insights.find(i => i.id === selectedInsight)!}
+          projects={projects}
           isOpen={!!selectedInsight}
           onClose={closeModal}
-          onSave={handleSave}
         />
       )}
     </div>

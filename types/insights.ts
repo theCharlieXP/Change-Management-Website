@@ -1,10 +1,19 @@
 export type InsightFocusArea = 
-  | 'stakeholder-impact'
-  | 'risk-assessment'
-  | 'communication'
-  | 'timeline'
-  | 'resources'
-  | 'general'
+  | 'challenges-barriers'
+  | 'strategies-solutions'
+  | 'outcomes-results'
+  | 'key-stakeholders-roles'
+  | 'best-practices-methodologies'
+  | 'lessons-learned-insights'
+  | 'implementation-tactics'
+  | 'communication-engagement'
+  | 'metrics-performance'
+  | 'risk-management'
+  | 'technology-tools'
+  | 'cultural-transformation'
+  | 'change-leadership'
+  | 'employee-training'
+  | 'change-sustainability'
 
 export interface Insight {
   id: string
@@ -19,6 +28,7 @@ export interface Insight {
   source: string
   created_at: string
   updated_at: string
+  notes?: string
 }
 
 export interface SavedInsight extends Insight {

@@ -12,20 +12,30 @@ export async function POST(request: Request) {
       )
     }
 
-    const { insightId, projectId } = await request.json()
+    const { title, url, summary, additional_notes, projectId } = await request.json()
+
+    // Verify that the project belongs to the user
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        userId
+      }
+    })
+
+    if (!project) {
+      return NextResponse.json(
+        { error: 'Project not found or unauthorized' },
+        { status: 404 }
+      )
+    }
 
     const savedInsight = await prisma.savedInsight.create({
       data: {
-        userId,
-        insightId,
+        title,
+        url,
+        summary,
+        additional_notes,
         projectId
-      },
-      include: {
-        insight: {
-          include: {
-            category: true
-          }
-        }
       }
     })
 
@@ -59,12 +69,34 @@ export async function DELETE(request: Request) {
       )
     }
 
+    // First verify that the insight belongs to a project owned by the user
+    const insight = await prisma.savedInsight.findFirst({
+      where: {
+        id: insightId
+      },
+      include: {
+        project: true
+      }
+    })
+
+    if (!insight) {
+      return NextResponse.json(
+        { error: 'Insight not found' },
+        { status: 404 }
+      )
+    }
+
+    // Verify that the project belongs to the user
+    if (insight.project.userId !== userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     await prisma.savedInsight.delete({
       where: {
-        userId_insightId: {
-          userId,
-          insightId
-        }
+        id: insightId
       }
     })
 

@@ -20,30 +20,66 @@ interface ProjectInsightsProps {
   onDelete: (id: string) => Promise<void>
 }
 
-const INSIGHT_FOCUS_AREAS: Record<InsightFocusArea, { label: string, color: string }> = {
-  'general': {
-    label: 'General',
-    color: 'bg-gray-100 text-gray-800 border-gray-200'
+const FOCUS_AREAS: Record<InsightFocusArea, { label: string; color: string }> = {
+  'challenges-barriers': { 
+    label: 'Challenges & Barriers',
+    color: 'bg-red-100 text-red-800'
   },
-  'stakeholder-impact': {
-    label: 'Stakeholder Impact',
-    color: 'bg-blue-100 text-blue-800 border-blue-200'
+  'strategies-solutions': { 
+    label: 'Strategies & Solutions',
+    color: 'bg-blue-100 text-blue-800'
   },
-  'risk-assessment': {
-    label: 'Risk Assessment',
-    color: 'bg-red-100 text-red-800 border-red-200'
+  'outcomes-results': { 
+    label: 'Outcomes & Results',
+    color: 'bg-green-100 text-green-800'
   },
-  'communication': {
-    label: 'Communication',
-    color: 'bg-green-100 text-green-800 border-green-200'
+  'key-stakeholders-roles': { 
+    label: 'Key Stakeholders & Roles',
+    color: 'bg-purple-100 text-purple-800'
   },
-  'timeline': {
-    label: 'Timeline',
-    color: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+  'best-practices-methodologies': { 
+    label: 'Best Practices & Methodologies',
+    color: 'bg-yellow-100 text-yellow-800'
   },
-  'resources': {
-    label: 'Resources',
-    color: 'bg-purple-100 text-purple-800 border-purple-200'
+  'lessons-learned-insights': { 
+    label: 'Lessons Learned & Insights',
+    color: 'bg-orange-100 text-orange-800'
+  },
+  'implementation-tactics': { 
+    label: 'Implementation Tactics',
+    color: 'bg-emerald-100 text-emerald-800'
+  },
+  'communication-engagement': { 
+    label: 'Communication & Engagement',
+    color: 'bg-indigo-100 text-indigo-800'
+  },
+  'metrics-performance': { 
+    label: 'Metrics & Performance',
+    color: 'bg-pink-100 text-pink-800'
+  },
+  'risk-management': { 
+    label: 'Risk Management',
+    color: 'bg-rose-100 text-rose-800'
+  },
+  'technology-tools': { 
+    label: 'Technology & Tools',
+    color: 'bg-cyan-100 text-cyan-800'
+  },
+  'cultural-transformation': { 
+    label: 'Cultural Transformation',
+    color: 'bg-teal-100 text-teal-800'
+  },
+  'change-leadership': { 
+    label: 'Change Leadership',
+    color: 'bg-violet-100 text-violet-800'
+  },
+  'employee-training': { 
+    label: 'Employee Training',
+    color: 'bg-fuchsia-100 text-fuchsia-800'
+  },
+  'change-sustainability': { 
+    label: 'Change Sustainability',
+    color: 'bg-sky-100 text-sky-800'
   }
 }
 
@@ -85,8 +121,8 @@ export function ProjectInsights({ insights, onDelete }: ProjectInsightsProps) {
           >
             <div className="flex items-start justify-between gap-4">
               <h3 className="font-medium">{insight.title}</h3>
-              <Badge className={cn("shrink-0", INSIGHT_FOCUS_AREAS[insight.focus_area].color)}>
-                {INSIGHT_FOCUS_AREAS[insight.focus_area].label}
+              <Badge className={cn("shrink-0", FOCUS_AREAS[insight.focus_area].color)}>
+                {FOCUS_AREAS[insight.focus_area].label}
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">{insight.summary}</p>
