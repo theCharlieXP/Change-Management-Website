@@ -1,23 +1,20 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import type { Project } from '@/types/projects'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Loader2 } from 'lucide-react'
 
 interface CreateProjectFormProps {
-  onSuccess?: () => void
-  onProjectCreated?: (project: Project) => void
+  onSubmit: (title: string, description?: string) => Promise<void>
 }
 
-export function CreateProjectForm({ onSuccess, onProjectCreated }: CreateProjectFormProps) {
+export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
   const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,26 +22,11 @@ export function CreateProjectForm({ onSuccess, onProjectCreated }: CreateProject
     setError(null)
 
     try {
-      // Create a mock project
-      const newProject: Project = {
-        id: crypto.randomUUID(),
-        title: title.trim(),
-        description: '', // Empty description by default
-        status: 'planning',
-        user_id: '1', // Mock user ID
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-
-      // Call onProjectCreated callback if provided
-      onProjectCreated?.(newProject)
+      await onSubmit(title.trim(), description.trim())
       
-      // Call onSuccess callback if provided
-      onSuccess?.()
-
-      // Navigate to the new project
-      router.push(`/dashboard/projects/${newProject.id}`)
-      router.refresh()
+      // Reset form
+      setTitle('')
+      setDescription('')
     } catch (error) {
       console.error('Project creation error:', error)
       setError('Failed to create project. Please try again.')
@@ -73,6 +55,19 @@ export function CreateProjectForm({ onSuccess, onProjectCreated }: CreateProject
         <p className="text-xs text-muted-foreground">
           {title.length}/40 characters
         </p>
+      </div>
+
+      <div className="space-y-2">
+        <label htmlFor="description" className="text-sm font-medium">
+          Description
+        </label>
+        <Textarea
+          id="description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Enter project description"
+          disabled={loading}
+        />
       </div>
 
       {error && (

@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import { CreateProjectForm } from './create-project-form'
 import type { Project } from '@/types/projects'
+import { useUser } from '@clerk/nextjs'
+import { createProject } from '@/lib/supabase'
 
 interface CreateProjectDialogProps {
   onProjectCreated?: (project: Project) => void
@@ -13,6 +15,20 @@ interface CreateProjectDialogProps {
 
 export function CreateProjectDialog({ onProjectCreated }: CreateProjectDialogProps) {
   const [open, setOpen] = useState(false)
+  const { user } = useUser()
+
+  const handleProjectCreated = async (title: string, description: string = '') => {
+    if (!user) return
+
+    try {
+      const newProject = await createProject(user.id, title, description)
+      onProjectCreated?.(newProject)
+      setOpen(false)
+    } catch (error) {
+      console.error('Error creating project:', error)
+      throw error
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -27,8 +43,7 @@ export function CreateProjectDialog({ onProjectCreated }: CreateProjectDialogPro
           <DialogTitle>Create New Project</DialogTitle>
         </DialogHeader>
         <CreateProjectForm 
-          onSuccess={() => setOpen(false)} 
-          onProjectCreated={onProjectCreated}
+          onSubmit={handleProjectCreated}
         />
       </DialogContent>
     </Dialog>

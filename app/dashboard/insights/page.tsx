@@ -14,23 +14,7 @@ import { Link } from "@/components/ui/link"
 import { cn } from "@/lib/utils"
 import { MultiSelect } from "@/components/ui/multi-select"
 import { InsightModal } from '@/components/insight-modal'
-
-type InsightFocusArea = 
-  | 'challenges-barriers'
-  | 'strategies-solutions'
-  | 'outcomes-results'
-  | 'stakeholders-roles'
-  | 'best-practices'
-  | 'lessons-learned'
-  | 'implementation-tactics'
-  | 'communication-engagement'
-  | 'metrics-performance'
-  | 'risk-management'
-  | 'technology-tools'
-  | 'cultural-transformation'
-  | 'change-leadership'
-  | 'employee-training'
-  | 'change-sustainability'
+import type { Insight, InsightFocusArea } from '@/types/insights'
 
 type TimeframeValue = 
   | 'last_day'
@@ -38,81 +22,36 @@ type TimeframeValue =
   | 'last_month'
   | 'last_year'
 
-const INSIGHT_FOCUS_AREAS: Record<InsightFocusArea, { label: string, description: string, color: string }> = {
-  'challenges-barriers': {
-    label: 'Challenges & Barriers',
-    description: 'Resistance to change, resource constraints, technological limitations',
-    color: 'bg-red-100 text-red-800 border-red-200'
+const INSIGHT_FOCUS_AREAS: Record<InsightFocusArea, { label: string; color: string; description: string }> = {
+  'general': { 
+    label: 'General', 
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    description: 'General change management concepts and principles'
   },
-  'strategies-solutions': {
-    label: 'Strategies & Solutions',
-    description: 'Approaches to overcome obstacles, implementation methods, innovative practices',
-    color: 'bg-blue-100 text-blue-800 border-blue-200'
+  'stakeholder-impact': { 
+    label: 'Stakeholder Impact', 
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    description: 'Understanding and managing stakeholder impact'
   },
-  'outcomes-results': {
-    label: 'Outcomes & Results',
-    description: 'ROI, productivity improvements, employee satisfaction metrics',
-    color: 'bg-green-100 text-green-800 border-green-200'
+  'risk-assessment': { 
+    label: 'Risk Assessment', 
+    color: 'bg-red-100 text-red-800 border-red-200',
+    description: 'Identifying and mitigating risks in change initiatives'
   },
-  'stakeholders-roles': {
-    label: 'Key Stakeholders & Roles',
-    description: 'Leadership involvement, employee participation, external partners',
-    color: 'bg-purple-100 text-purple-800 border-purple-200'
+  'communication': { 
+    label: 'Communication', 
+    color: 'bg-green-100 text-green-800 border-green-200',
+    description: 'Effective communication strategies during change'
   },
-  'best-practices': {
-    label: 'Best Practices & Methodologies',
-    description: 'Agile, Kotter\'s 8-Step Process, ADKAR model',
-    color: 'bg-indigo-100 text-indigo-800 border-indigo-200'
+  'timeline': { 
+    label: 'Timeline', 
+    color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    description: 'Planning and managing change timelines'
   },
-  'lessons-learned': {
-    label: 'Lessons Learned & Insights',
-    description: 'Successes and failures, actionable takeaways, case study reflections',
-    color: 'bg-yellow-100 text-yellow-800 border-yellow-200'
-  },
-  'implementation-tactics': {
-    label: 'Implementation Tactics',
-    description: 'Training programs, communication plans, technology deployment',
-    color: 'bg-orange-100 text-orange-800 border-orange-200'
-  },
-  'communication-engagement': {
-    label: 'Communication & Engagement',
-    description: 'Stakeholder communication strategies, employee engagement techniques, feedback mechanisms',
-    color: 'bg-pink-100 text-pink-800 border-pink-200'
-  },
-  'metrics-performance': {
-    label: 'Metrics & Performance Indicators',
-    description: 'Key Performance Indicators (KPIs), performance metrics, adoption rates',
-    color: 'bg-cyan-100 text-cyan-800 border-cyan-200'
-  },
-  'risk-management': {
-    label: 'Risk Management & Mitigation',
-    description: 'Risk identification, mitigation strategies, contingency planning',
-    color: 'bg-rose-100 text-rose-800 border-rose-200'
-  },
-  'technology-tools': {
-    label: 'Technology & Tools',
-    description: 'Project management software, communication platforms, analytics tools',
-    color: 'bg-emerald-100 text-emerald-800 border-emerald-200'
-  },
-  'cultural-transformation': {
-    label: 'Cultural Transformation',
-    description: 'Shifting organizational culture, values alignment, behavior change',
-    color: 'bg-violet-100 text-violet-800 border-violet-200'
-  },
-  'change-leadership': {
-    label: 'Change Leadership',
-    description: 'Leadership roles in change, leadership training, change champions',
-    color: 'bg-amber-100 text-amber-800 border-amber-200'
-  },
-  'employee-training': {
-    label: 'Employee Training & Development',
-    description: 'Skill development programs, training initiatives, continuous learning',
-    color: 'bg-lime-100 text-lime-800 border-lime-200'
-  },
-  'change-sustainability': {
-    label: 'Change Sustainability',
-    description: 'Ensuring long-term change, embedding change into organizational processes',
-    color: 'bg-teal-100 text-teal-800 border-teal-200'
+  'resources': { 
+    label: 'Resources', 
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    description: 'Resource allocation and management for change'
   }
 }
 
@@ -162,20 +101,19 @@ const CHANGE_FOCUS = [
   'Product Development'
 ]
 
-interface Insight {
+interface InsightData {
   id: string
   title: string
   summary: string
-  content: string
-  category: {
-    id: string
-    name: string
-  }
-  createdAt: string
-  readTime: number
-  source: string
+  content: string[]
+  category: string
   tags: string[]
-  focusArea: InsightFocusArea
+  readTime: string
+  focus_area: InsightFocusArea
+  source: string
+  url: string
+  created_at: string
+  updated_at: string
 }
 
 export default function InsightsPage() {
@@ -184,7 +122,7 @@ export default function InsightsPage() {
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([])
   const [selectedChangeFocus, setSelectedChangeFocus] = useState<string[]>([])
   const [timeframe, setTimeframe] = useState<TimeframeValue | undefined>(undefined)
-  const [insights, setInsights] = useState<Insight[]>([])
+  const [insights, setInsights] = useState<InsightData[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingStage, setLoadingStage] = useState<string>("")
   const [error, setError] = useState<string | null>(null)
@@ -274,10 +212,9 @@ export default function InsightsPage() {
     setSelectedInsight(null)
   }
 
-  const handleSaveWithNotes = (id: string, notes: string) => {
-    setInsightNotes(prev => ({ ...prev, [id]: notes }))
-    // TODO: Implement project save functionality
-    console.log('Save to project with notes:', { id, notes })
+  const handleSave = async () => {
+    // TODO: Implement save functionality
+    // For now, just close the modal
     closeModal()
   }
 
@@ -482,17 +419,14 @@ export default function InsightsPage() {
                         variant="ghost"
                         size="sm"
                         className="text-muted-foreground hover:text-foreground"
-                        onClick={() => {
-                          // TODO: Implement save to project functionality
-                          console.log('Save to project:', insight.id)
-                        }}
+                        onClick={handleSave}
                       >
                         <BookmarkPlus className="h-4 w-4 mr-1" />
                         Save
                       </Button>
                     </div>
-                    <Badge className={cn("shrink-0", INSIGHT_FOCUS_AREAS[insight.focusArea].color)}>
-                      {INSIGHT_FOCUS_AREAS[insight.focusArea].label}
+                    <Badge className={cn("shrink-0", INSIGHT_FOCUS_AREAS[insight.focus_area].color)}>
+                      {INSIGHT_FOCUS_AREAS[insight.focus_area].label}
                     </Badge>
                   </div>
                 </div>
@@ -506,10 +440,9 @@ export default function InsightsPage() {
       {selectedInsight && (
         <InsightModal
           insight={insights.find(i => i.id === selectedInsight)!}
-          focusAreaInfo={INSIGHT_FOCUS_AREAS[insights.find(i => i.id === selectedInsight)!.focusArea]}
           isOpen={!!selectedInsight}
           onClose={closeModal}
-          onSave={handleSaveWithNotes}
+          onSave={handleSave}
         />
       )}
     </div>

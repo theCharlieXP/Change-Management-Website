@@ -4,7 +4,7 @@ import Link from "next/link"
 import { FolderKanban, Brain } from "lucide-react"
 import { usePathname } from 'next/navigation'
 
-export function Sidebar() {
+export default function Sidebar() {
   const pathname = usePathname()
   
   const sidebarItems = [

@@ -1,9 +1,7 @@
-import { InsightFocusArea } from './insights'
-
 export type ProjectStatus = 
   | 'planning'
-  | 'in-progress'
-  | 'on-hold'
+  | 'inprogress'
+  | 'onhold'
   | 'completed'
   | 'cancelled'
 
@@ -26,20 +24,19 @@ export interface Project {
 export interface ProjectInsight {
   id: string
   project_id: string
-  insight_id: string
   title: string
+  url: string | null
   summary: string
-  notes: string
-  source: string
-  focusArea: InsightFocusArea
-  added_at: string
+  additional_notes: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface ProjectSummary {
   id: string
   project_id: string
   content: string
-  focus_area: InsightFocusArea
+  focus_area: string
   notes: string
   created_at: string
 }

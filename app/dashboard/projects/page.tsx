@@ -1,50 +1,78 @@
 'use client'
 
 import React from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CreateProjectDialog } from '@/components/projects/create-project-dialog'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import type { Project } from '@/types/projects'
 import { format } from 'date-fns'
+import { useUser } from '@clerk/nextjs'
+import { getProjects } from '@/lib/supabase'
 
 const STATUS_COLORS = {
   'planning': 'bg-blue-100 text-blue-800 border-blue-200',
-  'in-progress': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  'on-hold': 'bg-orange-100 text-orange-800 border-orange-200',
+  'inprogress': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  'onhold': 'bg-orange-100 text-orange-800 border-orange-200',
   'completed': 'bg-green-100 text-green-800 border-green-200',
   'cancelled': 'bg-red-100 text-red-800 border-red-200'
 } as const
 
-// Mock data for development
-const MOCK_PROJECTS: Project[] = [
-  {
-    id: '1',
-    title: 'Digital Transformation Initiative',
-    description: 'Company-wide digital transformation project focusing on modernizing our core systems.',
-    status: 'in-progress',
-    created_at: '2024-03-15T10:00:00Z',
-    updated_at: '2024-03-15T10:00:00Z',
-    user_id: '1'
-  },
-  {
-    id: '2',
-    title: 'Employee Training Program',
-    description: 'Implementing a new training program for all employees on the new systems.',
-    status: 'planning',
-    created_at: '2024-03-14T10:00:00Z',
-    updated_at: '2024-03-14T10:00:00Z',
-    user_id: '1'
-  }
-]
+const STATUS_LABELS = {
+  'planning': 'Planning',
+  'inprogress': 'In Progress',
+  'onhold': 'On Hold',
+  'completed': 'Completed',
+  'cancelled': 'Cancelled'
+} as const
 
 const ProjectsPage: React.FC = () => {
-  const [projects, setProjects] = useState<Project[]>(MOCK_PROJECTS)
+  const { user } = useUser()
+  const [projects, setProjects] = useState<Project[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadProjects() {
+      if (!user) return
+      try {
+        const data = await getProjects(user.id)
+        setProjects(data)
+      } catch (err) {
+        console.error('Error loading projects:', err)
+        setError('Failed to load projects')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadProjects()
+  }, [user])
 
   const addProject = (newProject: Project) => {
     setProjects(prev => [newProject, ...prev])
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="flex justify-center items-center h-64">
+          <p className="text-muted-foreground">Loading projects...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="flex justify-center items-center h-64">
+          <p className="text-red-500">{error}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -72,7 +100,7 @@ const ProjectsPage: React.FC = () => {
                   <div className="flex items-start justify-between gap-4">
                     <CardTitle className="text-base font-medium flex-1">{project.title}</CardTitle>
                     <Badge className={`${STATUS_COLORS[project.status]} text-xs px-2 py-0.5 whitespace-nowrap shrink-0`}>
-                      {project.status.replace('-', ' ')}
+                      {STATUS_LABELS[project.status]}
                     </Badge>
                   </div>
                 </CardHeader>

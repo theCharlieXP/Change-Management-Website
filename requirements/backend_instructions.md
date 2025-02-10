@@ -72,15 +72,13 @@ create table if not exists notes (
    2. The dashboard should have a clean and user-friendly layout, with a navigation area that allows the user to switch between the Projects and Insights sections.
 3. Projects Section Requirements
    1. Project Creation:
-      - Provide an option for users to create a new project.
-      - When creating a project, the user should be prompted to enter a project title.
-      - The project should be associated with the authenticated user's user_id.
+      - When a project is created, the project should be associated with the authenticated user's user_id and should be stored in the appropriate database table.
    2. Project Overview:
       - Display a grid of all projects created by the user.
       - Each project item should show the project title and a timestamp of creation.
    3. Project Detail Page:
       - When a project is selected, open a dedicated project page.
-      - This page should display the project’s details (title, creation date, and an option to edit project information).
+      - This page should display the project’s details (title, creation date, and an option to edit project information which will be stored in the database in their respective tables).
 4. Storing Project Data:
   - Tasks: Allow users to add, edit, and delete tasks related to the project. Tasks might include actionable items such as “Review insights” or “Plan meeting agenda.”
   - Notes: Provide an area where users can add freeform notes or annotations specific to the project.
