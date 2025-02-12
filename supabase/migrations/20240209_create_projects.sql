@@ -11,62 +11,56 @@ create type project_status_enum as enum (
 );
 
 -- Create projects table
-create table if not exists projects (
-  id uuid primary key default uuid_generate_v4(),
-  title text not null,
-  description text,
-  status project_status_enum not null default 'planning',
-  user_id text not null,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+CREATE TABLE IF NOT EXISTS projects (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  user_id TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
--- Create index on user_id for faster queries
-create index if not exists projects_user_id_idx on projects(user_id);
-
--- Set up row level security
-alter table projects enable row level security;
+-- Create RLS policies
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies if they exist
-drop policy if exists "Users can view their own projects" on projects;
-drop policy if exists "Users can insert their own projects" on projects;
-drop policy if exists "Users can update their own projects" on projects;
-drop policy if exists "Users can delete their own projects" on projects;
+DROP POLICY IF EXISTS "Users can view their own projects" ON projects;
+DROP POLICY IF EXISTS "Users can insert their own projects" ON projects;
+DROP POLICY IF EXISTS "Users can update their own projects" ON projects;
+DROP POLICY IF EXISTS "Users can delete their own projects" ON projects;
 
--- Create policy to allow users to see only their own projects
-create policy "Users can view their own projects"
-  on projects for select
-  using (auth.jwt()->>'sub' = user_id);
+-- Create new policies that work with Clerk authentication
+CREATE POLICY "Users can view their own projects"
+  ON projects FOR SELECT
+  USING (user_id = current_user);
 
--- Create policy to allow users to insert their own projects
-create policy "Users can insert their own projects"
-  on projects for insert
-  with check (auth.jwt()->>'sub' = user_id);
+CREATE POLICY "Users can insert their own projects"
+  ON projects FOR INSERT
+  WITH CHECK (user_id = current_user);
 
--- Create policy to allow users to update their own projects
-create policy "Users can update their own projects"
-  on projects for update
-  using (auth.jwt()->>'sub' = user_id);
+CREATE POLICY "Users can update their own projects"
+  ON projects FOR UPDATE
+  USING (user_id = current_user);
 
--- Create policy to allow users to delete their own projects
-create policy "Users can delete their own projects"
-  on projects for delete
-  using (auth.jwt()->>'sub' = user_id);
+CREATE POLICY "Users can delete their own projects"
+  ON projects FOR DELETE
+  USING (user_id = current_user);
 
--- Create function to automatically update updated_at timestamp
-create or replace function update_updated_at_column()
-returns trigger as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$ language plpgsql;
+-- Create indexes
+CREATE INDEX IF NOT EXISTS projects_user_id_idx ON projects(user_id);
+CREATE INDEX IF NOT EXISTS projects_updated_at_idx ON projects(updated_at DESC);
 
--- Drop existing trigger if it exists
-drop trigger if exists update_projects_updated_at on projects;
+-- Create function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = TIMEZONE('utc', NOW());
+  RETURN NEW;
+END;
+$$ language 'plpgsql';
 
--- Create trigger to automatically update updated_at timestamp
-create trigger update_projects_updated_at
-  before update on projects
-  for each row
-  execute function update_updated_at_column(); 
+-- Create trigger to automatically update updated_at
+CREATE TRIGGER update_projects_updated_at
+  BEFORE UPDATE ON projects
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column(); 

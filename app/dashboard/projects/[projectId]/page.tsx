@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Pencil, Check, X } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { ArrowLeft, Pencil, Check, X, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { useAuth } from '@clerk/nextjs'
 import {
@@ -20,6 +20,9 @@ import { Input } from "@/components/ui/input"
 import type { Project, ProjectStatus, ProjectTask } from '@/types/projects'
 import { getProject, updateProject, getProjectTasks, createProjectTask, updateProjectTask, deleteProjectTask } from '@/lib/supabase'
 import { ProjectTasks } from '@/components/projects/project-tasks'
+import { ProjectInsights } from '@/components/projects/project-insights'
+import { toast } from '@/components/ui/use-toast'
+import type { SavedInsight } from '@/types/insights'
 
 const STATUS_COLORS = {
   'planning': 'bg-blue-100 text-blue-800 border-blue-200',
@@ -40,7 +43,7 @@ const STATUS_LABELS = {
 export default function ProjectPage() {
   const params = useParams()
   const router = useRouter()
-  const { isLoaded, isSignedIn } = useAuth()
+  const { isLoaded, isSignedIn, userId } = useAuth()
   const projectId = params.projectId as string
   const [project, setProject] = useState<Project | null>(null)
   const [tasks, setTasks] = useState<ProjectTask[]>([])
@@ -50,49 +53,68 @@ export default function ProjectPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
+  const [insights, setInsights] = useState<SavedInsight[]>([])
 
   useEffect(() => {
     if (!isLoaded) {
+      console.log('Auth not loaded yet, waiting...')
       return
     }
 
-    if (!isSignedIn) {
+    if (!isSignedIn || !userId) {
+      console.log('User not signed in')
+      setError('Please sign in to view projects')
+      setLoading(false)
       router.push('/sign-in')
       return
     }
 
-    async function loadData() {
+    const fetchProjectData = async () => {
       try {
         setLoading(true)
         setError(null)
 
-        const projectData = await getProject(projectId)
-        if (!projectData) {
-          setError('Project not found')
-          return
+        // Fetch project details
+        const projectResponse = await fetch(`/api/projects/${params.projectId}`)
+        if (!projectResponse.ok) {
+          if (projectResponse.status === 401) {
+            router.push('/sign-in')
+            return
+          }
+          throw new Error('Failed to fetch project')
         }
+        const projectData = await projectResponse.json()
+        setProject(projectData)
+
+        // Fetch project insights
+        const insightsResponse = await fetch(`/api/projects/${params.projectId}/insights`)
+        if (!insightsResponse.ok) {
+          throw new Error('Failed to fetch insights')
+        }
+        const insightsData = await insightsResponse.json()
+        setInsights(insightsData)
 
         const tasksData = await getProjectTasks(projectId)
         
-        setProject(projectData)
         setTasks(tasksData)
         setStatus(projectData.status)
         setEditTitle(projectData.title)
         setEditDescription(projectData.description || '')
-      } catch (err) {
-        console.error('Error loading project data:', err)
-        if (err instanceof Error) {
-          setError(err.message)
-        } else {
-          setError('Failed to load project data')
-        }
+      } catch (error) {
+        console.error('Error fetching project data:', error)
+        setError(error instanceof Error ? error.message : 'Failed to load project')
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to load project data",
+          variant: "destructive"
+        })
       } finally {
         setLoading(false)
       }
     }
 
-    loadData()
-  }, [projectId, isLoaded, isSignedIn, router])
+    fetchProjectData()
+  }, [isLoaded, isSignedIn, userId, params.projectId, projectId, router])
 
   const handleStatusChange = async (newStatus: ProjectStatus) => {
     try {
@@ -138,40 +160,72 @@ export default function ProjectPage() {
     setTasks((prev) => prev.filter((task) => task.id !== taskId))
   }
 
-  if (loading) {
+  if (!isLoaded || loading) {
     return (
-      <div className="container mx-auto py-6">
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Loading project...</p>
-        </div>
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     )
   }
 
-  if (error || !project) {
+  if (error) {
     return (
-      <div className="container mx-auto py-6">
-        <div className="flex items-center justify-center h-64">
-          <p className="text-red-500">{error || 'Project not found'}</p>
-        </div>
+      <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
+        <p className="text-muted-foreground">{error}</p>
+        <Button onClick={() => window.location.reload()}>
+          Try Again
+        </Button>
+      </div>
+    )
+  }
+
+  if (!project) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
+        <p className="text-muted-foreground">Project not found</p>
+        <Button onClick={() => window.history.back()}>
+          Go Back
+        </Button>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Back Button */}
-      <Button 
-        variant="ghost" 
-        size="sm" 
+    <div className="space-y-6">
+      {/* Back button */}
+      <Button
+        variant="ghost"
+        className="mb-6"
         onClick={() => router.push('/dashboard/projects')}
-        className="hover:bg-gray-100"
       >
         <ArrowLeft className="h-4 w-4 mr-2" />
         Back to Projects
       </Button>
 
-      {/* Project Title and Status */}
+      {/* Project Header */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{project.title}</CardTitle>
+          {project.description && (
+            <CardDescription>{project.description}</CardDescription>
+          )}
+        </CardHeader>
+      </Card>
+
+      {/* Project Insights */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Saved Insights</CardTitle>
+          <CardDescription>
+            Insights and research saved to this project
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ProjectInsights insights={insights} isLoading={loading} />
+        </CardContent>
+      </Card>
+
+      {/* Project Details */}
       <div className="space-y-4">
         <div className="flex items-start justify-between">
           {isEditing ? (
@@ -196,8 +250,8 @@ export default function ProjectPage() {
                 </Button>
                 <Button variant="ghost" onClick={() => {
                   setIsEditing(false)
-                  setEditTitle(project?.title || '')
-                  setEditDescription(project?.description || '')
+                  setEditTitle(project.title)
+                  setEditDescription(project.description || '')
                 }}>
                   <X className="h-4 w-4 mr-2" />
                   Cancel
@@ -206,8 +260,8 @@ export default function ProjectPage() {
             </div>
           ) : (
             <div className="flex-1">
-              <h1 className="text-3xl font-bold">{project?.title}</h1>
-              {project?.description && (
+              <h1 className="text-3xl font-bold">{project.title}</h1>
+              {project.description && (
                 <p className="mt-2 text-muted-foreground">{project.description}</p>
               )}
               <Button
@@ -243,24 +297,12 @@ export default function ProjectPage() {
 
       {/* Tasks Section */}
       <ProjectTasks
+        projectId={project.id}
         tasks={tasks}
-        projectId={projectId}
         onAdd={handleAddTask}
         onUpdate={handleUpdateTask}
         onDelete={handleDeleteTask}
       />
-
-      {/* Saved Insights Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Saved Insights</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">No insights saved to this project yet</p>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Insight Summaries Section */}
       <Card>

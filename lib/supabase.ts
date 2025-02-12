@@ -5,88 +5,110 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 // Create a single supabase client for interacting with your database
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false
+  }
+})
 
-// Get an authenticated Supabase client with user's JWT
-export async function getAuthenticatedClient() {
-  try {
-    const response = await fetch('/api/supabase-token')
-    if (!response.ok) {
-      throw new Error(`Failed to get Supabase token: ${response.statusText}`)
-    }
-    
-    const { supabaseAccessToken, tokenType, tokenLength } = await response.json()
-    
-    if (!supabaseAccessToken) {
-      throw new Error('No Supabase access token available')
-    }
-
-    // Log token info for debugging
-    console.log('Token info:', { tokenType, tokenLength })
-
-    // Create a new client with the JWT token
-    const client = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-        detectSessionInUrl: false
-      },
-      global: {
-        headers: {
-          Authorization: `Bearer ${supabaseAccessToken}`
-        }
-      }
+// Helper function to check if Supabase is properly configured
+export function isSupabaseConfigured(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  
+  if (!url || !key) {
+    console.error('Missing Supabase environment variables:', {
+      hasUrl: !!url,
+      hasAnonKey: !!key
     })
+    return false
+  }
+  
+  return true
+}
 
-    return client
+// Helper function to get the current session
+export async function getSupabaseSession() {
+  if (!isSupabaseConfigured()) {
+    return null
+  }
+
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession()
+    if (error) {
+      console.error('Error getting Supabase session:', error)
+      return null
+    }
+    return session
   } catch (error) {
-    console.error('Error getting authenticated client:', error)
-    throw error
+    console.error('Failed to get Supabase session:', error)
+    return null
+  }
+}
+
+// Helper function to get user data
+export async function getSupabaseUser() {
+  if (!isSupabaseConfigured()) {
+    return null
+  }
+
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error) {
+      console.error('Error getting Supabase user:', error)
+      return null
+    }
+    return user
+  } catch (error) {
+    console.error('Failed to get Supabase user:', error)
+    return null
+  }
+}
+
+// Helper function to check database connection
+export async function checkSupabaseConnection() {
+  if (!isSupabaseConfigured()) {
+    return false
+  }
+
+  try {
+    console.log('Testing Supabase connection...')
+    const { data, error } = await supabase
+      .from('projects')
+      .select('count')
+      .limit(1)
+    
+    if (error) {
+      console.error('Supabase connection test failed:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      })
+      return false
+    }
+    
+    console.log('Supabase connection test successful')
+    return true
+  } catch (error) {
+    console.error('Failed to test Supabase connection:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    })
+    return false
   }
 }
 
 // Project related database functions
-export async function createProject(userId: string, title: string, description: string = '') {
-  const client = await getAuthenticatedClient()
-  try {
-    const { data, error } = await client
-      .from('projects')
-      .insert([
-        {
-          title,
-          description,
-          status: 'planning' as ProjectStatus,
-          user_id: userId,
-        }
-      ])
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error creating project:', error)
-      throw new Error(error.message)
-    }
-    return data as Project
-  } catch (error) {
-    console.error('Error in createProject:', error)
-    throw error
-  }
-}
-
 export async function getProjects(userId: string) {
-  const client = await getAuthenticatedClient()
   try {
-    const { data, error } = await client
-      .from('projects')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching projects:', error)
-      throw new Error(error.message)
+    const response = await fetch('/api/projects')
+    if (!response.ok) {
+      throw new Error('Failed to fetch projects')
     }
-    return (data || []) as Project[]
+    return await response.json()
   } catch (error) {
     console.error('Error in getProjects:', error)
     throw error
@@ -94,24 +116,38 @@ export async function getProjects(userId: string) {
 }
 
 export async function getProject(projectId: string) {
-  const client = await getAuthenticatedClient()
   try {
-    const { data, error } = await client
-      .from('projects')
-      .select('*')
-      .eq('id', projectId)
-      .single()
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return null // Project not found
+    const response = await fetch(`/api/projects/${projectId}`)
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null
       }
-      console.error('Error fetching project:', error)
-      throw new Error(error.message)
+      throw new Error('Failed to fetch project')
     }
-    return data as Project
+    return await response.json()
   } catch (error) {
     console.error('Error in getProject:', error)
+    throw error
+  }
+}
+
+export async function createProject(userId: string, title: string, description: string = '') {
+  try {
+    const response = await fetch('/api/projects', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ title, description })
+    })
+    
+    if (!response.ok) {
+      throw new Error('Failed to create project')
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('Error in createProject:', error)
     throw error
   }
 }
@@ -121,50 +157,49 @@ export async function updateProject(projectId: string, updates: Partial<{
   description: string
   status: ProjectStatus
 }>) {
-  const client = await getAuthenticatedClient()
-  const { data, error } = await client
-    .from('projects')
-    .update(updates)
-    .eq('id', projectId)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error updating project:', error)
+  try {
+    const response = await fetch(`/api/projects/${projectId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updates)
+    })
+    
+    if (!response.ok) {
+      throw new Error('Failed to update project')
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('Error in updateProject:', error)
     throw error
   }
-  return data as Project
 }
 
 export async function deleteProject(projectId: string) {
-  const client = await getAuthenticatedClient()
-  const { error } = await client
-    .from('projects')
-    .delete()
-    .eq('id', projectId)
-
-  if (error) {
-    console.error('Error deleting project:', error)
+  try {
+    const response = await fetch(`/api/projects/${projectId}`, {
+      method: 'DELETE'
+    })
+    
+    if (!response.ok) {
+      throw new Error('Failed to delete project')
+    }
+  } catch (error) {
+    console.error('Error in deleteProject:', error)
     throw error
   }
 }
 
 // Task related database functions
 export async function getProjectTasks(projectId: string) {
-  const client = await getAuthenticatedClient()
   try {
-    const { data, error } = await client
-      .from('project_tasks')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching tasks:', error.message)
-      console.error('Error details:', error)
-      throw new Error(error.message)
+    const response = await fetch(`/api/projects/${projectId}/tasks`)
+    if (!response.ok) {
+      throw new Error('Failed to fetch tasks')
     }
-    return (data || []) as ProjectTask[]
+    return await response.json()
   } catch (error) {
     console.error('Error in getProjectTasks:', error)
     throw error
@@ -172,53 +207,97 @@ export async function getProjectTasks(projectId: string) {
 }
 
 export async function createProjectTask(projectId: string, task: Omit<ProjectTask, 'id' | 'created_at' | 'updated_at'>) {
-  const client = await getAuthenticatedClient()
-  const { data, error } = await client
-    .from('project_tasks')
-    .insert([
-      {
-        ...task,
-        project_id: projectId,
-      }
-    ])
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error creating task:', error.message)
-    console.error('Error details:', error)
+  try {
+    console.log('Creating task:', { projectId, task })
+    
+    const response = await fetch(`/api/projects/${projectId}/tasks`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(task)
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('Error response from create task API:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorData
+      })
+      throw new Error(errorData.details || 'Failed to create task')
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('Error in createProjectTask:', error)
     throw error
   }
-  return data as ProjectTask
 }
 
 export async function updateProjectTask(taskId: string, updates: Partial<ProjectTask>) {
-  const client = await getAuthenticatedClient()
-  const { data, error } = await client
-    .from('project_tasks')
-    .update(updates)
-    .eq('id', taskId)
-    .select()
-    .single()
+  try {
+    const projectId = updates.project_id || (await getProjectTaskDetails(taskId))?.project_id
+    if (!projectId) {
+      throw new Error('Project ID is required for updating task')
+    }
 
-  if (error) {
-    console.error('Error updating task:', error.message)
-    console.error('Error details:', error)
+    const response = await fetch(`/api/projects/${projectId}/tasks`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id: taskId, ...updates })
+    })
+    
+    if (!response.ok) {
+      throw new Error('Failed to update task')
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('Error in updateProjectTask:', error)
     throw error
   }
-  return data as ProjectTask
 }
 
 export async function deleteProjectTask(taskId: string) {
-  const client = await getAuthenticatedClient()
-  const { error } = await client
-    .from('project_tasks')
-    .delete()
-    .eq('id', taskId)
+  try {
+    const task = await getProjectTaskDetails(taskId)
+    if (!task?.project_id) {
+      throw new Error('Project ID not found for task')
+    }
 
-  if (error) {
-    console.error('Error deleting task:', error.message)
-    console.error('Error details:', error)
+    const response = await fetch(`/api/projects/${task.project_id}/tasks?taskId=${taskId}`, {
+      method: 'DELETE'
+    })
+    
+    if (!response.ok) {
+      throw new Error('Failed to delete task')
+    }
+  } catch (error) {
+    console.error('Error in deleteProjectTask:', error)
     throw error
+  }
+}
+
+// Helper function to get task details
+async function getProjectTaskDetails(taskId: string): Promise<ProjectTask | null> {
+  try {
+    const { data, error } = await supabase
+      .from('project_tasks')
+      .select('*')
+      .eq('id', taskId)
+      .single()
+
+    if (error) {
+      console.error('Error fetching task details:', error)
+      return null
+    }
+
+    return data as ProjectTask
+  } catch (error) {
+    console.error('Error in getProjectTaskDetails:', error)
+    return null
   }
 } 

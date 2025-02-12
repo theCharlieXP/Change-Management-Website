@@ -126,21 +126,23 @@ async function searchTavily(
   }
 
   // Add focus area label and keywords with proper formatting
-  queryParts.push(`"${focusAreaInfo.label}"`)
-  queryParts.push(...focusAreaInfo.keywords.map(keyword => `"${keyword}"`))
+  queryParts.push(focusAreaInfo.label)
+  // Add a subset of keywords to avoid over-constraining the search
+  const selectedKeywords = focusAreaInfo.keywords.slice(0, 2)
+  queryParts.push(...selectedKeywords)
   
-  // Add industries if specified
+  // Add industries if specified, but without strict quotes
   if (industries && industries.length > 0) {
-    queryParts.push(`(${industries.map(industry => `"${industry}"`).join(' OR ')})`)
+    queryParts.push(industries[0]) // Only use first industry to avoid over-constraining
   }
   
-  // Add change focus areas if specified
+  // Add change focus areas if specified, but without strict quotes
   if (changeFocus && changeFocus.length > 0) {
-    queryParts.push(`(${changeFocus.map(focus => `"${focus}"`).join(' OR ')})`)
+    queryParts.push(changeFocus[0]) // Only use first change focus to avoid over-constraining
   }
 
-  // Add "change management" to ensure relevance
-  queryParts.push('"change management"')
+  // Add "change management" as a concept but not a strict phrase
+  queryParts.push('change management')
 
   const searchQuery = queryParts.join(' ')
   console.log('Constructed Tavily search query:', searchQuery)
@@ -149,8 +151,9 @@ async function searchTavily(
     query: searchQuery,
     search_depth: "advanced",
     include_answer: true,
-    max_results: 15,
-    search_type: "keyword",
+    max_results: 25, // Increased from 15 to 25
+    search_type: "semantic",
+    semantic_ranker: true,
     include_domains: [
       'hbr.org',
       'mckinsey.com',

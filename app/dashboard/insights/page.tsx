@@ -13,12 +13,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Link } from "@/components/ui/link"
 import { MultiSelect } from "@/components/ui/multi-select"
 import { InsightModal } from '@/components/insight-modal'
+import { InsightCard } from '@/components/insight-card'
+import { CreateProjectDialog } from '@/components/projects/create-project-dialog'
 import type { Insight, InsightFocusArea } from '@/types/insights'
-import type { Project } from '@prisma/client'
+import { Project, ProjectStatus } from '@/types/projects'
 import { fetchWithAuth } from '@/lib/fetch-utils'
 import { toast } from "@/components/ui/use-toast"
 import { createClient } from '@supabase/supabase-js'
 import { useToast } from '@/components/ui/use-toast'
+import { useAuth } from '@clerk/nextjs'
 
 type TimeframeValue = 
   | 'last_day'
@@ -171,6 +174,7 @@ const supabase = createClient(
 )
 
 export default function InsightsPage() {
+  const { isLoaded, isSignedIn } = useAuth()
   const [query, setQuery] = useState("")
   const [focusArea, setFocusArea] = useState<InsightFocusArea | undefined>(undefined)
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([])
@@ -184,45 +188,70 @@ export default function InsightsPage() {
   const [selectedInsight, setSelectedInsight] = useState<string | null>(null)
   const [insightNotes, setInsightNotes] = useState<Record<string, string>>({})
   const [projects, setProjects] = useState<Project[]>([])
+  const [projectsLoading, setProjectsLoading] = useState(true)
   const { toast } = useToast()
 
-  // Add key to force remount on hot reload
+  // Fetch projects when auth is ready
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      // Clean up any resources if needed
-    }
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-    }
-  }, [])
-
-  // Fetch projects when component mounts
-  useEffect(() => {
+    let isMounted = true
+    
     const fetchProjects = async () => {
-      try {
-        const response = await fetchWithAuth('/api/projects', {
-          method: 'GET'
-        })
+      // Skip if auth isn't ready
+      if (!isLoaded) {
+        console.log('Auth not loaded yet, waiting...')
+        return
+      }
 
-        if (!response) {
-          return
+      // Skip if not signed in
+      if (!isSignedIn) {
+        console.log('User not signed in, skipping project fetch')
+        setProjectsLoading(false)
+        return
+      }
+
+      try {
+        console.log('Auth ready, fetching projects...')
+        setProjectsLoading(true)
+
+        const response = await fetch('/api/projects')
+        
+        // Handle response
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          console.error('Project fetch failed:', { 
+            status: response.status, 
+            statusText: response.statusText,
+            errorData 
+          })
+          throw new Error(errorData.details || 'Failed to fetch projects')
         }
 
         const data = await response.json()
-        setProjects(data)
+        console.log('Successfully fetched projects:', data)
+        
+        if (isMounted) {
+          setProjects(data)
+          setProjectsLoading(false)
+        }
       } catch (error) {
         console.error('Error fetching projects:', error)
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch projects',
-          variant: 'destructive'
-        })
+        if (isMounted) {
+          setProjectsLoading(false)
+          toast({
+            title: "Error",
+            description: error instanceof Error ? error.message : "Failed to load projects. Please try refreshing the page.",
+            variant: "destructive"
+          })
+        }
       }
     }
 
     fetchProjects()
-  }, [toast, resetKey])
+
+    return () => {
+      isMounted = false
+    }
+  }, [isLoaded, isSignedIn, toast])
 
   const resetFilters = () => {
     // Reset all state values
@@ -356,7 +385,34 @@ export default function InsightsPage() {
   }
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto py-8">
+      {/* Add the test button */}
+      {!isSignedIn ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground mb-4">Sign in to save insights to projects</p>
+        </div>
+      ) : projects.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground mb-4">Create a project to start saving insights</p>
+          <CreateProjectDialog onProjectCreated={(newProject) => {
+            // Ensure the project has all required fields
+            const project: Project = {
+              ...newProject,
+              status: newProject.status || 'planning' as ProjectStatus
+            }
+            setProjects([...projects, project])
+          }} />
+        </div>
+      ) : null}
+
+      {/* Add loading state for projects */}
+      {projectsLoading && (
+        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading projects...
+        </div>
+      )}
+      
       <div className="flex flex-col space-y-4">
         <h1 className="text-2xl font-bold">Insights Search</h1>
         
@@ -542,7 +598,7 @@ export default function InsightsPage() {
                         asChild
                         className="text-muted-foreground hover:text-foreground"
                       >
-                        <Link href={insight.source} target="_blank">
+                        <Link href={insight.url || '#'} target="_blank">
                           <ExternalLink className="h-4 w-4 mr-1" />
                           Full article
                         </Link>
@@ -551,7 +607,7 @@ export default function InsightsPage() {
                         variant="ghost"
                         size="sm"
                         className="text-muted-foreground hover:text-foreground"
-                        onClick={handleSave}
+                        onClick={() => setSelectedInsight(insight.id)}
                       >
                         <BookmarkPlus className="h-4 w-4 mr-1" />
                         Save
@@ -572,9 +628,9 @@ export default function InsightsPage() {
       {selectedInsight && (
         <InsightModal
           insight={insights.find(i => i.id === selectedInsight)!}
-          projects={projects}
           isOpen={!!selectedInsight}
-          onClose={closeModal}
+          onClose={() => setSelectedInsight(null)}
+          isProjectsLoading={projectsLoading}
         />
       )}
     </div>

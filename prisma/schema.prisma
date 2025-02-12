@@ -14,27 +14,28 @@ datasource db {
 }
 
 model Project {
-  id          String        @id @default(cuid())
+  id          String    @id @default(cuid())
   name        String
   description String?
-  userId      String        // Clerk user ID
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  insights    SavedInsight[]
+  userId      String    // Clerk user ID
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
 }
 
 model SavedInsight {
-  id              String    @id @default(cuid())
-  title           String
-  url             String?
-  summary         String
-  additional_notes String?
-  projectId       String
-  project         Project   @relation(fields: [projectId], references: [id])
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id        String    @id @default(cuid())
+  insightId String    // ID of the insight from the insights API
+  projectId String    // Reference to the project this insight is saved to
+  userId    String    // Clerk user ID
+  notes     String?   // Optional notes about the insight
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
+  @@index([userId])
   @@index([projectId])
+  @@index([insightId])
 }
 
 model Category {

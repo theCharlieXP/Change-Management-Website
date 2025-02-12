@@ -1,99 +1,113 @@
 'use client'
 
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Link } from '@/components/ui/link'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { BookmarkPlus } from 'lucide-react'
+import { BookmarkPlus, Loader2, ExternalLink } from 'lucide-react'
 import { SaveToProjectDialog } from '@/components/save-to-project-dialog'
 import type { Insight } from '@/types/insights'
 import type { Project } from '@prisma/client'
+import { format } from 'date-fns'
 
 interface InsightModalProps {
   insight: Insight
-  projects: Project[]
   isOpen: boolean
   onClose: () => void
+  isProjectsLoading: boolean
 }
 
-export function InsightModal({ insight, projects, isOpen, onClose }: InsightModalProps) {
+export function InsightModal({
+  insight,
+  isOpen,
+  onClose,
+  isProjectsLoading
+}: InsightModalProps) {
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false)
   const [notes, setNotes] = useState('')
 
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl">{insight.title}</DialogTitle>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Badge variant="secondary">{insight.category}</Badge>
-              <span>•</span>
-              <span>{insight.readTime} read</span>
-              <span>•</span>
-              <span>Source: {insight.source}</span>
-            </div>
-          </DialogHeader>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader className="space-y-2">
+          <DialogTitle>{insight.title}</DialogTitle>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Badge variant="outline">{insight.category}</Badge>
+            <span>•</span>
+            <time dateTime={insight.created_at}>
+              {format(new Date(insight.created_at), 'MMM d, yyyy')}
+            </time>
+          </div>
+        </DialogHeader>
 
-          {/* Summary Bullet Points */}
-          <div className="mt-4 space-y-2">
+        <div className="space-y-6">
+          {/* Summary bullet points */}
+          <div className="space-y-2 text-sm text-muted-foreground">
             {insight.summary.split('\n').map((point, index) => (
-              <p key={index} className="text-base flex items-start gap-2">
-                {point}
-              </p>
+              <div key={index} className="flex items-start gap-2">
+                <span>•</span>
+                <span>{point.replace(/^[•-]\s*/, '')}</span>
+              </div>
             ))}
           </div>
 
-          <Separator className="my-4" />
+          <Separator />
 
-          {/* Notes Section */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Notes</label>
+          {/* Notes section */}
+          <div>
             <Textarea
-              placeholder="Add your notes about this insight..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              rows={4}
-              className="resize-none"
+              placeholder="Add your notes about this insight..."
+              className="min-h-[100px]"
             />
           </div>
+        </div>
 
-          {/* Actions */}
-          <div className="mt-6 flex justify-end gap-2">
+        <DialogFooter className="sm:justify-between gap-4">
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              size="sm"
-              asChild
-            >
-              <Link href={insight.source} target="_blank" className="gap-2">
-                View Source
-              </Link>
-            </Button>
-            <Button
               onClick={() => setIsSaveDialogOpen(true)}
-              size="sm"
-              className="gap-2"
+              disabled={isProjectsLoading}
             >
-              <BookmarkPlus className="w-4 h-4" />
-              Save to Project
+              {isProjectsLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Loading projects...
+                </>
+              ) : (
+                <>
+                  <BookmarkPlus className="h-4 w-4 mr-2" />
+                  Save to Project
+                </>
+              )}
             </Button>
+            {insight.url && (
+              <Button variant="outline" asChild>
+                <Link href={insight.url} target="_blank">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View Source
+                </Link>
+              </Button>
+            )}
           </div>
-        </DialogContent>
-      </Dialog>
+        </DialogFooter>
+      </DialogContent>
 
       <SaveToProjectDialog
+        open={isSaveDialogOpen}
+        onOpenChange={setIsSaveDialogOpen}
         insight={{
           ...insight,
           notes
         }}
-        projects={projects}
-        isOpen={isSaveDialogOpen}
-        onClose={() => setIsSaveDialogOpen(false)}
+        isLoading={isProjectsLoading}
       />
-    </>
+    </Dialog>
   )
 } 

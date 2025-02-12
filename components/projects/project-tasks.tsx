@@ -13,6 +13,7 @@ import { format, isValid, startOfToday } from 'date-fns'
 import { CalendarIcon, Plus, X, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ProjectTask, TaskStatus } from '@/types/projects'
+import { toast } from '@/components/ui/use-toast'
 
 interface ProjectTasksProps {
   tasks: ProjectTask[]
@@ -45,6 +46,13 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete }: Pr
     setError(null)
 
     try {
+      console.log('Submitting task:', {
+        title,
+        description,
+        status,
+        dueDate
+      })
+
       await onAdd({
         project_id: projectId,
         title,
@@ -61,7 +69,12 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete }: Pr
       setShowAddForm(false)
     } catch (error) {
       console.error('Error adding task:', error)
-      setError('Failed to add task')
+      setError(error instanceof Error ? error.message : 'Failed to add task')
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to add task",
+        variant: "destructive"
+      })
     } finally {
       setLoading(false)
     }
@@ -251,33 +264,28 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete }: Pr
                   <SelectContent>
                     {TASK_STATUSES.map((status) => (
                       <SelectItem key={status.value} value={status.value}>
-                        <Badge className={status.color}>
+                        <Badge className={cn(status.color)}>
                           {status.label}
                         </Badge>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="flex-1">
+                  <CardTitle>{task.title}</CardTitle>
+                  {task.description && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {task.description}
+                    </p>
+                  )}
+                  {task.due_date && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Due: {formatDate(task.due_date)}
+                    </p>
+                  )}
+                </div>
               </div>
-              <CardTitle className="text-lg mt-2">{task.title}</CardTitle>
             </CardHeader>
-            <CardContent>
-              {task.description && (
-                <p className="text-muted-foreground mb-4">{task.description}</p>
-              )}
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                {task.due_date && formatDate(task.due_date) && (
-                  <span className={cn(
-                    "flex items-center gap-2",
-                    new Date(task.due_date) < startOfToday() ? "text-red-500" : ""
-                  )}>
-                    <CalendarIcon className="h-4 w-4" />
-                    Due: {formatDate(task.due_date)}
-                  </span>
-                )}
-                <span>Created: {formatDate(task.created_at)}</span>
-              </div>
-            </CardContent>
           </Card>
         ))}
       </div>

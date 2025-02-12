@@ -3,144 +3,117 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { ExternalLink, BookmarkPlus, X } from 'lucide-react'
-import { Link } from '@/components/ui/link'
+import { Card } from '@/components/ui/card'
+import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { InsightFocusArea } from '@/types/insights'
+import { INSIGHT_FOCUS_AREAS } from '@/types/insights'
+import type { SavedInsight } from '@/types/insights'
 
 interface ProjectInsightsProps {
-  insights: Array<{
-    id: string
-    title: string
-    summary: string
-    focus_area: InsightFocusArea
-    created_at: string
-  }>
-  onDelete: (id: string) => Promise<void>
+  insights: SavedInsight[]
+  isLoading?: boolean
 }
 
-const FOCUS_AREAS: Record<InsightFocusArea, { label: string; color: string }> = {
-  'challenges-barriers': { 
-    label: 'Challenges & Barriers',
-    color: 'bg-red-100 text-red-800'
-  },
-  'strategies-solutions': { 
-    label: 'Strategies & Solutions',
-    color: 'bg-blue-100 text-blue-800'
-  },
-  'outcomes-results': { 
-    label: 'Outcomes & Results',
-    color: 'bg-green-100 text-green-800'
-  },
-  'key-stakeholders-roles': { 
-    label: 'Key Stakeholders & Roles',
-    color: 'bg-purple-100 text-purple-800'
-  },
-  'best-practices-methodologies': { 
-    label: 'Best Practices & Methodologies',
-    color: 'bg-yellow-100 text-yellow-800'
-  },
-  'lessons-learned-insights': { 
-    label: 'Lessons Learned & Insights',
-    color: 'bg-orange-100 text-orange-800'
-  },
-  'implementation-tactics': { 
-    label: 'Implementation Tactics',
-    color: 'bg-emerald-100 text-emerald-800'
-  },
-  'communication-engagement': { 
-    label: 'Communication & Engagement',
-    color: 'bg-indigo-100 text-indigo-800'
-  },
-  'metrics-performance': { 
-    label: 'Metrics & Performance',
-    color: 'bg-pink-100 text-pink-800'
-  },
-  'risk-management': { 
-    label: 'Risk Management',
-    color: 'bg-rose-100 text-rose-800'
-  },
-  'technology-tools': { 
-    label: 'Technology & Tools',
-    color: 'bg-cyan-100 text-cyan-800'
-  },
-  'cultural-transformation': { 
-    label: 'Cultural Transformation',
-    color: 'bg-teal-100 text-teal-800'
-  },
-  'change-leadership': { 
-    label: 'Change Leadership',
-    color: 'bg-violet-100 text-violet-800'
-  },
-  'employee-training': { 
-    label: 'Employee Training',
-    color: 'bg-fuchsia-100 text-fuchsia-800'
-  },
-  'change-sustainability': { 
-    label: 'Change Sustainability',
-    color: 'bg-sky-100 text-sky-800'
-  }
-}
+export function ProjectInsights({ insights, isLoading = false }: ProjectInsightsProps) {
+  const [expandedInsightId, setExpandedInsightId] = useState<string | null>(null)
 
-export function ProjectInsights({ insights, onDelete }: ProjectInsightsProps) {
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-
-  const handleDelete = async (id: string) => {
-    setDeletingId(id)
-    try {
-      await onDelete(id)
-    } finally {
-      setDeletingId(null)
-    }
+  const toggleInsight = (id: string) => {
+    setExpandedInsightId(expandedInsightId === id ? null : id)
   }
 
-  if (!insights.length) {
+  if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Saved Insights</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">No insights saved to this project yet.</p>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <div className="h-20 bg-muted animate-pulse rounded-lg" />
+        <div className="h-20 bg-muted animate-pulse rounded-lg" />
+        <div className="h-20 bg-muted animate-pulse rounded-lg" />
+      </div>
+    )
+  }
+
+  if (insights.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        No insights saved to this project yet.
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Saved Insights</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {insights.map((insight) => (
-          <div
-            key={insight.id}
-            className="flex flex-col gap-2 p-4 rounded-lg border bg-card"
+    <div className="space-y-4">
+      {insights.map((insight) => (
+        <Card 
+          key={insight.id}
+          className={cn(
+            "transition-all duration-200",
+            expandedInsightId === insight.id ? "bg-muted/50" : ""
+          )}
+        >
+          {/* Header - Always visible */}
+          <div 
+            className="p-4 flex items-center justify-between cursor-pointer"
+            onClick={() => toggleInsight(insight.id)}
           >
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-4">
               <h3 className="font-medium">{insight.title}</h3>
-              <Badge className={cn("shrink-0", FOCUS_AREAS[insight.focus_area].color)}>
-                {FOCUS_AREAS[insight.focus_area].label}
+              <Badge 
+                variant="secondary"
+                className={cn(
+                  INSIGHT_FOCUS_AREAS[insight.focus_area].color,
+                  "whitespace-nowrap"
+                )}
+              >
+                {INSIGHT_FOCUS_AREAS[insight.focus_area].label}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground">{insight.summary}</p>
-            <div className="text-xs text-muted-foreground">
-              Saved on {new Date(insight.created_at).toLocaleDateString()}
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-2 right-2"
-              onClick={() => handleDelete(insight.id)}
-              disabled={deletingId === insight.id}
-            >
-              <X className="h-4 w-4" />
+            <Button variant="ghost" size="icon">
+              {expandedInsightId === insight.id ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
             </Button>
           </div>
-        ))}
-      </CardContent>
-    </Card>
+
+          {/* Expanded content */}
+          {expandedInsightId === insight.id && (
+            <div className="px-4 pb-4 border-t pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Insight content */}
+                <div className="space-y-4">
+                  <h4 className="font-medium text-sm text-muted-foreground">Summary</h4>
+                  <div className="space-y-2 text-sm">
+                    {insight.summary.split('\n').map((point, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <span>•</span>
+                        <span>{point.replace(/^[•-]\s*/, '')}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {insight.url && (
+                    <Button variant="outline" size="sm" asChild className="mt-4">
+                      <a href={insight.url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View Source
+                      </a>
+                    </Button>
+                  )}
+                </div>
+
+                {/* Notes section */}
+                <div className="space-y-4">
+                  <h4 className="font-medium text-sm text-muted-foreground">Notes</h4>
+                  {insight.additional_notes ? (
+                    <p className="text-sm whitespace-pre-wrap">{insight.additional_notes}</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">No notes added</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </Card>
+      ))}
+    </div>
   )
 } 
