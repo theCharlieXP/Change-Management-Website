@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ArrowLeft, Pencil, Check, X, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { useAuth } from '@clerk/nextjs'
+import type { SavedInsight, InsightSummary } from '@/types/insights'
 import {
   Select,
   SelectContent,
@@ -34,7 +35,6 @@ import { ProjectTasks } from '@/components/projects/project-tasks'
 import { ProjectInsights } from '@/components/projects/project-insights'
 import { ProjectNotes } from '@/components/projects/project-notes'
 import { toast } from '@/components/ui/use-toast'
-import type { SavedInsight } from '@/types/insights'
 import { ProjectSummaries } from '@/components/projects/project-summaries'
 
 const STATUS_COLORS = {
@@ -288,24 +288,71 @@ export default function ProjectPage() {
 
       {/* Project Details */}
       <Card>
-        <CardHeader>
+        <CardHeader className="relative">
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>{project?.title}</CardTitle>
-              <CardDescription>{project?.description}</CardDescription>
+            <div className="flex-1">
+              {isEditing ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="text-3xl font-bold h-auto py-2 px-3"
+                      placeholder="Project Title"
+                    />
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={handleSaveEdit}
+                        disabled={!editTitle.trim()}
+                        size="sm"
+                      >
+                        <Check className="h-4 w-4 mr-1" />
+                        Save
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setIsEditing(false)
+                          setEditTitle(project?.title || '')
+                        }}
+                        size="sm"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-3xl font-bold mb-2">{project?.title}</CardTitle>
+                    <CardDescription className="text-base">{project?.description}</CardDescription>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
-            <Select value={status} onValueChange={handleStatusChange}>
-              <SelectTrigger className={`w-[180px] ${STATUS_COLORS[status]}`}>
-                <SelectValue placeholder="Select stage" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="planning">Planning</SelectItem>
-                <SelectItem value="inprogress">In Progress</SelectItem>
-                <SelectItem value="onhold">On Hold</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="ml-6">
+              <Select value={status} onValueChange={handleStatusChange}>
+                <SelectTrigger className={`w-[180px] ${STATUS_COLORS[status]}`}>
+                  <SelectValue placeholder="Select stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="planning">Planning</SelectItem>
+                  <SelectItem value="inprogress">In Progress</SelectItem>
+                  <SelectItem value="onhold">On Hold</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
       </Card>

@@ -27,7 +27,7 @@ export function ProfileCreator() {
     try {
       // Get the session token
       const sessionToken = await session.getToken({
-        template: 'supabase'  // Use Supabase JWT template
+        template: 'supabase'
       });
 
       if (!sessionToken) {
@@ -44,38 +44,25 @@ export function ProfileCreator() {
           'Authorization': `Bearer ${sessionToken}`,
           'X-User-Id': userId
         },
-        cache: 'no-store'  // Prevent caching
+        cache: 'no-store'
       });
 
-      const responseText = await response.text();
-      console.log('ProfileCreator: Raw response:', responseText);
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        console.error('ProfileCreator: Error parsing response:', e);
-        if (responseText.includes('<!DOCTYPE html>')) {
-          console.log('ProfileCreator: Received HTML response, retrying in 2 seconds...');
-          setTimeout(createProfile, 2000);
-        }
-        return;
-      }
-
       if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
         console.error('ProfileCreator: HTTP error:', response.status, response.statusText);
-        console.log('ProfileCreator: Error data:', data);
+        console.log('ProfileCreator: Error data:', errorData);
         
-        if (data.error === 'Unauthorized') {
-          console.log('ProfileCreator: Unauthorized, will retry when auth is ready');
+        if (response.status === 401) {
+          // If unauthorized, wait longer before retrying to allow auth to fully initialize
+          console.log('ProfileCreator: Auth not ready yet, will retry in 3 seconds');
+          setTimeout(createProfile, 3000);
           return;
         }
 
-        // For other errors, retry after a delay
-        setTimeout(createProfile, 2000);
-        return;
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
+      const data = await response.json();
       console.log('ProfileCreator: Success:', data);
       
     } catch (error) {
@@ -87,35 +74,25 @@ export function ProfileCreator() {
           stack: error.stack
         });
       }
-      // Retry on network errors
+      // Retry on network errors after a delay
       setTimeout(createProfile, 2000);
     }
   }, [isLoaded, isSessionLoaded, isSignedIn, userId, session]);
 
   useEffect(() => {
-    // Add a small delay before the first attempt to allow auth to initialize
-    const initialDelay = setTimeout(() => {
-      createProfile();
-    }, 1500);
+    if (!isLoaded || !isSessionLoaded) {
+      return;
+    }
 
-    // Set up periodic retries while not authenticated
-    const retryInterval = setInterval(() => {
-      if (!isSignedIn || !userId || !session) {
-        console.log('ProfileCreator: Retrying...', {
-          isLoaded,
-          isSessionLoaded,
-          isSignedIn,
-          userId: userId || 'none',
-          hasSession: !!session
-        });
+    // Add a delay before the first attempt to ensure auth is properly initialized
+    if (isSignedIn && userId && session) {
+      const timer = setTimeout(() => {
+        console.log('ProfileCreator: Starting profile creation/fetch after initial delay');
         createProfile();
-      }
-    }, 2000);
+      }, 2000);
 
-    return () => {
-      clearTimeout(initialDelay);
-      clearInterval(retryInterval);
-    };
+      return () => clearTimeout(timer);
+    }
   }, [createProfile, isSignedIn, userId, session, isLoaded, isSessionLoaded]);
 
   // This component doesn't render anything

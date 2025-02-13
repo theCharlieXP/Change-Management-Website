@@ -10,8 +10,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
         baseTheme: undefined,
         variables: { colorPrimary: '#10b981' }
       }}
-      afterSignInUrl="/dashboard"
-      afterSignUpUrl="/dashboard"
+      afterSignInUrl="/dashboard/projects"
+      afterSignUpUrl="/dashboard/projects"
     >
       {children}
     </ClerkProvider>

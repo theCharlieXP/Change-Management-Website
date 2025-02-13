@@ -13,8 +13,7 @@ export default authMiddleware({
     "/api/webhook",
     "/api/stripe-webhook",
     "/api/test-db",
-    "/api/test-rest",
-    "/api/auth/profile"
+    "/api/test-rest"
   ],
   // Add routes that don't require authentication
   ignoredRoutes: [
@@ -53,7 +52,7 @@ export default authMiddleware({
 
     // If user is signed in and trying to access auth pages, redirect to dashboard
     if (auth.userId && (path === '/sign-in' || path === '/sign-up' || path === '/')) {
-      return NextResponse.redirect(new URL('/dashboard', req.url));
+      return NextResponse.redirect(new URL('/dashboard/projects', req.url));
     }
 
     // Special handling for profile API

@@ -14,41 +14,53 @@ export async function GET() {
     const headerUserId = headersList.get('x-user-id');
     const authHeader = headersList.get('authorization');
     
-    console.log('Auth info:', { 
+    console.log('Auth info:', {
       clerkUserId: userId,
       headerUserId,
-      hasAuthHeader: !!authHeader
+      hasAuthHeader: !!authHeader,
+      authHeaderStart: authHeader ? authHeader.substring(0, 20) : null
     });
 
     // Verify user is authenticated
-    if (!userId || !headerUserId || userId !== headerUserId) {
-      console.log('Authentication mismatch or missing:', {
-        clerkUserId: userId,
-        headerUserId,
-        match: userId === headerUserId
-      });
+    if (!userId) {
+      console.log('No Clerk userId found');
       return NextResponse.json({ 
         error: 'Unauthorized', 
-        message: 'Invalid or missing authentication',
-        debug: { 
-          clerkUserId: userId,
-          headerUserId,
-          hasAuthHeader: !!authHeader
-        }
+        message: 'Please sign in to access this resource'
       }, { status: 401 });
     }
 
-    // Create Supabase client with service role
-    console.log('Creating Supabase client');
+    if (!headerUserId || userId !== headerUserId) {
+      console.log('User ID mismatch:', { clerkUserId: userId, headerUserId });
+      return NextResponse.json({ 
+        error: 'Unauthorized', 
+        message: 'Invalid authentication'
+      }, { status: 401 });
+    }
+
+    if (!authHeader) {
+      console.log('No authorization header found');
+      return NextResponse.json({ 
+        error: 'Unauthorized', 
+        message: 'Missing authorization token'
+      }, { status: 401 });
+    }
+
+    // Verify the token format
+    if (!authHeader.startsWith('Bearer ')) {
+      console.log('Invalid authorization header format');
+      return NextResponse.json({ 
+        error: 'Unauthorized', 
+        message: 'Invalid authorization header format'
+      }, { status: 401 });
+    }
+
+    // Create Supabase client
     const cookieStore = cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false
-        },
         cookies: {
           get(name: string) {
             return cookieStore.get(name)?.value;
@@ -83,7 +95,7 @@ export async function GET() {
         throw testError;
       }
       
-      console.log('Supabase connection test successful:', testData);
+      console.log('Supabase connection test successful');
     } catch (testError: any) {
       console.error('Supabase connection test error:', testError);
       return NextResponse.json({ 
@@ -101,7 +113,7 @@ export async function GET() {
     }
 
     // Check for existing profile
-    console.log('Checking for existing profile');
+    console.log('Checking for existing profile for user:', userId);
     const { data: profile, error: fetchError } = await supabase
       .from('profiles')
       .select('*')
@@ -117,60 +129,50 @@ export async function GET() {
     if (fetchError && fetchError.code !== 'PGRST116') {
       console.error('Error fetching profile:', fetchError);
       return NextResponse.json({ 
-        error: 'Error fetching profile', 
-        details: {
-          message: fetchError.message,
-          code: fetchError.code,
-          hint: fetchError.hint
-        },
-        userId
+        error: 'Database error', 
+        message: 'Error fetching profile'
       }, { status: 500 });
     }
 
     // Create new profile if it doesn't exist
     if (!profile) {
       console.log('Creating new profile for user:', userId);
-      const newProfileData = {
-        user_id: userId,
-        tier: 'free',
-        credits: 100,
-      };
-      
       const { data: newProfile, error: insertError } = await supabase
         .from('profiles')
-        .insert([newProfileData])
+        .insert([{
+          user_id: userId,
+          tier: 'free',
+          credits: 100
+        }])
         .select()
         .single();
 
       if (insertError) {
         console.error('Error creating profile:', insertError);
         return NextResponse.json({ 
-          error: 'Error creating profile', 
-          details: {
-            message: insertError.message,
-            code: insertError.code,
-            hint: insertError.hint
-          },
-          attemptedData: newProfileData
+          error: 'Database error', 
+          message: 'Error creating profile'
         }, { status: 500 });
       }
 
-      console.log('Successfully created new profile:', newProfile);
-      return NextResponse.json({ profile: newProfile, created: true });
+      console.log('Successfully created new profile');
+      return NextResponse.json({ 
+        profile: newProfile, 
+        created: true 
+      });
     }
 
-    console.log('Found existing profile:', profile);
-    return NextResponse.json({ profile, created: false });
-  } catch (error: any) {
+    console.log('Returning existing profile');
+    return NextResponse.json({ 
+      profile, 
+      created: false 
+    });
+
+  } catch (error) {
     console.error('Error in profile route:', error);
     return NextResponse.json({ 
-      error: 'Internal server error', 
-      details: {
-        message: error.message,
-        code: error.code,
-        hint: error.hint
-      },
-      location: 'profile route catch block'
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
 } 

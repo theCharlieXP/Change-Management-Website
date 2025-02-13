@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs'
 import { createClient } from '@supabase/supabase-js'
+import { headers } from 'next/headers'
 
 // Add environment variable validation
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -57,11 +58,14 @@ export async function GET() {
   try {
     // Get the user ID from Clerk
     const { userId } = auth()
+    const headersList = headers()
+    const headerUserId = headersList.get('x-user-id')
     
     // Log auth state
     console.log('Auth state in projects API:', {
       hasUserId: !!userId,
       userId,
+      headerUserId,
       supabaseConfig: {
         hasUrl: !!supabaseUrl,
         hasServiceKey: !!supabaseServiceKey
@@ -71,7 +75,7 @@ export async function GET() {
     if (!userId) {
       console.log('No user ID found in session')
       return new NextResponse(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Unauthorized', message: 'Please sign in to access this resource' }),
         { 
           status: 401,
           headers: { 'Content-Type': 'application/json' }
@@ -81,6 +85,7 @@ export async function GET() {
 
     // Test database connection first
     try {
+      console.log('Testing database connection...')
       const { data: testData, error: testError } = await supabase
         .from('projects')
         .select('count')
@@ -157,11 +162,7 @@ export async function GET() {
     return new NextResponse(
       JSON.stringify({ 
         error: 'Failed to fetch projects',
-        details: error instanceof Error ? error.message : 'Unknown error',
-        env: {
-          hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-          hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
-        }
+        details: error instanceof Error ? error.message : 'Unknown error'
       }),
       { 
         status: 500,

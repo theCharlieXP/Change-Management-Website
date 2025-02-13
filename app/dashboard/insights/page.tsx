@@ -351,33 +351,6 @@ export default function InsightsPage() {
 
   return (
     <div className="container mx-auto py-8">
-      {/* Add the test button */}
-      {!isSignedIn ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground mb-4">Sign in to save insights to projects</p>
-        </div>
-      ) : projects.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground mb-4">Create a project to start saving insights</p>
-          <CreateProjectDialog onProjectCreated={(newProject) => {
-            // Ensure the project has all required fields
-            const project: Project = {
-              ...newProject,
-              status: newProject.status || 'planning' as ProjectStatus
-            }
-            setProjects([...projects, project])
-          }} />
-        </div>
-      ) : null}
-
-      {/* Add loading state for projects */}
-      {projectsLoading && (
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading projects...
-        </div>
-      )}
-      
       <div className="flex flex-col space-y-4">
         <h1 className="text-2xl font-bold">Insights Search</h1>
         
