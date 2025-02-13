@@ -76,3 +76,53 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Date Picker Custom Styles */
+.react-datepicker {
+  @apply bg-background border border-border rounded-lg shadow-lg;
+  font-family: inherit;
+}
+
+.react-datepicker__header {
+  @apply bg-muted border-b border-border rounded-t-lg;
+}
+
+.react-datepicker__current-month {
+  @apply text-foreground font-medium py-2;
+}
+
+.react-datepicker__day-name {
+  @apply text-muted-foreground text-sm w-8 h-8;
+}
+
+.react-datepicker__day {
+  @apply text-foreground hover:bg-accent hover:text-accent-foreground rounded-md w-8 h-8 m-0.5 flex items-center justify-center text-sm transition-colors;
+}
+
+.react-datepicker__day--selected {
+  @apply bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground;
+}
+
+.react-datepicker__day--keyboard-selected {
+  @apply bg-accent text-accent-foreground;
+}
+
+.react-datepicker__day--disabled {
+  @apply text-muted-foreground opacity-50 cursor-not-allowed hover:bg-transparent;
+}
+
+.react-datepicker__navigation {
+  @apply top-2;
+}
+
+.react-datepicker__navigation-icon::before {
+  @apply border-muted-foreground;
+}
+
+.react-datepicker__day--today {
+  @apply font-medium;
+}
+
+.react-datepicker-popper {
+  @apply z-50;
+}

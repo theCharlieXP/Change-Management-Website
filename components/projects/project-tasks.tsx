@@ -7,8 +7,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Calendar } from '@/components/ui/calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { format, isValid, startOfToday, parseISO } from 'date-fns'
 import { CalendarIcon, Plus, X, Loader2, Pencil } from 'lucide-react'
@@ -16,6 +14,7 @@ import { cn } from '@/lib/utils'
 import type { ProjectTask, TaskStatus } from '@/types/projects'
 import { toast } from '@/components/ui/use-toast'
 import { TaskEditModal } from './task-edit-modal'
+import CustomDatePicker from '@/components/ui/custom-date-picker'
 
 interface ProjectTasksProps {
   tasks: ProjectTask[]
@@ -176,77 +175,11 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete }: Pr
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Due Date</label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !dueDate && "text-muted-foreground"
-                          )}
-                          disabled={loading}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dueDate ? format(dueDate, "PPP") : "Pick a date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent 
-                        className="w-auto p-0" 
-                        align="start"
-                      >
-                        <div className="p-0">
-                          <Calendar
-                            mode="single"
-                            selected={dueDate}
-                            onSelect={setDueDate}
-                            disabled={(date) => date < startOfToday()}
-                            initialFocus
-                            className="p-3"
-                            classNames={{
-                              months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-                              month: "space-y-4",
-                              caption: "flex justify-center pt-1 relative items-center",
-                              caption_label: "text-sm font-medium",
-                              nav: "space-x-1 flex items-center",
-                              nav_button: cn(
-                                "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
-                              ),
-                              nav_button_previous: "absolute left-1",
-                              nav_button_next: "absolute right-1",
-                              table: "w-full border-collapse space-y-1",
-                              head_row: "flex",
-                              head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-                              row: "flex w-full mt-2",
-                              cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                              day: cn(
-                                "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
-                              ),
-                              day_range_end: "day-range-end",
-                              day_selected:
-                                "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-                              day_today: "bg-accent text-accent-foreground",
-                              day_outside:
-                                "day-outside text-muted-foreground opacity-50",
-                              day_disabled: "text-muted-foreground opacity-50",
-                              day_range_middle:
-                                "aria-selected:bg-accent aria-selected:text-accent-foreground",
-                              day_hidden: "invisible",
-                            }}
-                          />
-                          {dueDate && (
-                            <div className="p-3 border-t">
-                              <Button 
-                                variant="ghost" 
-                                className="w-full justify-start text-sm font-normal"
-                                onClick={() => setDueDate(undefined)}
-                              >
-                                Clear date
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+                    <CustomDatePicker
+                      selectedDate={dueDate}
+                      onChange={setDueDate}
+                      disabled={loading}
+                    />
                   </div>
                 </div>
 

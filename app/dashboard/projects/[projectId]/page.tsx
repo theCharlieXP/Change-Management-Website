@@ -279,6 +279,75 @@ export default function ProjectPage() {
     }
   }
 
+  const handleDeleteSummary = async (summaryId: string) => {
+    try {
+      const response = await fetch(`/api/projects/${params.projectId}/summaries`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: summaryId }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete summary')
+      }
+
+      // Update the summaries state by removing the deleted summary
+      setSummaries(prev => prev.filter(summary => summary.id !== summaryId))
+    } catch (error) {
+      console.error('Error deleting summary:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete summary",
+        variant: "destructive"
+      })
+      throw error
+    }
+  }
+
+  const handleDeleteInsight = async (insightId: string) => {
+    if (!insightId) {
+      toast({
+        title: "Error",
+        description: "Invalid insight ID",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}/insights`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: insightId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete insight');
+      }
+
+      // Update the insights state by removing the deleted insight
+      setInsights(prev => prev.filter(insight => insight.id !== insightId));
+      toast({
+        title: "Success",
+        description: "Insight deleted successfully",
+      });
+    } catch (error) {
+      console.error('Error deleting insight:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete insight",
+        variant: "destructive"
+      });
+      throw error;
+    }
+  };
+
   if (!isLoaded || loading) {
     return (
       <div className="flex items-center justify-center h-[50vh]">
@@ -394,19 +463,21 @@ export default function ProjectPage() {
           <ProjectInsights
             insights={insights}
             isLoading={loading}
+            onDelete={handleDeleteInsight}
           />
         </CardContent>
       </Card>
 
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Project Summaries</CardTitle>
+          <CardTitle>Insight Summaries</CardTitle>
         </CardHeader>
         <CardContent>
           <ProjectSummaries
             summaries={summaries}
             isLoading={summariesLoading}
             onUpdateNotes={handleUpdateNotes}
+            onDelete={handleDeleteSummary}
           />
         </CardContent>
       </Card>

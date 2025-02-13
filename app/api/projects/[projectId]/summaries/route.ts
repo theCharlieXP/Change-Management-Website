@@ -282,4 +282,84 @@ export async function PUT(
       { status: 500 }
     )
   }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { projectId: string } }
+) {
+  try {
+    const { userId } = auth()
+    if (!userId) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401 }
+      )
+    }
+
+    const body = await request.json()
+    const { id } = body
+
+    if (!id) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Summary ID is required' }),
+        { status: 400 }
+      )
+    }
+
+    // Verify project ownership
+    const { data: project, error: projectError } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('id', params.projectId)
+      .eq('user_id', userId)
+      .single()
+
+    if (projectError || !project) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Project not found or access denied' }),
+        { status: 404 }
+      )
+    }
+
+    // Verify summary belongs to the project
+    const { data: existingSummary, error: summaryError } = await supabase
+      .from('insight_summaries')
+      .select('id')
+      .eq('id', id)
+      .eq('project_id', params.projectId)
+      .single()
+
+    if (summaryError || !existingSummary) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Summary not found or does not belong to this project' }),
+        { status: 404 }
+      )
+    }
+
+    // Delete the summary
+    const { error: deleteError } = await supabase
+      .from('insight_summaries')
+      .delete()
+      .eq('id', id)
+
+    if (deleteError) {
+      console.error('Error deleting summary:', deleteError)
+      return new NextResponse(
+        JSON.stringify({ error: 'Failed to delete summary' }),
+        { status: 500 }
+      )
+    }
+
+    return new NextResponse(null, { status: 204 })
+  } catch (error) {
+    console.error('Error in DELETE /api/projects/[projectId]/summaries:', error)
+    return new NextResponse(
+      JSON.stringify({ 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }),
+      { status: 500 }
+    )
+  }
 } 

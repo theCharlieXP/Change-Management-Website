@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import { X, Save } from 'lucide-react'
+import { X, Save, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { INSIGHT_FOCUS_AREAS } from '@/types/insights'
 import type { InsightSummary } from '@/types/insights'
@@ -15,13 +15,16 @@ interface ProjectSummariesProps {
   summaries: InsightSummary[]
   isLoading?: boolean
   onUpdateNotes?: (id: string, notes: string) => Promise<void>
+  onDelete?: (id: string) => Promise<void>
 }
 
-export function ProjectSummaries({ summaries, isLoading = false, onUpdateNotes }: ProjectSummariesProps) {
+export function ProjectSummaries({ summaries, isLoading = false, onUpdateNotes, onDelete }: ProjectSummariesProps) {
   const [selectedSummary, setSelectedSummary] = useState<InsightSummary | null>(null)
   const [notes, setNotes] = useState<string>('')
   const [isEditingNotes, setIsEditingNotes] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [summaryToDelete, setSummaryToDelete] = useState<InsightSummary | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const handleSaveNotes = async () => {
     if (!selectedSummary || !onUpdateNotes) return
@@ -42,6 +45,30 @@ export function ProjectSummaries({ summaries, isLoading = false, onUpdateNotes }
       })
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!summaryToDelete || !onDelete) return
+
+    setIsDeleting(true)
+    try {
+      await onDelete(summaryToDelete.id)
+      setSummaryToDelete(null)
+      setSelectedSummary(null)
+      summaries = summaries.filter(summary => summary.id !== summaryToDelete.id)
+      toast({
+        title: "Success",
+        description: "Summary deleted successfully",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete summary",
+        variant: "destructive"
+      })
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -133,7 +160,7 @@ export function ProjectSummaries({ summaries, isLoading = false, onUpdateNotes }
                     <h4 className="font-medium text-sm">{section.heading}</h4>
                     <ul className="space-y-2 list-disc pl-4">
                       {section.points.map((point, pointIndex) => (
-                        <li key={pointIndex} className="text-sm text-muted-foreground">
+                        <li key={pointIndex} className="text-sm">
                           {point}
                         </li>
                       ))}
@@ -195,10 +222,61 @@ export function ProjectSummaries({ summaries, isLoading = false, onUpdateNotes }
                     <p className="text-sm text-muted-foreground italic">No notes added</p>
                   )}
                 </div>
+
+                {/* Delete section */}
+                <div className="border-t pt-6 mt-8">
+                  <div className="flex flex-col items-start gap-2">
+                    <h4 className="font-medium text-sm text-muted-foreground">Danger Zone</h4>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSummaryToDelete(selectedSummary)
+                      }}
+                    >
+                      Delete Summary
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           </DialogContent>
         )}
+      </Dialog>
+
+      <Dialog open={summaryToDelete !== null} onOpenChange={(open) => !open && setSummaryToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Summary</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this summary? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setSummaryToDelete(null)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </>
   )

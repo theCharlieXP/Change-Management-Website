@@ -1,16 +1,18 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useAuth, useSession } from '@clerk/nextjs';
 
 export function ProfileCreator() {
   const { userId, isLoaded, isSignedIn } = useAuth();
   const { session, isLoaded: isSessionLoaded } = useSession();
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
 
   const createProfile = useCallback(async () => {
     if (!isLoaded || !isSessionLoaded) {
       console.log('ProfileCreator: Auth or session not loaded yet');
-      return;
+      return false;
     }
 
     if (!isSignedIn || !userId || !session) {
@@ -19,7 +21,7 @@ export function ProfileCreator() {
         userId, 
         hasSession: !!session 
       });
-      return;
+      return false;
     }
 
     console.log('ProfileCreator: Attempting to create/fetch profile for user:', userId);
@@ -32,7 +34,7 @@ export function ProfileCreator() {
 
       if (!sessionToken) {
         console.log('ProfileCreator: No session token available yet');
-        return;
+        return false;
       }
 
       console.log('ProfileCreator: Got session token, making request');
@@ -48,52 +50,39 @@ export function ProfileCreator() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        console.error('ProfileCreator: HTTP error:', response.status, response.statusText);
-        console.log('ProfileCreator: Error data:', errorData);
-        
-        if (response.status === 401) {
-          // If unauthorized, wait longer before retrying to allow auth to fully initialize
-          console.log('ProfileCreator: Auth not ready yet, will retry in 3 seconds');
-          setTimeout(createProfile, 3000);
-          return;
-        }
-
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        console.log('ProfileCreator: Error data:', data);
+        return false;
       }
 
-      const data = await response.json();
-      console.log('ProfileCreator: Success:', data);
-      
+      const profile = await response.json();
+      console.log('ProfileCreator: Profile created/fetched successfully:', profile);
+      return true;
     } catch (error) {
-      console.error('ProfileCreator: Error creating profile:', error);
-      if (error instanceof Error) {
-        console.error('ProfileCreator: Error details:', {
-          name: error.name,
-          message: error.message,
-          stack: error.stack
-        });
-      }
-      // Retry on network errors after a delay
-      setTimeout(createProfile, 2000);
+      console.error('ProfileCreator: Error creating/fetching profile:', error);
+      return false;
     }
-  }, [isLoaded, isSessionLoaded, isSignedIn, userId, session]);
+  }, [isLoaded, isSignedIn, userId, session, isSessionLoaded]);
 
   useEffect(() => {
-    if (!isLoaded || !isSessionLoaded) {
-      return;
-    }
+    const attemptProfileCreation = async () => {
+      if (retryCount >= MAX_RETRIES) {
+        console.log('ProfileCreator: Max retries reached');
+        return;
+      }
 
-    // Add a delay before the first attempt to ensure auth is properly initialized
-    if (isSignedIn && userId && session) {
-      const timer = setTimeout(() => {
-        console.log('ProfileCreator: Starting profile creation/fetch after initial delay');
-        createProfile();
-      }, 2000);
+      const success = await createProfile();
+      
+      if (!success && isSignedIn) {
+        console.log('ProfileCreator: Auth not ready yet, will retry in 3 seconds');
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+        }, 3000);
+      }
+    };
 
-      return () => clearTimeout(timer);
-    }
-  }, [createProfile, isSignedIn, userId, session, isLoaded, isSessionLoaded]);
+    attemptProfileCreation();
+  }, [createProfile, retryCount, isSignedIn]);
 
   // This component doesn't render anything
   return null;

@@ -215,60 +215,84 @@ export async function DELETE(
   { params }: { params: { projectId: string } }
 ) {
   try {
-    const { userId } = auth()
+    const { userId } = auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
+      return new NextResponse(
+        JSON.stringify({ error: 'Unauthorized' }),
         { status: 401 }
-      )
+      );
     }
 
-    const { searchParams } = new URL(request.url)
-    const insightId = searchParams.get('insightId')
+    // Parse the request body
+    const body = await request.json();
+    const { id: insightId } = body;
 
     if (!insightId) {
-      return NextResponse.json(
-        { error: 'Insight ID is required' },
+      console.error('Missing insight ID in delete request');
+      return new NextResponse(
+        JSON.stringify({ error: 'Insight ID is required' }),
         { status: 400 }
-      )
+      );
     }
 
-    // Check if project exists and belongs to user
+    // First verify project exists and belongs to user
     const { data: project, error: projectError } = await supabase
       .from('projects')
-      .select()
+      .select('id')
       .eq('id', params.projectId)
       .eq('user_id', userId)
-      .single()
+      .single();
 
-    if (projectError || !project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
+    if (projectError) {
+      console.error('Project verification error:', projectError);
+      return new NextResponse(
+        JSON.stringify({ error: 'Project not found or access denied' }),
         { status: 404 }
-      )
+      );
     }
 
-    // Delete the saved insight
+    // Verify insight exists and belongs to the project
+    const { data: insight, error: insightError } = await supabase
+      .from('saved_insights')
+      .select('id')
+      .eq('id', insightId)
+      .eq('project_id', params.projectId)
+      .eq('user_id', userId)
+      .single();
+
+    if (insightError) {
+      console.error('Insight verification error:', insightError);
+      return new NextResponse(
+        JSON.stringify({ error: 'Insight not found or access denied' }),
+        { status: 404 }
+      );
+    }
+
+    // Delete the insight
     const { error: deleteError } = await supabase
       .from('saved_insights')
       .delete()
       .eq('id', insightId)
       .eq('project_id', params.projectId)
+      .eq('user_id', userId);
 
     if (deleteError) {
-      console.error('Error deleting saved insight:', deleteError)
-      return NextResponse.json(
-        { error: 'Failed to delete insight' },
+      console.error('Error deleting insight:', deleteError);
+      return new NextResponse(
+        JSON.stringify({ error: 'Failed to delete insight' }),
         { status: 500 }
-      )
+      );
     }
 
-    return NextResponse.json({ success: true })
+    return new NextResponse(null, { status: 204 });
   } catch (error) {
-    console.error('Error deleting saved insight:', error)
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
+    console.error('Error in DELETE /api/projects/[projectId]/insights:', error);
+    return new NextResponse(
+      JSON.stringify({ 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }),
       { status: 500 }
-    )
+    );
   }
 } 
