@@ -197,4 +197,89 @@ export async function GET(
       { status: 500 }
     )
   }
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: { projectId: string } }
+) {
+  try {
+    const { userId } = auth()
+    if (!userId) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401 }
+      )
+    }
+
+    const body = await request.json()
+    const { id, notes } = body
+
+    if (!id) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Summary ID is required' }),
+        { status: 400 }
+      )
+    }
+
+    // Verify project ownership
+    const { data: project, error: projectError } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('id', params.projectId)
+      .eq('user_id', userId)
+      .single()
+
+    if (projectError || !project) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Project not found or access denied' }),
+        { status: 404 }
+      )
+    }
+
+    // Verify summary belongs to the project
+    const { data: existingSummary, error: summaryError } = await supabase
+      .from('insight_summaries')
+      .select('id')
+      .eq('id', id)
+      .eq('project_id', params.projectId)
+      .single()
+
+    if (summaryError || !existingSummary) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Summary not found or does not belong to this project' }),
+        { status: 404 }
+      )
+    }
+
+    // Update the summary notes
+    const { data: updatedSummary, error: updateError } = await supabase
+      .from('insight_summaries')
+      .update({ notes, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (updateError) {
+      console.error('Error updating summary notes:', updateError)
+      return new NextResponse(
+        JSON.stringify({ error: 'Failed to update summary notes' }),
+        { status: 500 }
+      )
+    }
+
+    return new NextResponse(
+      JSON.stringify(updatedSummary),
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error('Error in PUT /api/projects/[projectId]/summaries:', error)
+    return new NextResponse(
+      JSON.stringify({ 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }),
+      { status: 500 }
+    )
+  }
 } 

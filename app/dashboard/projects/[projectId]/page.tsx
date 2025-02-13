@@ -35,6 +35,7 @@ import { ProjectTasks } from '@/components/projects/project-tasks'
 import { ProjectInsights } from '@/components/projects/project-insights'
 import { ProjectNotes } from '@/components/projects/project-notes'
 import { toast } from '@/components/ui/use-toast'
+import { toast as sonnerToast } from "sonner"
 import { ProjectSummaries } from '@/components/projects/project-summaries'
 
 const STATUS_COLORS = {
@@ -244,6 +245,40 @@ export default function ProjectPage() {
     setNotes((prev) => prev.filter((note) => note.id !== noteId))
   }
 
+  const handleUpdateNotes = async (summaryId: string, notes: string) => {
+    try {
+      const response = await fetch(`/api/projects/${params.projectId}/summaries`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: summaryId,
+          notes,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update notes')
+      }
+
+      const updatedSummary = await response.json()
+      
+      // Update the summaries state with the new notes
+      setSummaries(prev => prev.map(summary => 
+        summary.id === summaryId 
+          ? { ...summary, notes: updatedSummary.notes }
+          : summary
+      ))
+
+      sonnerToast.success('Notes updated successfully')
+    } catch (error) {
+      console.error('Error updating notes:', error)
+      sonnerToast.error(error instanceof Error ? error.message : 'Failed to update notes')
+    }
+  }
+
   if (!isLoaded || loading) {
     return (
       <div className="flex items-center justify-center h-[50vh]">
@@ -254,175 +289,142 @@ export default function ProjectPage() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
-        <p className="text-muted-foreground">{error}</p>
-        <Button onClick={() => window.location.reload()}>
-          Try Again
-        </Button>
+      <div className="flex items-center justify-center h-[50vh]">
+        <p className="text-red-500">{error}</p>
       </div>
     )
   }
 
   if (!project) {
     return (
-      <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
-        <p className="text-muted-foreground">Project not found</p>
-        <Button onClick={() => window.history.back()}>
-          Go Back
-        </Button>
+      <div className="flex items-center justify-center h-[50vh]">
+        <p>Project not found</p>
       </div>
     )
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Back button */}
-      <Button
-        variant="ghost"
-        className="mb-6"
-        onClick={() => router.push('/dashboard/projects')}
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Projects
-      </Button>
+  const projectName = project?.title || 'Project'
+  const projectDescription = project?.description
+  const projectStatus = project?.status || 'not_started'
 
-      {/* Project Details */}
-      <Card>
-        <CardHeader className="relative">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              {isEditing ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      className="text-3xl font-bold h-auto py-2 px-3"
-                      placeholder="Project Title"
-                    />
-                    <div className="flex gap-2">
-                      <Button 
-                        onClick={handleSaveEdit}
-                        disabled={!editTitle.trim()}
-                        size="sm"
-                      >
-                        <Check className="h-4 w-4 mr-1" />
-                        Save
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => {
-                          setIsEditing(false)
-                          setEditTitle(project?.title || '')
-                        }}
-                        size="sm"
-                      >
-                        <X className="h-4 w-4 mr-1" />
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
+  return (
+    <div className="container py-6 space-y-6">
+      <Card className="w-full">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => router.push('/dashboard/projects')}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            {isEditing ? (
+              <div className="flex-1">
+                <Input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="text-2xl font-bold mb-2"
+                />
+                <Textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Project description"
+                  className="resize-none"
+                />
+                <div className="flex items-center gap-2 mt-2">
+                  <Button size="sm" onClick={handleSaveEdit}>
+                    <Check className="h-4 w-4 mr-1" />
+                    Save
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>
+                    <X className="h-4 w-4 mr-1" />
+                    Cancel
+                  </Button>
                 </div>
-              ) : (
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-3xl font-bold mb-2">{project?.title}</CardTitle>
-                    <CardDescription className="text-base">{project?.description}</CardDescription>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setIsEditing(true)}
-                  >
+              </div>
+            ) : (
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold">{projectName}</h1>
+                  <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)}>
                     <Pencil className="h-4 w-4" />
                   </Button>
                 </div>
-              )}
-            </div>
-            <div className="ml-6">
-              <Select value={status} onValueChange={handleStatusChange}>
-                <SelectTrigger className={`w-[180px] ${STATUS_COLORS[status]}`}>
-                  <SelectValue placeholder="Select stage" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="planning">Planning</SelectItem>
-                  <SelectItem value="inprogress">In Progress</SelectItem>
-                  <SelectItem value="onhold">On Hold</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                {projectDescription && (
+                  <p className="text-muted-foreground mt-1">{projectDescription}</p>
+                )}
+              </div>
+            )}
+            <Select value={status} onValueChange={handleStatusChange}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue>
+                  <Badge className={STATUS_COLORS[status]}>
+                    {STATUS_LABELS[status]}
+                  </Badge>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    <Badge className={STATUS_COLORS[value as ProjectStatus]}>
+                      {label}
+                    </Badge>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </CardHeader>
+        </CardContent>
       </Card>
 
-      {/* Project Insights */}
-      <Card>
+      <Card className="w-full">
+        <CardContent className="pt-6">
+          <ProjectTasks
+            tasks={tasks}
+            projectId={projectId}
+            onAdd={handleAddTask}
+            onUpdate={handleUpdateTask}
+            onDelete={handleDeleteTask}
+          />
+        </CardContent>
+      </Card>
+
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Saved Insights</CardTitle>
-          <CardDescription>
-            Insights and research saved to this project
-          </CardDescription>
         </CardHeader>
         <CardContent>
-          <ProjectInsights insights={insights} isLoading={loading} />
+          <ProjectInsights
+            insights={insights}
+            isLoading={loading}
+          />
         </CardContent>
       </Card>
 
-      {/* Insight Summaries */}
-      <Card>
+      <Card className="w-full">
         <CardHeader>
-          <CardTitle>Insight Summaries</CardTitle>
-          <CardDescription>
-            Generated summaries of search results
-          </CardDescription>
+          <CardTitle>Project Summaries</CardTitle>
         </CardHeader>
         <CardContent>
-          <ProjectSummaries summaries={summaries} isLoading={summariesLoading} />
+          <ProjectSummaries
+            summaries={summaries}
+            isLoading={summariesLoading}
+            onUpdateNotes={handleUpdateNotes}
+          />
         </CardContent>
       </Card>
 
-      {/* Tasks and Notes Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Tasks Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Tasks</CardTitle>
-            <CardDescription>
-              Track and manage project tasks
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ProjectTasks
-              tasks={tasks}
-              projectId={projectId}
-              onAdd={handleAddTask}
-              onUpdate={handleUpdateTask}
-              onDelete={handleDeleteTask}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Notes Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Project Notes</CardTitle>
-            <CardDescription>
-              Keep track of ideas, thoughts, and important information
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ProjectNotes
-              notes={notes}
-              projectId={projectId}
-              onAdd={handleAddNote}
-              onUpdate={handleUpdateNote}
-              onDelete={handleDeleteNote}
-            />
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Project Notes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ProjectNotes
+            notes={notes}
+            projectId={projectId}
+            onAdd={handleAddNote}
+            onUpdate={handleUpdateNote}
+            onDelete={handleDeleteNote}
+          />
+        </CardContent>
+      </Card>
     </div>
   )
 } 

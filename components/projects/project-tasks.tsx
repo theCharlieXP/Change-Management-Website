@@ -9,11 +9,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { format, isValid, startOfToday } from 'date-fns'
-import { CalendarIcon, Plus, X, Loader2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { format, isValid, startOfToday, parseISO } from 'date-fns'
+import { CalendarIcon, Plus, X, Loader2, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ProjectTask, TaskStatus } from '@/types/projects'
 import { toast } from '@/components/ui/use-toast'
+import { TaskEditModal } from './task-edit-modal'
 
 interface ProjectTasksProps {
   tasks: ProjectTask[]
@@ -39,6 +41,8 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete }: Pr
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [editingTask, setEditingTask] = useState<ProjectTask | null>(null)
+  const [taskToDelete, setTaskToDelete] = useState<ProjectTask | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,13 +50,6 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete }: Pr
     setError(null)
 
     try {
-      console.log('Submitting task:', {
-        title,
-        description,
-        status,
-        dueDate
-      })
-
       await onAdd({
         project_id: projectId,
         title,
@@ -84,6 +81,7 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete }: Pr
     setDeletingId(id)
     try {
       await onDelete(id)
+      setTaskToDelete(null)
     } finally {
       setDeletingId(null)
     }
@@ -96,9 +94,14 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete }: Pr
     return format(parsed, 'PPP')
   }
 
+  const getStatusBadgeColor = (status: TaskStatus) => {
+    const statusConfig = TASK_STATUSES.find(s => s.value === status)
+    return statusConfig?.color || 'bg-slate-100 text-slate-800 border-slate-200'
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
+    <div className="w-full">
+      <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">Tasks</h3>
         <Button
           variant="outline"
@@ -117,178 +120,258 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete }: Pr
       </div>
 
       {showAddForm && (
-        <Card>
-          <CardContent className="pt-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="title" className="text-sm font-medium">
-                  Title <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Enter task title"
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="description" className="text-sm font-medium">
-                  Description
-                </label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Enter task description"
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+        <div className="mb-6">
+          <Card>
+            <CardContent className="pt-6">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <label htmlFor="status" className="text-sm font-medium">
-                    Status <span className="text-red-500">*</span>
+                  <label htmlFor="title" className="text-sm font-medium">
+                    Title <span className="text-red-500">*</span>
                   </label>
-                  <Select
-                    value={status}
-                    onValueChange={(value: TaskStatus) => setStatus(value)}
+                  <Input
+                    id="title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Enter task title"
+                    required
                     disabled={loading}
-                  >
-                    <SelectTrigger id="status">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TASK_STATUSES.map((status) => (
-                        <SelectItem key={status.value} value={status.value}>
-                          {status.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Due Date</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !dueDate && "text-muted-foreground"
-                        )}
-                        disabled={loading}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dueDate && isValid(dueDate) ? format(dueDate, "PPP") : "Pick a date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <div className="p-3 border-b">
-                        <Button 
-                          variant="ghost" 
-                          className="text-sm w-full justify-start font-normal"
-                          onClick={() => setDueDate(undefined)}
+                  <label htmlFor="description" className="text-sm font-medium">
+                    Description
+                  </label>
+                  <Textarea
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Enter task description"
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="status" className="text-sm font-medium">
+                      Status <span className="text-red-500">*</span>
+                    </label>
+                    <Select
+                      value={status}
+                      onValueChange={(value: TaskStatus) => setStatus(value)}
+                      disabled={loading}
+                    >
+                      <SelectTrigger id="status">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TASK_STATUSES.map((status) => (
+                          <SelectItem key={status.value} value={status.value}>
+                            {status.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Due Date</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !dueDate && "text-muted-foreground"
+                          )}
+                          disabled={loading}
                         >
-                          Clear date
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dueDate ? format(dueDate, "PPP") : "Pick a date"}
                         </Button>
-                      </div>
-                      <Calendar
-                        mode="single"
-                        selected={dueDate}
-                        onSelect={setDueDate}
-                        disabled={(date) => date < startOfToday()}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                      </PopoverTrigger>
+                      <PopoverContent 
+                        className="w-auto p-0" 
+                        align="start"
+                      >
+                        <div className="p-0">
+                          <Calendar
+                            mode="single"
+                            selected={dueDate}
+                            onSelect={setDueDate}
+                            disabled={(date) => date < startOfToday()}
+                            initialFocus
+                            className="p-3"
+                            classNames={{
+                              months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                              month: "space-y-4",
+                              caption: "flex justify-center pt-1 relative items-center",
+                              caption_label: "text-sm font-medium",
+                              nav: "space-x-1 flex items-center",
+                              nav_button: cn(
+                                "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+                              ),
+                              nav_button_previous: "absolute left-1",
+                              nav_button_next: "absolute right-1",
+                              table: "w-full border-collapse space-y-1",
+                              head_row: "flex",
+                              head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
+                              row: "flex w-full mt-2",
+                              cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                              day: cn(
+                                "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
+                              ),
+                              day_range_end: "day-range-end",
+                              day_selected:
+                                "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+                              day_today: "bg-accent text-accent-foreground",
+                              day_outside:
+                                "day-outside text-muted-foreground opacity-50",
+                              day_disabled: "text-muted-foreground opacity-50",
+                              day_range_middle:
+                                "aria-selected:bg-accent aria-selected:text-accent-foreground",
+                              day_hidden: "invisible",
+                            }}
+                          />
+                          {dueDate && (
+                            <div className="p-3 border-t">
+                              <Button 
+                                variant="ghost" 
+                                className="w-full justify-start text-sm font-normal"
+                                onClick={() => setDueDate(undefined)}
+                              >
+                                Clear date
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
-              </div>
 
-              {error && (
-                <div className="text-sm text-red-500">
-                  {error}
+                {error && (
+                  <div className="text-sm text-red-500">
+                    {error}
+                  </div>
+                )}
+
+                <div className="flex justify-end">
+                  <Button
+                    type="submit"
+                    disabled={loading || !title}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Adding Task...
+                      </>
+                    ) : (
+                      'Add Task'
+                    )}
+                  </Button>
                 </div>
-              )}
-
-              <div className="flex justify-end">
-                <Button
-                  type="submit"
-                  disabled={loading || !title}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Adding Task...
-                    </>
-                  ) : (
-                    'Add Task'
-                  )}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {tasks.map((task) => (
-          <Card key={task.id} className="relative">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-2 right-2"
-              onClick={() => handleDelete(task.id)}
-              disabled={deletingId === task.id}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-            <CardHeader>
-              <div className="flex items-start gap-2">
-                <Select
-                  value={task.status}
-                  onValueChange={(value: TaskStatus) => onUpdate(task.id, { status: value })}
-                >
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue>
-                      <Badge className={cn(
-                        TASK_STATUSES.find(s => s.value === task.status)?.color
-                      )}>
-                        {TASK_STATUSES.find(s => s.value === task.status)?.label}
-                      </Badge>
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TASK_STATUSES.map((status) => (
-                      <SelectItem key={status.value} value={status.value}>
-                        <Badge className={cn(status.color)}>
-                          {status.label}
-                        </Badge>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="flex-1">
-                  <CardTitle>{task.title}</CardTitle>
-                  {task.description && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {task.description}
-                    </p>
-                  )}
-                  {task.due_date && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Due: {formatDate(task.due_date)}
-                    </p>
-                  )}
+          <div 
+            key={task.id} 
+            className="p-4 rounded-lg border border-border hover:border-border/80 hover:bg-muted/50 transition-colors"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-2">
+                  <h4 className="font-medium text-base truncate">{task.title}</h4>
+                  <Badge className={cn("capitalize", getStatusBadgeColor(task.status))}>
+                    {TASK_STATUSES.find(s => s.value === task.status)?.label || task.status}
+                  </Badge>
                 </div>
+                {task.description && (
+                  <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                    {task.description}
+                  </p>
+                )}
+                {task.due_date && (
+                  <p className="text-sm text-muted-foreground">
+                    Due: {formatDate(task.due_date)}
+                  </p>
+                )}
               </div>
-            </CardHeader>
-          </Card>
+              <div className="flex items-start gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setEditingTask(task)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setTaskToDelete(task)}
+                  disabled={deletingId === task.id}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
         ))}
+        
+        {tasks.length === 0 && (
+          <div className="py-8 text-center text-muted-foreground">
+            No tasks yet. Click "Add Task" to create one.
+          </div>
+        )}
       </div>
+
+      {editingTask && (
+        <TaskEditModal
+          task={editingTask}
+          open={true}
+          onClose={() => setEditingTask(null)}
+          onUpdate={onUpdate}
+        />
+      )}
+
+      <Dialog open={taskToDelete !== null} onOpenChange={(open) => !open && setTaskToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Task</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this task? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setTaskToDelete(null)}
+              disabled={deletingId !== null}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => taskToDelete && handleDelete(taskToDelete.id)}
+              disabled={deletingId !== null}
+            >
+              {deletingId !== null ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 
