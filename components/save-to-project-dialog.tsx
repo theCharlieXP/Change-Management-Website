@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select"
 import { toast } from "./ui/use-toast"
 import { Insight } from "@/types/insights"
-import { Project } from "@prisma/client"
+import { Project, ProjectStatus } from "@/types/projects"
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@clerk/nextjs'
 
@@ -26,6 +26,7 @@ interface SaveToProjectDialogProps {
   onOpenChange: (open: boolean) => void
   insight: Insight & { notes?: string }
   isLoading: boolean
+  isSummary?: boolean
 }
 
 interface ProjectData {
@@ -42,7 +43,8 @@ export function SaveToProjectDialog({
   open,
   onOpenChange,
   insight,
-  isLoading: initialLoading
+  isLoading: initialLoading,
+  isSummary = false
 }: SaveToProjectDialogProps) {
   const { userId, isLoaded, isSignedIn } = useAuth()
   const [selectedProjectId, setSelectedProjectId] = useState<string>("")
@@ -131,49 +133,56 @@ export function SaveToProjectDialog({
     try {
       setIsSaving(true)
       setError(null)
-      console.log('Saving insight to project:', {
-        projectId: selectedProjectId,
-        insightId: insight.id,
-        notes: insight.notes,
-        focusArea: insight.focus_area
-      })
 
-      const response = await fetch('/api/projects/insights', {
+      const endpoint = isSummary 
+        ? `/api/projects/${selectedProjectId}/summaries`
+        : '/api/projects/insights'
+
+      const payload = isSummary
+        ? {
+            title: insight.title,
+            content: Array.isArray(insight.content) ? insight.content.join('\n\n') : insight.content,
+            notes: insight.notes || null,
+            focus_area: insight.focus_area
+          }
+        : {
+            project_id: selectedProjectId,
+            insight: {
+              id: insight.id,
+              title: insight.title,
+              url: insight.url,
+              summary: insight.summary,
+              notes: insight.notes,
+              focus_area: insight.focus_area
+            }
+          }
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          project_id: selectedProjectId,
-          insight: {
-            id: insight.id,
-            title: insight.title,
-            url: insight.url,
-            summary: insight.summary,
-            notes: insight.notes,
-            focus_area: insight.focus_area
-          }
-        })
+        body: JSON.stringify(payload)
       })
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.details || 'Failed to save insight')
+        throw new Error(errorData.details || `Failed to save ${isSummary ? 'summary' : 'insight'}`)
       }
 
       toast({
         title: "Success",
-        description: "Insight saved to project"
+        description: `${isSummary ? 'Summary' : 'Insight'} saved to project`
       })
 
       onOpenChange(false)
       setSelectedProjectId('')
     } catch (error) {
-      console.error('Error saving insight:', error)
-      setError(error instanceof Error ? error.message : 'Failed to save insight')
+      console.error('Error saving:', error)
+      setError(error instanceof Error ? error.message : 'Failed to save')
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save insight. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to save. Please try again.",
         variant: "destructive"
       })
     } finally {
@@ -189,7 +198,7 @@ export function SaveToProjectDialog({
         <DialogHeader>
           <DialogTitle>Save to Project</DialogTitle>
           <DialogDescription>
-            Select a project to save this insight to.
+            Select a project to save this {isSummary ? 'summary' : 'insight'} to.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">

@@ -15,6 +15,7 @@ import { MultiSelect } from "@/components/ui/multi-select"
 import { InsightModal } from '@/components/insight-modal'
 import { InsightCard } from '@/components/insight-card'
 import { CreateProjectDialog } from '@/components/projects/create-project-dialog'
+import { INSIGHT_FOCUS_AREAS } from '@/types/insights'
 import type { Insight, InsightFocusArea } from '@/types/insights'
 import { Project, ProjectStatus } from '@/types/projects'
 import { fetchWithAuth } from '@/lib/fetch-utils'
@@ -22,90 +23,13 @@ import { toast } from "@/components/ui/use-toast"
 import { createClient } from '@supabase/supabase-js'
 import { useToast } from '@/components/ui/use-toast'
 import { useAuth } from '@clerk/nextjs'
+import { Textarea } from "@/components/ui/textarea"
 
 type TimeframeValue = 
   | 'last_day'
   | 'last_week'
   | 'last_month'
   | 'last_year'
-
-const INSIGHT_FOCUS_AREAS: Record<InsightFocusArea, { label: string; color: string; description: string }> = {
-  ['challenges-barriers']: { 
-    label: 'Challenges & Barriers', 
-    color: 'bg-red-100 text-red-800 border-red-200',
-    description: 'Resistance to change, resource constraints, technological limitations'
-  },
-  ['strategies-solutions']: { 
-    label: 'Strategies & Solutions', 
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
-    description: 'Approaches to overcome obstacles, implementation methods, innovative practices'
-  },
-  ['outcomes-results']: { 
-    label: 'Outcomes & Results', 
-    color: 'bg-green-100 text-green-800 border-green-200',
-    description: 'ROI, productivity improvements, employee satisfaction metrics'
-  },
-  ['key-stakeholders-roles']: { 
-    label: 'Key Stakeholders & Roles', 
-    color: 'bg-purple-100 text-purple-800 border-purple-200',
-    description: 'Leadership involvement, employee participation, external partners'
-  },
-  ['best-practices-methodologies']: { 
-    label: 'Best Practices & Methodologies', 
-    color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    description: 'Agile, Kotter\'s 8-Step Process, ADKAR model'
-  },
-  ['lessons-learned-insights']: { 
-    label: 'Lessons Learned & Insights', 
-    color: 'bg-orange-100 text-orange-800 border-orange-200',
-    description: 'Successes and failures, actionable takeaways, case study reflections'
-  },
-  ['implementation-tactics']: { 
-    label: 'Implementation Tactics', 
-    color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    description: 'Training programs, communication plans, technology deployment'
-  },
-  ['communication-engagement']: { 
-    label: 'Communication & Engagement', 
-    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-    description: 'Stakeholder communication strategies, employee engagement techniques, feedback mechanisms'
-  },
-  ['metrics-performance']: { 
-    label: 'Metrics & Performance Indicators', 
-    color: 'bg-pink-100 text-pink-800 border-pink-200',
-    description: 'Key Performance Indicators (KPIs), performance metrics, adoption rates'
-  },
-  ['risk-management']: { 
-    label: 'Risk Management & Mitigation', 
-    color: 'bg-rose-100 text-rose-800 border-rose-200',
-    description: 'Risk identification, mitigation strategies, contingency planning'
-  },
-  ['technology-tools']: { 
-    label: 'Technology & Tools', 
-    color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
-    description: 'Project management software, communication platforms, analytics tools'
-  },
-  ['cultural-transformation']: { 
-    label: 'Cultural Transformation', 
-    color: 'bg-teal-100 text-teal-800 border-teal-200',
-    description: 'Shifting organizational culture, values alignment, behavior change'
-  },
-  ['change-leadership']: { 
-    label: 'Change Leadership', 
-    color: 'bg-violet-100 text-violet-800 border-violet-200',
-    description: 'Leadership roles in change, leadership training, change champions'
-  },
-  ['employee-training']: { 
-    label: 'Employee Training & Development', 
-    color: 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200',
-    description: 'Skill development programs, training initiatives, continuous learning'
-  },
-  ['change-sustainability']: { 
-    label: 'Change Sustainability', 
-    color: 'bg-sky-100 text-sky-800 border-sky-200',
-    description: 'Ensuring long-term change, embedding change into organizational processes'
-  }
-}
 
 const INDUSTRIES = [
   'Healthcare',
@@ -189,6 +113,9 @@ export default function InsightsPage() {
   const [insightNotes, setInsightNotes] = useState<Record<string, string>>({})
   const [projects, setProjects] = useState<Project[]>([])
   const [projectsLoading, setProjectsLoading] = useState(true)
+  const [summary, setSummary] = useState<string | null>(null)
+  const [summaryNotes, setSummaryNotes] = useState<string>("")
+  const [isSummarizing, setIsSummarizing] = useState(false)
   const { toast } = useToast()
 
   // Fetch projects when auth is ready
@@ -384,6 +311,44 @@ export default function InsightsPage() {
     closeModal()
   }
 
+  const generateSummary = async () => {
+    if (!insights.length) return;
+    
+    setIsSummarizing(true);
+    try {
+      const response = await fetch('/api/insights/summarize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          insights,
+          focusArea
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate summary');
+      }
+
+      const data = await response.json();
+      setSummary(data.summary);
+      toast({
+        title: "Summary Generated",
+        description: "The summary has been generated successfully.",
+      });
+    } catch (error) {
+      console.error('Error generating summary:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate summary. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
   return (
     <div className="container mx-auto py-8">
       {/* Add the test button */}
@@ -553,84 +518,158 @@ export default function InsightsPage() {
         )}
 
         {/* Results */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {insights.length === 0 && !loading ? (
-            <div className="col-span-full text-center text-gray-500">
-              {query || focusArea ? 
-                'No results found. Try adjusting your search criteria or selecting different filters.' : 
-                'Select an Insight Focus Area and start searching.'}
-            </div>
-          ) : (
-            insights.map((insight) => (
-              <div 
-                key={insight.id} 
-                className="bg-white rounded-lg border transition-all duration-200 hover:shadow-lg"
+        <div className="mt-8">
+          {insights.length > 0 && (
+            <div className="mb-6 flex justify-end">
+              <Button
+                onClick={generateSummary}
+                disabled={isSummarizing}
+                className="bg-green-600 hover:bg-green-700 text-white"
               >
-                <div className="p-4 flex flex-col h-full">
-                  {/* Header */}
-                  <div className="flex flex-col gap-2 mb-3">
-                    <h2 className="text-lg font-semibold">
-                      {insight.title.replace(/["']/g, '')}
-                    </h2>
-                  </div>
+                {isSummarizing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Summarizing...
+                  </>
+                ) : (
+                  'Summarise Results'
+                )}
+              </Button>
+            </div>
+          )}
 
-                  {/* Preview */}
-                  <div className="flex-grow">
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {insight.summary.split('\n')[0]?.replace(/^[•-]\s*/, '')}
-                    </p>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="mt-4 pt-4 border-t flex items-end justify-between">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openModal(insight.id)}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        Expand
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        asChild
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <Link href={insight.url || '#'} target="_blank">
-                          <ExternalLink className="h-4 w-4 mr-1" />
-                          Full article
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground hover:text-foreground"
-                        onClick={() => setSelectedInsight(insight.id)}
-                      >
-                        <BookmarkPlus className="h-4 w-4 mr-1" />
-                        Save
-                      </Button>
+          {summary && (
+            <div className="mb-8 bg-white p-6 rounded-lg border shadow-sm">
+              <h2 className="text-xl font-semibold mb-6">Summary of Results</h2>
+              <div className="space-y-8">
+                {summary.split('\n\n').map((section, index) => {
+                  const [heading, ...points] = section.split('\n');
+                  return (
+                    <div key={index} className="space-y-3">
+                      <h3 className="text-lg font-medium text-gray-900">{heading}</h3>
+                      <ul className="space-y-2">
+                        {points.map((point, pointIndex) => (
+                          <li key={pointIndex} className="text-sm text-gray-700 flex items-start">
+                            <span className="mr-2">•</span>
+                            <span>{point.replace(/^[-•]\s*/, '')}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <Badge className={cn("shrink-0", INSIGHT_FOCUS_AREAS[insight.focus_area].color)}>
-                      {INSIGHT_FOCUS_AREAS[insight.focus_area].label}
-                    </Badge>
+                  );
+                })}
+                
+                <div className="mt-8 space-y-4">
+                  <h3 className="text-lg font-medium text-gray-900">Notes</h3>
+                  <Textarea
+                    placeholder="Add your notes about this summary here..."
+                    value={summaryNotes}
+                    onChange={(e) => setSummaryNotes(e.target.value)}
+                    className="min-h-[100px] w-full"
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => setSelectedInsight('summary')}
+                      className="flex items-center gap-2"
+                    >
+                      <BookmarkPlus className="h-4 w-4" />
+                      Save to Project
+                    </Button>
                   </div>
                 </div>
               </div>
-            ))
+            </div>
           )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {insights.length === 0 && !loading ? (
+              <div className="col-span-full text-center text-gray-500">
+                {query || focusArea ? 
+                  'No results found. Try adjusting your search criteria or selecting different filters.' : 
+                  'Select an Insight Focus Area and start searching.'}
+              </div>
+            ) : (
+              insights.map((insight) => (
+                <div 
+                  key={insight.id} 
+                  className="bg-white rounded-lg border transition-all duration-200 hover:shadow-lg"
+                >
+                  <div className="p-4 flex flex-col h-full">
+                    {/* Header */}
+                    <div className="flex flex-col gap-2 mb-3">
+                      <h2 className="text-lg font-semibold">
+                        {insight.title.replace(/["']/g, '')}
+                      </h2>
+                    </div>
+
+                    {/* Preview */}
+                    <div className="flex-grow">
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {insight.summary.split('\n')[0]?.replace(/^[•-]\s*/, '')}
+                      </p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="mt-4 pt-4 border-t flex items-end justify-between">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openModal(insight.id)}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          Expand
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          asChild
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <Link href={insight.url || '#'} target="_blank">
+                            <ExternalLink className="h-4 w-4 mr-1" />
+                            Full article
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={() => setSelectedInsight(insight.id)}
+                        >
+                          <BookmarkPlus className="h-4 w-4 mr-1" />
+                          Save
+                        </Button>
+                      </div>
+                      <Badge className={cn("shrink-0", INSIGHT_FOCUS_AREAS[insight.focus_area].color)}>
+                        {INSIGHT_FOCUS_AREAS[insight.focus_area].label}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
       {/* Modal */}
       {selectedInsight && (
         <InsightModal
-          insight={insights.find(i => i.id === selectedInsight)!}
+          insight={selectedInsight === 'summary' ? {
+            id: 'summary',
+            title: 'Search Results Summary',
+            summary: summary || '',
+            content: summary?.split('\n\n') || [],
+            tags: [],
+            readTime: '5 min',
+            focus_area: focusArea!,
+            notes: summaryNotes || undefined
+          } : insights.find(i => i.id === selectedInsight)!}
           isOpen={!!selectedInsight}
           onClose={() => setSelectedInsight(null)}
           isProjectsLoading={projectsLoading}
+          isSummary={selectedInsight === 'summary'}
         />
       )}
     </div>

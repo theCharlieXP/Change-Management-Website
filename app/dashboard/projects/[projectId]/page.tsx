@@ -35,6 +35,7 @@ import { ProjectInsights } from '@/components/projects/project-insights'
 import { ProjectNotes } from '@/components/projects/project-notes'
 import { toast } from '@/components/ui/use-toast'
 import type { SavedInsight } from '@/types/insights'
+import { ProjectSummaries } from '@/components/projects/project-summaries'
 
 const STATUS_COLORS = {
   'planning': 'text-blue-600 bg-blue-50',
@@ -67,6 +68,8 @@ export default function ProjectPage() {
   const [editDescription, setEditDescription] = useState('')
   const [insights, setInsights] = useState<SavedInsight[]>([])
   const [notes, setNotes] = useState<ProjectNote[]>([])
+  const [summaries, setSummaries] = useState<InsightSummary[]>([])
+  const [summariesLoading, setSummariesLoading] = useState(true)
 
   useEffect(() => {
     if (!isLoaded) {
@@ -127,6 +130,32 @@ export default function ProjectPage() {
 
     fetchData()
   }, [isLoaded, isSignedIn, userId, params.projectId, projectId, router])
+
+  useEffect(() => {
+    const fetchSummaries = async () => {
+      if (!params.projectId) return
+
+      try {
+        const response = await fetch(`/api/projects/${params.projectId}/summaries`)
+        if (!response.ok) {
+          throw new Error('Failed to fetch summaries')
+        }
+        const data = await response.json()
+        setSummaries(data)
+      } catch (error) {
+        console.error('Error fetching summaries:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load summaries",
+          variant: "destructive"
+        })
+      } finally {
+        setSummariesLoading(false)
+      }
+    }
+
+    fetchSummaries()
+  }, [params.projectId, toast])
 
   const handleStatusChange = async (newStatus: ProjectStatus) => {
     try {
@@ -294,6 +323,19 @@ export default function ProjectPage() {
         </CardContent>
       </Card>
 
+      {/* Insight Summaries */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Insight Summaries</CardTitle>
+          <CardDescription>
+            Generated summaries of search results
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ProjectSummaries summaries={summaries} isLoading={summariesLoading} />
+        </CardContent>
+      </Card>
+
       {/* Tasks and Notes Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Tasks Section */}
@@ -334,18 +376,6 @@ export default function ProjectPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Insight Summaries Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Insight Summaries</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">No summaries generated yet</p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 } 

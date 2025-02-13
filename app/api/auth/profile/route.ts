@@ -2,24 +2,53 @@ import { auth } from '@clerk/nextjs';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 
 export async function GET() {
   try {
     console.log('Profile API route accessed');
-    const { userId } = auth();
-    console.log('Auth userId:', userId);
     
-    if (!userId) {
-      console.log('No userId found in auth');
-      return NextResponse.json({ error: 'Unauthorized', details: 'No userId found' }, { status: 401 });
+    // Get auth info from Clerk
+    const { userId } = auth();
+    const headersList = headers();
+    const headerUserId = headersList.get('x-user-id');
+    const authHeader = headersList.get('authorization');
+    
+    console.log('Auth info:', { 
+      clerkUserId: userId,
+      headerUserId,
+      hasAuthHeader: !!authHeader
+    });
+
+    // Verify user is authenticated
+    if (!userId || !headerUserId || userId !== headerUserId) {
+      console.log('Authentication mismatch or missing:', {
+        clerkUserId: userId,
+        headerUserId,
+        match: userId === headerUserId
+      });
+      return NextResponse.json({ 
+        error: 'Unauthorized', 
+        message: 'Invalid or missing authentication',
+        debug: { 
+          clerkUserId: userId,
+          headerUserId,
+          hasAuthHeader: !!authHeader
+        }
+      }, { status: 401 });
     }
 
+    // Create Supabase client with service role
     console.log('Creating Supabase client');
     const cookieStore = cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
       {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false
+        },
         cookies: {
           get(name: string) {
             return cookieStore.get(name)?.value;
@@ -49,48 +78,56 @@ export async function GET() {
         .from('profiles')
         .select('count');
       
-      console.log('Supabase connection test:', { 
-        data: testData, 
-        error: testError,
-        url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-        hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      });
-      
       if (testError) {
-        throw new Error(`Supabase connection test failed: ${testError.message}`);
+        console.error('Supabase connection test failed:', testError);
+        throw testError;
       }
-    } catch (testError) {
+      
+      console.log('Supabase connection test successful:', testData);
+    } catch (testError: any) {
       console.error('Supabase connection test error:', testError);
       return NextResponse.json({ 
         error: 'Database connection error', 
-        details: testError,
+        details: {
+          message: testError.message,
+          code: testError.code,
+          hint: testError.hint
+        },
         env: {
           hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-          hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+          hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
         }
       }, { status: 500 });
     }
 
+    // Check for existing profile
     console.log('Checking for existing profile');
-    // Check if profile exists
     const { data: profile, error: fetchError } = await supabase
       .from('profiles')
       .select('*')
       .eq('user_id', userId)
       .single();
 
-    console.log('Profile check result:', { profile, error: fetchError });
+    console.log('Profile check result:', { 
+      hasProfile: !!profile, 
+      errorCode: fetchError?.code,
+      errorMessage: fetchError?.message 
+    });
 
     if (fetchError && fetchError.code !== 'PGRST116') {
       console.error('Error fetching profile:', fetchError);
       return NextResponse.json({ 
         error: 'Error fetching profile', 
-        details: fetchError,
-        userId: userId
+        details: {
+          message: fetchError.message,
+          code: fetchError.code,
+          hint: fetchError.hint
+        },
+        userId
       }, { status: 500 });
     }
 
-    // If profile doesn't exist, create it
+    // Create new profile if it doesn't exist
     if (!profile) {
       console.log('Creating new profile for user:', userId);
       const newProfileData = {
@@ -98,8 +135,7 @@ export async function GET() {
         tier: 'free',
         credits: 100,
       };
-      console.log('New profile data:', newProfileData);
-
+      
       const { data: newProfile, error: insertError } = await supabase
         .from('profiles')
         .insert([newProfileData])
@@ -110,7 +146,11 @@ export async function GET() {
         console.error('Error creating profile:', insertError);
         return NextResponse.json({ 
           error: 'Error creating profile', 
-          details: insertError,
+          details: {
+            message: insertError.message,
+            code: insertError.code,
+            hint: insertError.hint
+          },
           attemptedData: newProfileData
         }, { status: 500 });
       }
@@ -121,11 +161,15 @@ export async function GET() {
 
     console.log('Found existing profile:', profile);
     return NextResponse.json({ profile, created: false });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in profile route:', error);
     return NextResponse.json({ 
       error: 'Internal server error', 
-      details: error,
+      details: {
+        message: error.message,
+        code: error.code,
+        hint: error.hint
+      },
       location: 'profile route catch block'
     }, { status: 500 });
   }

@@ -11,31 +11,100 @@ export default authMiddleware({
     "/sign-in",
     "/sign-up",
     "/api/webhook",
-    "/api/stripe-webhook"
+    "/api/stripe-webhook",
+    "/api/test-db",
+    "/api/test-rest",
+    "/api/auth/profile"
   ],
   // Add routes that don't require authentication
   ignoredRoutes: [
     "/api/webhook",
-    "/api/stripe-webhook"
+    "/api/stripe-webhook",
+    "/api/test-db",
+    "/api/test-rest"
   ],
-  afterAuth(auth, req) {
-    // Handle CORS for authenticated requests
-    const response = NextResponse.next()
-    
-    // Add CORS headers
-    const origin = req.headers.get("origin")
-    response.headers.set("Access-Control-Allow-Origin", origin || "*")
-    response.headers.set("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE")
-    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-    
-    // Handle unauthorized requests
-    if (!auth.userId && !auth.isPublicRoute) {
-      const signInUrl = new URL('/sign-in', req.url)
-      signInUrl.searchParams.set('redirect_url', req.url)
-      return NextResponse.redirect(signInUrl)
+  async afterAuth(auth, req) {
+    // Get the current path
+    const url = new URL(req.url);
+    const path = url.pathname;
+
+    // Handle CORS headers
+    const origin = req.headers.get("origin") || "*"
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Methods": "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-User-Id, X-Session-Token",
+      "Access-Control-Allow-Credentials": "true",
     }
     
-    return response
+    // Handle preflight requests
+    if (req.method === "OPTIONS") {
+      return new NextResponse(null, {
+        status: 204,
+        headers: corsHeaders,
+      })
+    }
+
+    // Create base response with CORS headers
+    const response = NextResponse.next();
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+
+    // If user is signed in and trying to access auth pages, redirect to dashboard
+    if (auth.userId && (path === '/sign-in' || path === '/sign-up' || path === '/')) {
+      return NextResponse.redirect(new URL('/dashboard', req.url));
+    }
+
+    // Special handling for profile API
+    if (path === '/api/auth/profile') {
+      if (!auth.userId) {
+        return NextResponse.json(
+          { error: 'Unauthorized', message: 'Please sign in to access this resource' },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      const requestHeaders = new Headers(req.headers);
+      requestHeaders.set('X-User-Id', auth.userId);
+      
+      if (auth.sessionId) {
+        requestHeaders.set('X-Session-Id', auth.sessionId);
+      }
+
+      return NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+        headers: corsHeaders,
+      });
+    }
+
+    // If user is not signed in and trying to access protected pages, redirect to sign-in
+    if (!auth.userId && !auth.isPublicRoute) {
+      const signInUrl = new URL('/sign-in', req.url);
+      signInUrl.searchParams.set('redirect_url', path);
+      return NextResponse.redirect(signInUrl);
+    }
+
+    // Add auth headers if user is signed in
+    if (auth.userId) {
+      const requestHeaders = new Headers(req.headers);
+      requestHeaders.set('X-User-Id', auth.userId);
+      
+      if (auth.sessionId) {
+        requestHeaders.set('X-Session-Id', auth.sessionId);
+      }
+
+      return NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+        headers: corsHeaders,
+      });
+    }
+
+    return response;
   }
 })
 

@@ -1,140 +1,127 @@
 'use client'
 
 import { useState } from 'react'
+import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { X, Copy, Check } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { InsightSummary, InsightFocusArea } from '@/types/insights'
+import { INSIGHT_FOCUS_AREAS } from '@/types/insights'
+import type { InsightFocusArea } from '@/types/insights'
+
+interface InsightSummary {
+  id: string
+  title: string
+  content: string
+  notes: string | null
+  focus_area: InsightFocusArea
+  created_at: string
+  updated_at: string
+}
 
 interface ProjectSummariesProps {
   summaries: InsightSummary[]
+  isLoading?: boolean
 }
 
-const FOCUS_AREAS: Record<InsightFocusArea, { label: string; color: string }> = {
-  'challenges-barriers': { 
-    label: 'Challenges & Barriers',
-    color: 'bg-red-100 text-red-800'
-  },
-  'strategies-solutions': { 
-    label: 'Strategies & Solutions',
-    color: 'bg-blue-100 text-blue-800'
-  },
-  'outcomes-results': { 
-    label: 'Outcomes & Results',
-    color: 'bg-green-100 text-green-800'
-  },
-  'key-stakeholders-roles': { 
-    label: 'Key Stakeholders & Roles',
-    color: 'bg-purple-100 text-purple-800'
-  },
-  'best-practices-methodologies': { 
-    label: 'Best Practices & Methodologies',
-    color: 'bg-yellow-100 text-yellow-800'
-  },
-  'lessons-learned-insights': { 
-    label: 'Lessons Learned & Insights',
-    color: 'bg-orange-100 text-orange-800'
-  },
-  'implementation-tactics': { 
-    label: 'Implementation Tactics',
-    color: 'bg-emerald-100 text-emerald-800'
-  },
-  'communication-engagement': { 
-    label: 'Communication & Engagement',
-    color: 'bg-indigo-100 text-indigo-800'
-  },
-  'metrics-performance': { 
-    label: 'Metrics & Performance',
-    color: 'bg-pink-100 text-pink-800'
-  },
-  'risk-management': { 
-    label: 'Risk Management',
-    color: 'bg-rose-100 text-rose-800'
-  },
-  'technology-tools': { 
-    label: 'Technology & Tools',
-    color: 'bg-cyan-100 text-cyan-800'
-  },
-  'cultural-transformation': { 
-    label: 'Cultural Transformation',
-    color: 'bg-teal-100 text-teal-800'
-  },
-  'change-leadership': { 
-    label: 'Change Leadership',
-    color: 'bg-violet-100 text-violet-800'
-  },
-  'employee-training': { 
-    label: 'Employee Training',
-    color: 'bg-fuchsia-100 text-fuchsia-800'
-  },
-  'change-sustainability': { 
-    label: 'Change Sustainability',
-    color: 'bg-sky-100 text-sky-800'
-  }
-}
+export function ProjectSummaries({ summaries, isLoading = false }: ProjectSummariesProps) {
+  const [expandedSummaryId, setExpandedSummaryId] = useState<string | null>(null)
 
-export function ProjectSummaries({ summaries }: ProjectSummariesProps) {
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
-
-  const handleDelete = async (id: string) => {
-    setDeletingId(id)
-    try {
-      // await onDelete(id)
-    } finally {
-      setDeletingId(null)
-    }
+  const toggleSummary = (id: string) => {
+    setExpandedSummaryId(expandedSummaryId === id ? null : id)
   }
 
-  const handleCopy = async (content: string, id: string) => {
-    try {
-      await navigator.clipboard.writeText(content)
-      setCopiedId(id)
-      setTimeout(() => setCopiedId(null), 2000)
-    } catch (error) {
-      console.error('Failed to copy content:', error)
-    }
-  }
-
-  if (!summaries.length) {
+  if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Insight Summaries</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">No summaries generated yet.</p>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <div className="h-20 bg-muted animate-pulse rounded-lg" />
+        <div className="h-20 bg-muted animate-pulse rounded-lg" />
+        <div className="h-20 bg-muted animate-pulse rounded-lg" />
+      </div>
+    )
+  }
+
+  if (summaries.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        No insight summaries saved to this project yet.
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Insight Summaries</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {summaries.map((summary) => (
-          <div
-            key={summary.id}
-            className="flex flex-col gap-2 p-4 rounded-lg border bg-card"
+    <div className="space-y-4">
+      {summaries.map((summary) => (
+        <Card 
+          key={summary.id}
+          className={cn(
+            "transition-all duration-200",
+            expandedSummaryId === summary.id ? "bg-muted/50" : ""
+          )}
+        >
+          {/* Header - Always visible */}
+          <div 
+            className="p-4 flex items-center justify-between cursor-pointer"
+            onClick={() => toggleSummary(summary.id)}
           >
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-4">
               <h3 className="font-medium">{summary.title}</h3>
-              <Badge className={cn("shrink-0", FOCUS_AREAS[summary.focus_area].color)}>
-                {FOCUS_AREAS[summary.focus_area].label}
+              <Badge 
+                variant="secondary"
+                className={cn(
+                  INSIGHT_FOCUS_AREAS[summary.focus_area].color,
+                  "whitespace-nowrap"
+                )}
+              >
+                {INSIGHT_FOCUS_AREAS[summary.focus_area].label}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground">{summary.content}</p>
-            <div className="text-xs text-muted-foreground">
-              Generated on {new Date(summary.created_at).toLocaleDateString()}
-            </div>
+            <Button variant="ghost" size="icon">
+              {expandedSummaryId === summary.id ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
           </div>
-        ))}
-      </CardContent>
-    </Card>
+
+          {/* Expanded content */}
+          {expandedSummaryId === summary.id && (
+            <div className="px-4 pb-4 border-t pt-4">
+              <div className="grid gap-8">
+                {/* Summary content */}
+                <div className="space-y-6">
+                  {summary.content.split('\n\n').map((section, index) => {
+                    const [heading, ...points] = section.split('\n')
+                    return (
+                      <div key={index} className="space-y-3">
+                        <h4 className="text-sm font-medium text-gray-900">{heading}</h4>
+                        <ul className="space-y-2">
+                          {points.map((point, pointIndex) => (
+                            <li key={pointIndex} className="text-sm text-gray-700 flex items-start">
+                              <span className="mr-2">•</span>
+                              <span>{point.replace(/^[-•]\s*/, '')}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Notes section */}
+                {summary.notes && (
+                  <div className="space-y-4 border-t pt-4">
+                    <h4 className="text-sm font-medium text-gray-900">Notes</h4>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{summary.notes}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </Card>
+      ))}
+    </div>
   )
 } 
