@@ -81,7 +81,7 @@ create table if not exists notes (
       - This page should display the project’s details (title, creation date, and an option to edit project information which will be stored in the database in their respective tables).
 4. Storing Project Data:
   - Tasks: Allow users to add, edit, and delete tasks related to the project. Tasks might include actionable items such as “Review insights” or “Plan meeting agenda.”
-  - Notes: Provide an area where users can add freeform notes or annotations specific to the project.
+  - Notes: Provide an area where users can add freeform notes specific to the project.
   - Saved Insights:
     - Integrate with the Insights section so that when a user is viewing results on the Insights page, they can click a “Save to Project” option.
     - When saving, the selected insight (including its title, summary, source, etc.) and any associated notes entered in the Insights view should be stored under the selected project.

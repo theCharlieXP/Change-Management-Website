@@ -17,19 +17,31 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import type { Project, ProjectStatus, ProjectTask } from '@/types/projects'
-import { getProject, updateProject, getProjectTasks, createProjectTask, updateProjectTask, deleteProjectTask } from '@/lib/supabase'
+import type { Project, ProjectStatus, ProjectTask, ProjectNote, ProjectInsight } from '@/types/projects'
+import { 
+  getProject, 
+  updateProject, 
+  getProjectTasks, 
+  createProjectTask, 
+  updateProjectTask, 
+  deleteProjectTask,
+  getProjectNotes,
+  createProjectNote,
+  updateProjectNote,
+  deleteProjectNote
+} from '@/lib/supabase'
 import { ProjectTasks } from '@/components/projects/project-tasks'
 import { ProjectInsights } from '@/components/projects/project-insights'
+import { ProjectNotes } from '@/components/projects/project-notes'
 import { toast } from '@/components/ui/use-toast'
 import type { SavedInsight } from '@/types/insights'
 
 const STATUS_COLORS = {
-  'planning': 'bg-blue-100 text-blue-800 border-blue-200',
-  'inprogress': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  'onhold': 'bg-orange-100 text-orange-800 border-orange-200',
-  'completed': 'bg-green-100 text-green-800 border-green-200',
-  'cancelled': 'bg-red-100 text-red-800 border-red-200'
+  'planning': 'text-blue-600 bg-blue-50',
+  'inprogress': 'text-yellow-600 bg-yellow-50',
+  'onhold': 'text-orange-600 bg-orange-50',
+  'completed': 'text-green-600 bg-green-50',
+  'cancelled': 'text-red-600 bg-red-50'
 } as const
 
 const STATUS_LABELS = {
@@ -54,6 +66,7 @@ export default function ProjectPage() {
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [insights, setInsights] = useState<SavedInsight[]>([])
+  const [notes, setNotes] = useState<ProjectNote[]>([])
 
   useEffect(() => {
     if (!isLoaded) {
@@ -69,35 +82,34 @@ export default function ProjectPage() {
       return
     }
 
-    const fetchProjectData = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true)
         setError(null)
 
-        // Fetch project details
-        const projectResponse = await fetch(`/api/projects/${params.projectId}`)
-        if (!projectResponse.ok) {
-          if (projectResponse.status === 401) {
-            router.push('/sign-in')
-            return
-          }
-          throw new Error('Failed to fetch project')
+        const [projectRes, notesRes, tasksRes, insightsRes] = await Promise.all([
+          fetch(`/api/projects/${projectId}`),
+          fetch(`/api/projects/${projectId}/notes`),
+          fetch(`/api/projects/${projectId}/tasks`),
+          fetch(`/api/projects/${projectId}/insights`)
+        ])
+
+        if (!projectRes.ok || !notesRes.ok || !tasksRes.ok || !insightsRes.ok) {
+          throw new Error('Failed to fetch project data')
         }
-        const projectData = await projectResponse.json()
+
+        const [projectData, notesData, tasksData, insightsData] = await Promise.all([
+          projectRes.json(),
+          notesRes.json(),
+          tasksRes.json(),
+          insightsRes.json()
+        ])
+
         setProject(projectData)
-
-        // Fetch project insights
-        const insightsResponse = await fetch(`/api/projects/${params.projectId}/insights`)
-        if (!insightsResponse.ok) {
-          throw new Error('Failed to fetch insights')
-        }
-        const insightsData = await insightsResponse.json()
-        setInsights(insightsData)
-
-        const tasksData = await getProjectTasks(projectId)
-        
+        setNotes(notesData)
         setTasks(tasksData)
-        setStatus(projectData.status)
+        setInsights(insightsData)
+        setStatus(projectData.status || 'planning')
         setEditTitle(projectData.title)
         setEditDescription(projectData.description || '')
       } catch (error) {
@@ -113,7 +125,7 @@ export default function ProjectPage() {
       }
     }
 
-    fetchProjectData()
+    fetchData()
   }, [isLoaded, isSignedIn, userId, params.projectId, projectId, router])
 
   const handleStatusChange = async (newStatus: ProjectStatus) => {
@@ -160,6 +172,49 @@ export default function ProjectPage() {
     setTasks((prev) => prev.filter((task) => task.id !== taskId))
   }
 
+  const handleAddNote = async (note: { content: string }): Promise<ProjectNote> => {
+    const response = await fetch(`/api/projects/${projectId}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: note.content }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to add note');
+    }
+
+    const newNote: ProjectNote = await response.json();
+    setNotes((prev) => [...prev, newNote]);
+    return newNote;
+  };
+
+  const handleUpdateNote = async (id: string, note: { content: string }): Promise<ProjectNote> => {
+    const response = await fetch(`/api/projects/${projectId}/notes`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, content: note.content }),
+    });
+
+    if (!response.ok) {
+      toast({
+        title: "Error",
+        description: "Failed to update note",
+        variant: "destructive"
+      });
+      throw new Error('Failed to update note');
+    }
+
+    const updatedNote: ProjectNote = await response.json();
+    // Maintain the order when updating
+    setNotes((prev) => prev.map((n) => (n.id === id ? updatedNote : n)));
+    return updatedNote;
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    await deleteProjectNote(projectId, noteId)
+    setNotes((prev) => prev.filter((note) => note.id !== noteId))
+  }
+
   if (!isLoaded || loading) {
     return (
       <div className="flex items-center justify-center h-[50vh]">
@@ -202,13 +257,27 @@ export default function ProjectPage() {
         Back to Projects
       </Button>
 
-      {/* Project Header */}
+      {/* Project Details */}
       <Card>
         <CardHeader>
-          <CardTitle>{project.title}</CardTitle>
-          {project.description && (
-            <CardDescription>{project.description}</CardDescription>
-          )}
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>{project?.title}</CardTitle>
+              <CardDescription>{project?.description}</CardDescription>
+            </div>
+            <Select value={status} onValueChange={handleStatusChange}>
+              <SelectTrigger className={`w-[180px] ${STATUS_COLORS[status]}`}>
+                <SelectValue placeholder="Select stage" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="planning">Planning</SelectItem>
+                <SelectItem value="inprogress">In Progress</SelectItem>
+                <SelectItem value="onhold">On Hold</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
       </Card>
 
@@ -225,84 +294,46 @@ export default function ProjectPage() {
         </CardContent>
       </Card>
 
-      {/* Project Details */}
-      <div className="space-y-4">
-        <div className="flex items-start justify-between">
-          {isEditing ? (
-            <div className="flex-1 space-y-4">
-              <Input
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                className="text-3xl font-bold h-auto py-1"
-                placeholder="Project title"
-              />
-              <Textarea
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                className="w-full"
-                placeholder="Project description"
-                rows={3}
-              />
-              <div className="flex gap-2">
-                <Button onClick={handleSaveEdit} disabled={!editTitle.trim()}>
-                  <Check className="h-4 w-4 mr-2" />
-                  Save Changes
-                </Button>
-                <Button variant="ghost" onClick={() => {
-                  setIsEditing(false)
-                  setEditTitle(project.title)
-                  setEditDescription(project.description || '')
-                }}>
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold">{project.title}</h1>
-              {project.description && (
-                <p className="mt-2 text-muted-foreground">{project.description}</p>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsEditing(true)}
-                className="mt-2"
-              >
-                <Pencil className="h-4 w-4 mr-2" />
-                Edit Project
-              </Button>
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">
-            Created {format(new Date(project?.created_at || ''), 'MMM d, yyyy')}
-          </span>
-          <Select value={status} onValueChange={handleStatusChange}>
-            <SelectTrigger className={`w-[180px] ${STATUS_COLORS[status]}`}>
-              <SelectValue placeholder="Select stage" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="planning">Planning</SelectItem>
-              <SelectItem value="inprogress">In Progress</SelectItem>
-              <SelectItem value="onhold">On Hold</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      {/* Tasks and Notes Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Tasks Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Tasks</CardTitle>
+            <CardDescription>
+              Track and manage project tasks
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ProjectTasks
+              tasks={tasks}
+              projectId={projectId}
+              onAdd={handleAddTask}
+              onUpdate={handleUpdateTask}
+              onDelete={handleDeleteTask}
+            />
+          </CardContent>
+        </Card>
 
-      {/* Tasks Section */}
-      <ProjectTasks
-        projectId={project.id}
-        tasks={tasks}
-        onAdd={handleAddTask}
-        onUpdate={handleUpdateTask}
-        onDelete={handleDeleteTask}
-      />
+        {/* Notes Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Project Notes</CardTitle>
+            <CardDescription>
+              Keep track of ideas, thoughts, and important information
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ProjectNotes
+              notes={notes}
+              projectId={projectId}
+              onAdd={handleAddNote}
+              onUpdate={handleUpdateNote}
+              onDelete={handleDeleteNote}
+            />
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Insight Summaries Section */}
       <Card>
@@ -313,19 +344,6 @@ export default function ProjectPage() {
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">No summaries generated yet</p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Notes Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Notes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea 
-            placeholder="Add your project notes here..." 
-            className="w-full min-h-[200px]"
-          />
         </CardContent>
       </Card>
     </div>

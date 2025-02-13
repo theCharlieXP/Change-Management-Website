@@ -300,4 +300,75 @@ async function getProjectTaskDetails(taskId: string): Promise<ProjectTask | null
     console.error('Error in getProjectTaskDetails:', error)
     return null
   }
+}
+
+// Note related database functions
+export async function getProjectNotes(projectId: string) {
+  try {
+    const response = await fetch(`/api/projects/${projectId}/notes`)
+    if (!response.ok) {
+      throw new Error('Failed to fetch notes')
+    }
+    return await response.json()
+  } catch (error) {
+    console.error('Error in getProjectNotes:', error)
+    throw error
+  }
+}
+
+export async function createProjectNote(projectId: string, note: { content: string }) {
+  try {
+    const response = await fetch(`/api/projects/${projectId}/notes`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(note)
+    })
+    
+    if (!response.ok) {
+      throw new Error('Failed to create note')
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('Error in createProjectNote:', error)
+    throw error
+  }
+}
+
+export async function updateProjectNote(projectId: string, noteId: string, updates: { content: string }) {
+  try {
+    const response = await fetch(`/api/projects/${projectId}/notes`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id: noteId, ...updates })
+    })
+    
+    if (!response.ok) {
+      throw new Error('Failed to update note')
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('Error in updateProjectNote:', error)
+    throw error
+  }
+}
+
+export async function deleteProjectNote(projectId: string, noteId: string) {
+  try {
+    const response = await fetch(`/api/projects/${projectId}/notes?noteId=${noteId}`, {
+      method: 'DELETE'
+    })
+    
+    if (!response.ok) {
+      throw new Error('Failed to delete note')
+    }
+  } catch (error) {
+    console.error('Error in deleteProjectNote:', error)
+    throw error
+  }
 } 
