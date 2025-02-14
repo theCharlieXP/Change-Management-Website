@@ -17,11 +17,11 @@ export function CreateProjectDialog({ onProjectCreated }: CreateProjectDialogPro
   const [open, setOpen] = useState(false)
   const { user } = useUser()
 
-  const handleProjectCreated = async (title: string, description: string = '') => {
+  const handleProjectCreated = async (title: string) => {
     if (!user) return
 
     try {
-      const newProject = await createProject(user.id, title, description)
+      const newProject = await createProject(user.id, title)
       onProjectCreated?.(newProject)
       setOpen(false)
     } catch (error) {

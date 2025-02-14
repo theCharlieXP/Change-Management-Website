@@ -42,7 +42,7 @@ ${insight.content ? `Content: ${Array.isArray(insight.content) ? insight.content
 
     // Generate the summary prompt based on the focus area
     const focusAreaInfo = INSIGHT_FOCUS_AREAS[focusArea as InsightFocusArea]
-    const prompt = `Please analyze the following insights related to ${focusAreaInfo.label} and create a comprehensive summary. Format the summary with the following sections, using clean formatting without any markdown symbols, hashtags, or asterisks:
+    const prompt = `Please analyze the following insights related to ${focusAreaInfo.label} and create a comprehensive summary. Start with a clear, descriptive title that captures the main theme or key finding of the analysis (without any prefix like "Title:" or "Summary:"). Then, format the rest of the summary with the following sections, using clean formatting without any markdown symbols, hashtags, or asterisks:
 
 Summary of Results
 - Start each point with a simple bullet point (-)

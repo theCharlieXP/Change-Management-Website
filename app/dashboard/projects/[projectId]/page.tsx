@@ -37,6 +37,7 @@ import { ProjectNotes } from '@/components/projects/project-notes'
 import { toast } from '@/components/ui/use-toast'
 import { toast as sonnerToast } from "sonner"
 import { ProjectSummaries } from '@/components/projects/project-summaries'
+import { DeleteProjectDialog } from '@/components/projects/delete-project-dialog'
 
 const STATUS_COLORS = {
   'planning': 'text-blue-600 bg-blue-50',
@@ -348,26 +349,22 @@ export default function ProjectPage() {
     }
   };
 
-  if (!isLoaded || loading) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-[50vh]">
+      <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     )
   }
 
-  if (error) {
+  if (error || !project) {
     return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <p className="text-red-500">{error}</p>
-      </div>
-    )
-  }
-
-  if (!project) {
-    return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <p>Project not found</p>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <p className="text-red-600 mb-4">{error || 'Project not found'}</p>
+        <Button onClick={() => router.push('/dashboard/projects')} variant="outline">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Projects
+        </Button>
       </div>
     )
   }
@@ -377,7 +374,7 @@ export default function ProjectPage() {
   const projectStatus = project?.status || 'not_started'
 
   return (
-    <div className="container py-6 space-y-6">
+    <div className="container mx-auto py-8 space-y-8">
       <Card className="w-full">
         <CardContent className="pt-6">
           <div className="flex items-center gap-4">
@@ -496,6 +493,9 @@ export default function ProjectPage() {
           />
         </CardContent>
       </Card>
+
+      {/* Delete Project Section */}
+      <DeleteProjectDialog projectId={projectId} projectTitle={project.title} />
     </div>
   )
 } 

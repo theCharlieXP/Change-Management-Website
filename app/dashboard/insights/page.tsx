@@ -24,6 +24,7 @@ import { createClient } from '@supabase/supabase-js'
 import { useToast } from '@/components/ui/use-toast'
 import { useAuth } from '@clerk/nextjs'
 import { Textarea } from "@/components/ui/textarea"
+import { SaveToProjectDialog } from '@/components/save-to-project-dialog'
 
 type TimeframeValue = 
   | 'last_day'
@@ -117,6 +118,8 @@ export default function InsightsPage() {
   const [summaryNotes, setSummaryNotes] = useState<string>("")
   const [isSummarizing, setIsSummarizing] = useState(false)
   const { toast } = useToast()
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [insightToSave, setInsightToSave] = useState<Insight | null>(null)
 
   // Fetch projects when auth is ready
   useEffect(() => {
@@ -199,11 +202,10 @@ export default function InsightsPage() {
 
     setError(null)
     setLoading(true)
-    // Don't clear insights immediately to prevent UI flicker
     
     try {
       // Step 1: Prepare search
-      setLoadingStage("Preparing search parameters...")
+      setLoadingStage("Initialising search process...")
       const params = new URLSearchParams()
       if (query) params.append('query', query)
       if (focusArea) params.append('focusArea', focusArea)
@@ -211,19 +213,30 @@ export default function InsightsPage() {
       if (selectedChangeFocus.length > 0) params.append('changeFocus', selectedChangeFocus.join(','))
       if (timeframe) params.append('timeframe', timeframe)
 
-      console.log('Search parameters:', Object.fromEntries(params.entries()))
+      await new Promise(resolve => setTimeout(resolve, 1000))
 
       // Step 2: Search
-      setLoadingStage("Searching for relevant content...")
+      setLoadingStage("Connecting to knowledge base...")
+      await new Promise(resolve => setTimeout(resolve, 1500))
+
+      setLoadingStage("Searching through specialised resources...")
       const response = await fetch(`/api/insights/search?${params.toString()}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
         },
-        credentials: 'include' // This ensures cookies are sent with the request
+        credentials: 'include'
       })
+
+      setLoadingStage("Gathering relevant information...")
+      await new Promise(resolve => setTimeout(resolve, 1200))
       
-      // Log response status
+      setLoadingStage("Filtering results based on focus area...")
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      setLoadingStage("Analysing content relevance...")
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      
       console.log('Search response status:', response.status)
 
       const data = await response.json()
@@ -238,20 +251,22 @@ export default function InsightsPage() {
         throw new Error(data.error)
       }
 
-      // Step 3: Process results
+      setLoadingStage("Extracting key insights...")
+      await new Promise(resolve => setTimeout(resolve, 1200))
+
       setLoadingStage("Processing search results...")
+      await new Promise(resolve => setTimeout(resolve, 1000))
       
-      // Step 4: Format results
-      setLoadingStage("Formatting insights...")
+      setLoadingStage("Organising insights by relevance...")
+      await new Promise(resolve => setTimeout(resolve, 1200))
+
+      setLoadingStage("Formatting content for display...")
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
       const formattedInsights = Array.isArray(data) ? data : []
-      console.log('Formatted insights:', {
-        count: formattedInsights.length,
-        firstInsight: formattedInsights[0] ? {
-          title: formattedInsights[0].title,
-          focusArea: formattedInsights[0].focus_area,
-          hasContent: !!formattedInsights[0].content
-        } : null
-      })
+      
+      setLoadingStage("Finalising results...")
+      await new Promise(resolve => setTimeout(resolve, 800))
       
       // Only update insights if we have results or explicitly got an empty array
       if (formattedInsights || data.length === 0) {
@@ -275,9 +290,7 @@ export default function InsightsPage() {
       console.error('Search error:', err)
       const errorMessage = err instanceof Error ? err.message : 'An error occurred'
       setError(errorMessage)
-      // Don't clear insights on error
       
-      // Show toast with error
       toast({
         title: "Search Error",
         description: errorMessage,
@@ -303,12 +316,6 @@ export default function InsightsPage() {
 
   const closeModal = () => {
     setSelectedInsight(null)
-  }
-
-  const handleSave = async () => {
-    // TODO: Implement save functionality
-    // For now, just close the modal
-    closeModal()
   }
 
   const generateSummary = async () => {
@@ -349,6 +356,11 @@ export default function InsightsPage() {
     }
   };
 
+  const handleSaveClick = (insight: Insight) => {
+    setInsightToSave(insight)
+    setShowSaveDialog(true)
+  }
+
   return (
     <div className="container mx-auto py-8">
       <div className="flex flex-col space-y-4">
@@ -381,19 +393,6 @@ export default function InsightsPage() {
             )}
           </Button>
         </div>
-
-        {/* Loading Stage Indicator */}
-        {loading && loadingStage && (
-          <div className="flex flex-col items-center justify-center space-y-2 p-4 bg-muted/50 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm font-medium">{loadingStage}</span>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              This may take a few moments...
-            </div>
-          </div>
-        )}
 
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
@@ -483,9 +482,22 @@ export default function InsightsPage() {
           </Button>
         </div>
 
+        {/* Loading Stage Indicator - Moved below filters */}
+        {loading && loadingStage && (
+          <div className="mt-6 flex flex-col items-center justify-center space-y-3 p-6 bg-muted/50 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span className="text-sm font-medium text-primary">{loadingStage}</span>
+            </div>
+            <div className="text-xs text-muted-foreground max-w-md text-center">
+              This process may take a few moments whilst we search and analyse multiple sources to provide you with comprehensive insights.
+            </div>
+          </div>
+        )}
+
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          <div className="mt-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
             {error}
           </div>
         )}
@@ -502,7 +514,7 @@ export default function InsightsPage() {
                 {isSummarizing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Summarizing...
+                    Summarising...
                   </>
                 ) : (
                   'Summarise Results'
@@ -565,58 +577,77 @@ export default function InsightsPage() {
               insights.map((insight) => (
                 <div 
                   key={insight.id} 
-                  className="bg-white rounded-lg border transition-all duration-200 hover:shadow-lg"
+                  className="bg-white rounded-lg border transition-all duration-200 hover:shadow-lg flex flex-col h-full"
                 >
-                  <div className="p-4 flex flex-col h-full">
-                    {/* Header */}
-                    <div className="flex flex-col gap-2 mb-3">
-                      <h2 className="text-lg font-semibold">
-                        {insight.title.replace(/["']/g, '')}
-                      </h2>
-                    </div>
-
-                    {/* Preview */}
-                    <div className="flex-grow">
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {insight.summary.split('\n')[0]?.replace(/^[•-]\s*/, '')}
-                      </p>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="mt-4 pt-4 border-t flex items-end justify-between">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openModal(insight.id)}
-                          className="text-muted-foreground hover:text-foreground"
-                        >
-                          Expand
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          asChild
-                          className="text-muted-foreground hover:text-foreground"
-                        >
-                          <Link href={insight.url || '#'} target="_blank">
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                            Full article
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-muted-foreground hover:text-foreground"
-                          onClick={() => setSelectedInsight(insight.id)}
-                        >
-                          <BookmarkPlus className="h-4 w-4 mr-1" />
-                          Save
-                        </Button>
-                      </div>
+                  <div className="p-4 flex flex-col flex-grow">
+                    {/* Focus Area Badge - Centered */}
+                    <div className="flex justify-center mb-3">
                       <Badge className={cn("shrink-0", INSIGHT_FOCUS_AREAS[insight.focus_area].color)}>
                         {INSIGHT_FOCUS_AREAS[insight.focus_area].label}
                       </Badge>
+                    </div>
+
+                    {/* Title and Content */}
+                    <div className="flex-grow">
+                      <h2 className="text-base font-medium mb-3 line-clamp-2 w-full">
+                        {insight.title.replace(/["']/g, '')}
+                      </h2>
+                      <div className="space-y-2">
+                        {insight.summary.split('\n')
+                          .slice(0, 3) // Only show first 3 bullet points in preview
+                          .map((point, index) => {
+                            const cleanPoint = point.replace(/^[-•]\s*/, '').trim()
+                            if (!cleanPoint) return null
+                            
+                            return (
+                              <div key={index} className="flex items-start gap-2">
+                                <span className="text-muted-foreground leading-tight">•</span>
+                                <p className="text-xs text-muted-foreground flex-1 line-clamp-2">
+                                  {cleanPoint}
+                                </p>
+                              </div>
+                            )
+                        })}
+                        {insight.summary.split('\n').length > 3 && (
+                          <p className="text-xs text-muted-foreground italic">
+                            Click expand to see more...
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions - At very bottom */}
+                  <div className="border-t mt-auto">
+                    <div className="px-4 py-3 flex items-center justify-between">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openModal(insight.id)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        Expand
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        asChild
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Link href={insight.url || '#'} target="_blank">
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          Full article
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={() => handleSaveClick(insight)}
+                      >
+                        <BookmarkPlus className="h-4 w-4 mr-1" />
+                        Save
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -626,12 +657,26 @@ export default function InsightsPage() {
         </div>
       </div>
 
+      {/* Add Save Dialog */}
+      {showSaveDialog && insightToSave && (
+        <SaveToProjectDialog
+          open={showSaveDialog}
+          onOpenChange={(open) => {
+            setShowSaveDialog(open)
+            if (!open) setInsightToSave(null)
+          }}
+          insight={insightToSave}
+          isLoading={projectsLoading}
+          isSummary={false}
+        />
+      )}
+
       {/* Modal */}
       {selectedInsight && (
         <InsightModal
           insight={selectedInsight === 'summary' ? {
             id: 'summary',
-            title: 'Search Results Summary',
+            title: summary?.split('\n')[0] || 'Search Results Summary',
             summary: summary || '',
             content: summary?.split('\n\n') || [],
             tags: [],

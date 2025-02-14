@@ -186,7 +186,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { title, description = '' } = body
+    const { title } = body
 
     if (!title) {
       return new NextResponse(
@@ -200,7 +200,6 @@ export async function POST(request: Request) {
 
     console.log('Creating project:', {
       title,
-      description,
       userId
     })
 
@@ -216,7 +215,6 @@ export async function POST(request: Request) {
       .insert([
         {
           title,
-          description,
           user_id: userId,
           status: 'planning'
         }

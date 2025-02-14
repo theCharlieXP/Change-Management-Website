@@ -160,7 +160,7 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete }: Pr
                       onValueChange={(value: TaskStatus) => setStatus(value)}
                       disabled={loading}
                     >
-                      <SelectTrigger id="status">
+                      <SelectTrigger id="status" className="w-full">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -175,11 +175,14 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete }: Pr
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Due Date</label>
-                    <CustomDatePicker
-                      selectedDate={dueDate}
-                      onChange={setDueDate}
-                      disabled={loading}
-                    />
+                    <div className="w-full">
+                      <CustomDatePicker
+                        selectedDate={dueDate}
+                        onChange={setDueDate}
+                        disabled={loading}
+                        className="w-full"
+                      />
+                    </div>
                   </div>
                 </div>
 

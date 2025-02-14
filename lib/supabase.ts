@@ -131,14 +131,14 @@ export async function getProject(projectId: string) {
   }
 }
 
-export async function createProject(userId: string, title: string, description: string = '') {
+export async function createProject(userId: string, title: string) {
   try {
     const response = await fetch('/api/projects', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ title, description })
+      body: JSON.stringify({ title })
     })
     
     if (!response.ok) {

@@ -73,7 +73,7 @@ export function ProjectNotes({ notes, projectId, onAdd, onUpdate, onDelete }: Pr
         value={content}
         onChange={handleChange}
         placeholder="Write your notes here..."
-        className="min-h-[200px] resize-none"
+        className="min-h-[400px] resize-none"
       />
       <div className="text-xs text-muted-foreground">
         {isSaving ? 'Saving...' : 'All changes saved'}

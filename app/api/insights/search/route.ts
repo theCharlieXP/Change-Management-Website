@@ -539,8 +539,39 @@ export async function GET(request: Request) {
       processedResults: insights.length
     })
 
+    // Format the response before sending
+    const formattedResults = insights.map(result => {
+      // Clean and format the summary
+      const summary = result.summary
+        .split('\n')
+        .map((point: string) => {
+          // Remove existing bullet points or dashes
+          const cleaned = point.replace(/^[-•*]\s*/, '').trim()
+          // Skip empty lines or single words
+          if (!cleaned || cleaned.split(' ').length < 3) return null
+          // Ensure each point is a complete sentence
+          return cleaned.charAt(0).toUpperCase() + cleaned.slice(1) + (cleaned.endsWith('.') ? '' : '.')
+        })
+        .filter(Boolean)
+        .map(point => `• ${point}`)
+        .join('\n')
+
+      return {
+        ...result,
+        summary,
+        // Format content similarly if it exists
+        content: Array.isArray(result.content) 
+          ? result.content.map((point: string) => {
+              const cleaned = point.replace(/^[-•*]\s*/, '').trim()
+              if (!cleaned || cleaned.split(' ').length < 3) return null
+              return `• ${cleaned.charAt(0).toUpperCase() + cleaned.slice(1)}${cleaned.endsWith('.') ? '' : '.'}`
+            }).filter(Boolean)
+          : result.content
+      }
+    })
+
     return new NextResponse(
-      JSON.stringify(insights),
+      JSON.stringify(formattedResults),
       { 
         status: 200,
         headers: { 'Content-Type': 'application/json' }

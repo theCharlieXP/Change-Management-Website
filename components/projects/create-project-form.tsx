@@ -3,16 +3,14 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Loader2 } from 'lucide-react'
 
 interface CreateProjectFormProps {
-  onSubmit: (title: string, description?: string) => Promise<void>
+  onSubmit: (title: string) => Promise<void>
 }
 
 export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
   const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -22,11 +20,10 @@ export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
     setError(null)
 
     try {
-      await onSubmit(title.trim(), description.trim())
+      await onSubmit(title.trim())
       
       // Reset form
       setTitle('')
-      setDescription('')
     } catch (error) {
       console.error('Project creation error:', error)
       setError('Failed to create project. Please try again.')
@@ -55,19 +52,6 @@ export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
         <p className="text-xs text-muted-foreground">
           {title.length}/40 characters
         </p>
-      </div>
-
-      <div className="space-y-2">
-        <label htmlFor="description" className="text-sm font-medium">
-          Description
-        </label>
-        <Textarea
-          id="description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Enter project description"
-          disabled={loading}
-        />
       </div>
 
       {error && (
