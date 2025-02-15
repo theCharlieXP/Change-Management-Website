@@ -28,9 +28,7 @@ export function ProfileCreator() {
     
     try {
       // Get the session token
-      const sessionToken = await session.getToken({
-        template: 'supabase'
-      });
+      const sessionToken = await session.getToken();
 
       if (!sessionToken) {
         console.log('ProfileCreator: No session token available yet');
@@ -44,14 +42,19 @@ export function ProfileCreator() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${sessionToken}`,
-          'X-User-Id': userId
+          'X-User-Id': userId,
+          'X-Session-Id': session.id
         },
         cache: 'no-store'
       });
 
       if (!response.ok) {
         const data = await response.json();
-        console.log('ProfileCreator: Error data:', data);
+        console.log('ProfileCreator: Error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          data
+        });
         return false;
       }
 
@@ -81,8 +84,10 @@ export function ProfileCreator() {
       }
     };
 
-    attemptProfileCreation();
-  }, [createProfile, retryCount, isSignedIn]);
+    if (isSignedIn && userId) {
+      attemptProfileCreation();
+    }
+  }, [createProfile, retryCount, isSignedIn, userId]);
 
   // This component doesn't render anything
   return null;

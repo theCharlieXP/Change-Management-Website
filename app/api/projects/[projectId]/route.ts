@@ -114,10 +114,9 @@ export async function DELETE(
     }
 
     const { error } = await supabase
-      .from('projects')
-      .delete()
-      .eq('id', params.projectId)
-      .eq('user_id', userId)
+      .rpc('soft_delete_project', {
+        project_id: params.projectId
+      })
 
     if (error) {
       throw error
@@ -129,6 +128,50 @@ export async function DELETE(
     return new NextResponse(
       JSON.stringify({ 
         error: 'Failed to delete project',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }),
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(
+  request: Request,
+  { params }: { params: { projectId: string } }
+) {
+  try {
+    const { userId } = auth()
+    if (!userId) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401 }
+      )
+    }
+
+    const { action } = await request.json()
+    
+    if (action === 'restore') {
+      const { error } = await supabase
+        .rpc('restore_project', {
+          project_id: params.projectId
+        })
+
+      if (error) {
+        throw error
+      }
+
+      return new NextResponse(null, { status: 200 })
+    }
+
+    return new NextResponse(
+      JSON.stringify({ error: 'Invalid action' }),
+      { status: 400 }
+    )
+  } catch (error) {
+    console.error('Error in project API:', error)
+    return new NextResponse(
+      JSON.stringify({ 
+        error: 'Failed to restore project',
         details: error instanceof Error ? error.message : 'Unknown error'
       }),
       { status: 500 }

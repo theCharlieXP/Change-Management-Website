@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ArrowLeft, Pencil, Check, X, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { useAuth } from '@clerk/nextjs'
-import type { SavedInsight, InsightSummary } from '@/types/insights'
+import type { InsightSummary } from '@/types/insights'
 import {
   Select,
   SelectContent,
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import type { Project, ProjectStatus, ProjectTask, ProjectNote, ProjectInsight } from '@/types/projects'
+import type { Project, ProjectStatus, ProjectTask, ProjectNote } from '@/types/projects'
 import { 
   getProject, 
   updateProject, 
@@ -32,10 +32,8 @@ import {
   deleteProjectNote
 } from '@/lib/supabase'
 import { ProjectTasks } from '@/components/projects/project-tasks'
-import { ProjectInsights } from '@/components/projects/project-insights'
 import { ProjectNotes } from '@/components/projects/project-notes'
 import { toast } from '@/components/ui/use-toast'
-import { toast as sonnerToast } from "sonner"
 import { ProjectSummaries } from '@/components/projects/project-summaries'
 import { DeleteProjectDialog } from '@/components/projects/delete-project-dialog'
 
@@ -68,7 +66,6 @@ export default function ProjectPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
-  const [insights, setInsights] = useState<SavedInsight[]>([])
   const [notes, setNotes] = useState<ProjectNote[]>([])
   const [summaries, setSummaries] = useState<InsightSummary[]>([])
   const [summariesLoading, setSummariesLoading] = useState(true)
@@ -92,28 +89,25 @@ export default function ProjectPage() {
         setLoading(true)
         setError(null)
 
-        const [projectRes, notesRes, tasksRes, insightsRes] = await Promise.all([
+        const [projectRes, notesRes, tasksRes] = await Promise.all([
           fetch(`/api/projects/${projectId}`),
           fetch(`/api/projects/${projectId}/notes`),
-          fetch(`/api/projects/${projectId}/tasks`),
-          fetch(`/api/projects/${projectId}/insights`)
+          fetch(`/api/projects/${projectId}/tasks`)
         ])
 
-        if (!projectRes.ok || !notesRes.ok || !tasksRes.ok || !insightsRes.ok) {
+        if (!projectRes.ok || !notesRes.ok || !tasksRes.ok) {
           throw new Error('Failed to fetch project data')
         }
 
-        const [projectData, notesData, tasksData, insightsData] = await Promise.all([
+        const [projectData, notesData, tasksData] = await Promise.all([
           projectRes.json(),
           notesRes.json(),
-          tasksRes.json(),
-          insightsRes.json()
+          tasksRes.json()
         ])
 
         setProject(projectData)
         setNotes(notesData)
         setTasks(tasksData)
-        setInsights(insightsData)
         setStatus(projectData.status || 'planning')
         setEditTitle(projectData.title)
         setEditDescription(projectData.description || '')
@@ -248,35 +242,18 @@ export default function ProjectPage() {
 
   const handleUpdateNotes = async (summaryId: string, notes: string) => {
     try {
-      const response = await fetch(`/api/projects/${params.projectId}/summaries`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          id: summaryId,
-          notes,
-        }),
+      await handleUpdateNote(summaryId, { content: notes })
+      toast({
+        title: "Success",
+        description: "Notes updated successfully"
       })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to update notes')
-      }
-
-      const updatedSummary = await response.json()
-      
-      // Update the summaries state with the new notes
-      setSummaries(prev => prev.map(summary => 
-        summary.id === summaryId 
-          ? { ...summary, notes: updatedSummary.notes }
-          : summary
-      ))
-
-      sonnerToast.success('Notes updated successfully')
     } catch (error) {
       console.error('Error updating notes:', error)
-      sonnerToast.error(error instanceof Error ? error.message : 'Failed to update notes')
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to update notes',
+        variant: "destructive"
+      })
     }
   }
 
@@ -307,47 +284,6 @@ export default function ProjectPage() {
       throw error
     }
   }
-
-  const handleDeleteInsight = async (insightId: string) => {
-    if (!insightId) {
-      toast({
-        title: "Error",
-        description: "Invalid insight ID",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/projects/${projectId}/insights`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id: insightId }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete insight');
-      }
-
-      // Update the insights state by removing the deleted insight
-      setInsights(prev => prev.filter(insight => insight.id !== insightId));
-      toast({
-        title: "Success",
-        description: "Insight deleted successfully",
-      });
-    } catch (error) {
-      console.error('Error deleting insight:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete insight",
-        variant: "destructive"
-      });
-      throw error;
-    }
-  };
 
   if (loading) {
     return (
@@ -448,19 +384,6 @@ export default function ProjectPage() {
             onAdd={handleAddTask}
             onUpdate={handleUpdateTask}
             onDelete={handleDeleteTask}
-          />
-        </CardContent>
-      </Card>
-
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Saved Insights</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ProjectInsights
-            insights={insights}
-            isLoading={loading}
-            onDelete={handleDeleteInsight}
           />
         </CardContent>
       </Card>

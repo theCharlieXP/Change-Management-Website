@@ -49,6 +49,12 @@ enabled = true
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"
 sql_paths = ["./seed.sql"]
 
+[db.backup]
+enabled = true
+schedule = "0 0 * * *"  # Daily backup at midnight
+retention_days = 7  # Keep backups for 7 days
+point_in_time_recovery = true
+
 [realtime]
 enabled = true
 # Bind realtime via either IPv4 or IPv6. (default: IPv4)

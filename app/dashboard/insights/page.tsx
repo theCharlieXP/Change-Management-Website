@@ -55,29 +55,6 @@ const INDUSTRIES = [
   'Consumer Goods'
 ]
 
-const CHANGE_FOCUS = [
-  'Digital Transformation',
-  'Organisational Restructuring',
-  'Cultural Change',
-  'Mergers & Acquisitions',
-  'Process Optimization',
-  'Technology Implementation',
-  'Leadership Development',
-  'Employee Engagement',
-  'Change Communication',
-  'Strategic Planning',
-  'Sustainability Initiatives',
-  'Diversity & Inclusion Programs',
-  'Crisis Management',
-  'Remote Work Transition',
-  'Innovation Management',
-  'Customer Experience Enhancement',
-  'Supply Chain Transformation',
-  'Talent Management',
-  'Regulatory Compliance',
-  'Product Development'
-]
-
 interface InsightData {
   id: string
   title: string
@@ -103,7 +80,6 @@ export default function InsightsPage() {
   const [query, setQuery] = useState("")
   const [focusArea, setFocusArea] = useState<InsightFocusArea | undefined>(undefined)
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([])
-  const [selectedChangeFocus, setSelectedChangeFocus] = useState<string[]>([])
   const [timeframe, setTimeframe] = useState<TimeframeValue | undefined>(undefined)
   const [insights, setInsights] = useState<Insight[]>([])
   const [loading, setLoading] = useState(false)
@@ -187,7 +163,6 @@ export default function InsightsPage() {
     // Reset all state values
     setFocusArea(undefined)
     setSelectedIndustries([])
-    setSelectedChangeFocus([])
     setTimeframe(undefined)
     
     // Force a re-render of all components
@@ -202,24 +177,21 @@ export default function InsightsPage() {
 
     setError(null)
     setLoading(true)
+    setSummary(null)
     
     try {
-      // Step 1: Prepare search
-      setLoadingStage("Initialising search process...")
+      // Step 1: Initial search
+      setLoadingStage("Initialising search...")
       const params = new URLSearchParams()
       if (query) params.append('query', query)
       if (focusArea) params.append('focusArea', focusArea)
       if (selectedIndustries.length > 0) params.append('industries', selectedIndustries.join(','))
-      if (selectedChangeFocus.length > 0) params.append('changeFocus', selectedChangeFocus.join(','))
       if (timeframe) params.append('timeframe', timeframe)
 
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise(resolve => setTimeout(resolve, 800))
 
-      // Step 2: Search
-      setLoadingStage("Connecting to knowledge base...")
-      await new Promise(resolve => setTimeout(resolve, 1500))
-
-      setLoadingStage("Searching through specialised resources...")
+      // Step 2: Search and analysis
+      setLoadingStage("Searching through trusted sources...")
       const response = await fetch(`/api/insights/search?${params.toString()}`, {
         method: 'GET',
         headers: {
@@ -228,15 +200,9 @@ export default function InsightsPage() {
         credentials: 'include'
       })
 
-      setLoadingStage("Gathering relevant information...")
-      await new Promise(resolve => setTimeout(resolve, 1200))
-      
-      setLoadingStage("Filtering results based on focus area...")
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      setLoadingStage("Analysing content relevance...")
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
+      setLoadingStage("Analysing findings and identifying patterns...")
+
       console.log('Search response status:', response.status)
 
       const data = await response.json()
@@ -251,33 +217,21 @@ export default function InsightsPage() {
         throw new Error(data.error)
       }
 
-      setLoadingStage("Extracting key insights...")
-      await new Promise(resolve => setTimeout(resolve, 1200))
-
-      setLoadingStage("Processing search results...")
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      setLoadingStage("Organising insights by relevance...")
-      await new Promise(resolve => setTimeout(resolve, 1200))
+      setLoadingStage("Synthesising insights and creating summary...")
 
-      setLoadingStage("Formatting content for display...")
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      const formattedInsights = Array.isArray(data) ? data : []
+      // Extract results and summary from the response
+      const { results, summary } = data
       
-      setLoadingStage("Finalising results...")
-      await new Promise(resolve => setTimeout(resolve, 800))
-      
-      // Only update insights if we have results or explicitly got an empty array
-      if (formattedInsights || data.length === 0) {
-        setInsights(formattedInsights)
-      }
+      // Update state with results and summary
+      setInsights(results || [])
+      setSummary(summary || null)
 
       // Show success message if we got results
-      if (formattedInsights.length > 0) {
+      if (results.length > 0) {
         toast({
           title: "Search Complete",
-          description: `Found ${formattedInsights.length} relevant insights`,
+          description: `Found ${results.length} relevant sources`,
         })
       } else {
         toast({
@@ -292,7 +246,7 @@ export default function InsightsPage() {
       setError(errorMessage)
       
       toast({
-        title: "Search Error",
+        title: "Error",
         description: errorMessage,
         variant: "destructive"
       })
@@ -361,6 +315,30 @@ export default function InsightsPage() {
     setShowSaveDialog(true)
   }
 
+  const handleSaveSummary = () => {
+    if (!summary || !focusArea) return
+
+    // Get the generated title from the first line of the summary
+    const generatedTitle = summary.split('\n\n')[0].trim()
+    
+    // Create the summary insight with the proper title
+    const summaryInsight = {
+      id: 'summary',
+      title: generatedTitle, // Ensure we use the generated title
+      summary: summary.split('\n\n').slice(1).join('\n\n'),
+      content: summary.split('\n\n').slice(1),
+      tags: [],
+      readTime: '5 min',
+      focus_area: focusArea,
+      notes: summaryNotes,
+      url: '', // Add empty url since it's a summary
+      source: 'Generated Summary' // Add source to clarify it's a generated summary
+    }
+
+    setInsightToSave(summaryInsight)
+    setShowSaveDialog(true)
+  }
+
   return (
     <div className="container mx-auto py-8">
       <div className="flex flex-col space-y-4">
@@ -395,7 +373,7 @@ export default function InsightsPage() {
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">
               Insight Focus Area <span className="text-red-500">*</span>
@@ -428,21 +406,6 @@ export default function InsightsPage() {
               selected={selectedIndustries}
               onChange={setSelectedIndustries}
               placeholder="Select Industries"
-              disabled={loading}
-              className="h-9"
-            />
-          </div>
-
-          {/* Change Focus Multi-select */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Change Focus
-            </label>
-            <MultiSelect
-              options={CHANGE_FOCUS}
-              selected={selectedChangeFocus}
-              onChange={setSelectedChangeFocus}
-              placeholder="Select Change Focus"
               disabled={loading}
               className="h-9"
             />
@@ -482,15 +445,15 @@ export default function InsightsPage() {
           </Button>
         </div>
 
-        {/* Loading Stage Indicator - Moved below filters */}
+        {/* Single Loading Stage Indicator */}
         {loading && loadingStage && (
-          <div className="mt-6 flex flex-col items-center justify-center space-y-3 p-6 bg-muted/50 rounded-lg">
+          <div className="mt-8 flex flex-col items-center justify-center space-y-4">
             <div className="flex items-center space-x-3">
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
               <span className="text-sm font-medium text-primary">{loadingStage}</span>
             </div>
-            <div className="text-xs text-muted-foreground max-w-md text-center">
-              This process may take a few moments whilst we search and analyse multiple sources to provide you with comprehensive insights.
+            <div className="text-xs text-muted-foreground text-center max-w-md">
+              Please wait whilst we analyse multiple sources to provide you with comprehensive insights.
             </div>
           </div>
         )}
@@ -504,57 +467,45 @@ export default function InsightsPage() {
 
         {/* Results */}
         <div className="mt-8">
-          {insights.length > 0 && (
-            <div className="mb-6 flex justify-end">
-              <Button
-                onClick={generateSummary}
-                disabled={isSummarizing}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                {isSummarizing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Summarising...
-                  </>
-                ) : (
-                  'Summarise Results'
-                )}
-              </Button>
-            </div>
-          )}
-
+          {/* Summary Section */}
           {summary && (
             <div className="mb-8 bg-white p-6 rounded-lg border shadow-sm">
-              <h2 className="text-xl font-semibold mb-6">Summary of Results</h2>
-              <div className="space-y-8">
-                {summary.split('\n\n').map((section, index) => {
-                  const [heading, ...points] = section.split('\n');
+              <h2 className="text-xl font-semibold mb-8">
+                {summary.split('\n\n')[0].replace(/["']/g, '')}
+              </h2>
+              <div className="space-y-10">
+                {summary.split('\n\n').slice(1).map((section, index) => {
+                  if (section.startsWith('References:')) {
+                    return null // We'll handle references separately
+                  }
+                  const [heading, ...points] = section.split('\n')
                   return (
-                    <div key={index} className="space-y-3">
-                      <h3 className="text-lg font-medium text-gray-900">{heading}</h3>
-                      <ul className="space-y-2">
+                    <div key={index} className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900">{heading.trim()}</h3>
+                      <ul className="space-y-3">
                         {points.map((point, pointIndex) => (
-                          <li key={pointIndex} className="text-sm text-gray-700 flex items-start">
-                            <span className="mr-2">•</span>
-                            <span>{point.replace(/^[-•]\s*/, '')}</span>
+                          <li key={pointIndex} className="text-base text-gray-700 flex items-start leading-relaxed">
+                            <span className="mr-3 text-gray-400">•</span>
+                            <span>{point.replace(/^[•-\s]+/, '').trim()}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
-                  );
+                  )
                 })}
                 
-                <div className="mt-8 space-y-4">
-                  <h3 className="text-lg font-medium text-gray-900">Notes</h3>
+                {/* Notes Section */}
+                <div className="mt-10 space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Notes</h3>
                   <Textarea
                     placeholder="Add your notes about this summary here..."
                     value={summaryNotes}
                     onChange={(e) => setSummaryNotes(e.target.value)}
-                    className="min-h-[100px] w-full"
+                    className="min-h-[100px] w-full text-base"
                   />
                   <div className="flex justify-end">
                     <Button
-                      onClick={() => setSelectedInsight('summary')}
+                      onClick={handleSaveSummary}
                       className="flex items-center gap-2"
                     >
                       <BookmarkPlus className="h-4 w-4" />
@@ -562,98 +513,30 @@ export default function InsightsPage() {
                     </Button>
                   </div>
                 </div>
+
+                {/* References Section */}
+                <div className="mt-10">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Source Links</h3>
+                  <div className="grid gap-3">
+                    {insights.map((insight, index) => (
+                      <a
+                        key={insight.id}
+                        href={insight.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                      >
+                        <span className="text-base font-medium text-gray-700 mr-4 flex-1">
+                          {index + 1}. {insight.title}
+                        </span>
+                        <ExternalLink className="h-4 w-4 text-gray-400" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {insights.length === 0 && !loading ? (
-              <div className="col-span-full text-center text-gray-500">
-                {query || focusArea ? 
-                  'No results found. Try adjusting your search criteria or selecting different filters.' : 
-                  'Select an Insight Focus Area and start searching.'}
-              </div>
-            ) : (
-              insights.map((insight) => (
-                <div 
-                  key={insight.id} 
-                  className="bg-white rounded-lg border transition-all duration-200 hover:shadow-lg flex flex-col h-full"
-                >
-                  <div className="p-4 flex flex-col flex-grow">
-                    {/* Focus Area Badge - Centered */}
-                    <div className="flex justify-center mb-3">
-                      <Badge className={cn("shrink-0", INSIGHT_FOCUS_AREAS[insight.focus_area].color)}>
-                        {INSIGHT_FOCUS_AREAS[insight.focus_area].label}
-                      </Badge>
-                    </div>
-
-                    {/* Title and Content */}
-                    <div className="flex-grow">
-                      <h2 className="text-base font-medium mb-3 line-clamp-2 w-full">
-                        {insight.title.replace(/["']/g, '')}
-                      </h2>
-                      <div className="space-y-2">
-                        {insight.summary.split('\n')
-                          .slice(0, 3) // Only show first 3 bullet points in preview
-                          .map((point, index) => {
-                            const cleanPoint = point.replace(/^[-•]\s*/, '').trim()
-                            if (!cleanPoint) return null
-                            
-                            return (
-                              <div key={index} className="flex items-start gap-2">
-                                <span className="text-muted-foreground leading-tight">•</span>
-                                <p className="text-xs text-muted-foreground flex-1 line-clamp-2">
-                                  {cleanPoint}
-                                </p>
-                              </div>
-                            )
-                        })}
-                        {insight.summary.split('\n').length > 3 && (
-                          <p className="text-xs text-muted-foreground italic">
-                            Click expand to see more...
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions - At very bottom */}
-                  <div className="border-t mt-auto">
-                    <div className="px-4 py-3 flex items-center justify-between">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openModal(insight.id)}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        Expand
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        asChild
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <Link href={insight.url || '#'} target="_blank">
-                          <ExternalLink className="h-4 w-4 mr-1" />
-                          Full article
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground hover:text-foreground"
-                        onClick={() => handleSaveClick(insight)}
-                      >
-                        <BookmarkPlus className="h-4 w-4 mr-1" />
-                        Save
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
         </div>
       </div>
 
@@ -667,27 +550,7 @@ export default function InsightsPage() {
           }}
           insight={insightToSave}
           isLoading={projectsLoading}
-          isSummary={false}
-        />
-      )}
-
-      {/* Modal */}
-      {selectedInsight && (
-        <InsightModal
-          insight={selectedInsight === 'summary' ? {
-            id: 'summary',
-            title: summary?.split('\n')[0] || 'Search Results Summary',
-            summary: summary || '',
-            content: summary?.split('\n\n') || [],
-            tags: [],
-            readTime: '5 min',
-            focus_area: focusArea!,
-            notes: summaryNotes || undefined
-          } : insights.find(i => i.id === selectedInsight)!}
-          isOpen={!!selectedInsight}
-          onClose={() => setSelectedInsight(null)}
-          isProjectsLoading={projectsLoading}
-          isSummary={selectedInsight === 'summary'}
+          isSummary={insightToSave.id === 'summary'}
         />
       )}
     </div>

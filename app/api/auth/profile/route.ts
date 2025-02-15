@@ -30,28 +30,15 @@ export async function GET() {
       }, { status: 401 });
     }
 
-    if (!headerUserId || userId !== headerUserId) {
-      console.log('User ID mismatch:', { clerkUserId: userId, headerUserId });
+    // Simplified header check
+    if (!headerUserId || !authHeader) {
+      console.log('Missing required headers:', { 
+        hasUserId: !!headerUserId, 
+        hasAuthHeader: !!authHeader 
+      });
       return NextResponse.json({ 
         error: 'Unauthorized', 
-        message: 'Invalid authentication'
-      }, { status: 401 });
-    }
-
-    if (!authHeader) {
-      console.log('No authorization header found');
-      return NextResponse.json({ 
-        error: 'Unauthorized', 
-        message: 'Missing authorization token'
-      }, { status: 401 });
-    }
-
-    // Verify the token format
-    if (!authHeader.startsWith('Bearer ')) {
-      console.log('Invalid authorization header format');
-      return NextResponse.json({ 
-        error: 'Unauthorized', 
-        message: 'Invalid authorization header format'
+        message: 'Missing required authentication headers'
       }, { status: 401 });
     }
 
@@ -91,7 +78,13 @@ export async function GET() {
         .select('count');
       
       if (testError) {
-        console.error('Supabase connection test failed:', testError);
+        console.error('Supabase connection test failed:', {
+          error: testError,
+          env: {
+            hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+            hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+          }
+        });
         throw testError;
       }
       
@@ -104,10 +97,6 @@ export async function GET() {
           message: testError.message,
           code: testError.code,
           hint: testError.hint
-        },
-        env: {
-          hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-          hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
         }
       }, { status: 500 });
     }
@@ -130,7 +119,8 @@ export async function GET() {
       console.error('Error fetching profile:', fetchError);
       return NextResponse.json({ 
         error: 'Database error', 
-        message: 'Error fetching profile'
+        message: 'Error fetching profile',
+        details: fetchError.message
       }, { status: 500 });
     }
 
@@ -142,7 +132,9 @@ export async function GET() {
         .insert([{
           user_id: userId,
           tier: 'free',
-          credits: 100
+          credits: 100,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }])
         .select()
         .single();
@@ -151,7 +143,8 @@ export async function GET() {
         console.error('Error creating profile:', insertError);
         return NextResponse.json({ 
           error: 'Database error', 
-          message: 'Error creating profile'
+          message: 'Error creating profile',
+          details: insertError.message
         }, { status: 500 });
       }
 

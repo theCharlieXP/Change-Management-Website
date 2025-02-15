@@ -8,73 +8,43 @@ const TAVILY_API_KEY = process.env.TAVILY_API_KEY
 const INSIGHT_FOCUS_AREAS: Record<InsightFocusArea, { label: string, description: string, keywords: string[] }> = {
   'challenges-barriers': {
     label: 'Challenges & Barriers',
-    description: 'Resistance to change, resource constraints, technological limitations',
+    description: 'Common obstacles and difficulties faced during change initiatives',
     keywords: ['resistance', 'constraints', 'limitations', 'barriers', 'challenges', 'obstacles', 'difficulties']
   },
   'strategies-solutions': {
     label: 'Strategies & Solutions',
-    description: 'Approaches to overcome obstacles, implementation methods, innovative practices',
+    description: 'Effective approaches and solutions for managing change',
     keywords: ['strategy', 'solution', 'approach', 'method', 'practice', 'implementation', 'innovation']
   },
   'outcomes-results': {
     label: 'Outcomes & Results',
-    description: 'ROI, productivity improvements, employee satisfaction metrics',
+    description: 'Measurable impacts and results of change initiatives',
     keywords: ['ROI', 'results', 'outcomes', 'improvements', 'metrics', 'success', 'impact']
   },
   'key-stakeholders-roles': {
     label: 'Key Stakeholders & Roles',
-    description: 'Leadership involvement, employee participation, external partners',
+    description: 'Important players and their responsibilities in change management',
     keywords: ['stakeholder', 'role', 'leadership', 'participation', 'involvement', 'responsibility']
   },
   'best-practices-methodologies': {
     label: 'Best Practices & Methodologies',
-    description: 'Agile, Kotter\'s 8-Step Process, ADKAR model',
+    description: 'Proven methods and frameworks for successful change',
     keywords: ['best practice', 'methodology', 'framework', 'model', 'process', 'approach']
   },
   'lessons-learned-insights': {
     label: 'Lessons Learned & Insights',
-    description: 'Successes and failures, actionable takeaways, case study reflections',
+    description: 'Key learnings and insights from change initiatives',
     keywords: ['lesson', 'insight', 'learning', 'takeaway', 'reflection', 'experience']
   },
   'implementation-tactics': {
     label: 'Implementation Tactics',
-    description: 'Training programs, communication plans, technology deployment',
+    description: 'Specific techniques and approaches for implementing change',
     keywords: ['implementation', 'tactic', 'deployment', 'execution', 'rollout', 'adoption']
   },
-  'communication-engagement': {
-    label: 'Communication & Engagement',
-    description: 'Stakeholder communication strategies, employee engagement techniques, feedback mechanisms',
-    keywords: ['communication', 'engagement', 'feedback', 'messaging', 'dialogue', 'interaction']
-  },
-  'metrics-performance': {
-    label: 'Metrics & Performance Indicators',
-    description: 'Key Performance Indicators (KPIs), performance metrics, adoption rates',
-    keywords: ['metric', 'KPI', 'performance', 'measurement', 'indicator', 'benchmark']
-  },
-  'risk-management': {
-    label: 'Risk Management & Mitigation',
-    description: 'Risk identification, mitigation strategies, contingency planning',
-    keywords: ['risk', 'mitigation', 'contingency', 'prevention', 'management', 'control']
-  },
-  'technology-tools': {
-    label: 'Technology & Tools',
-    description: 'Project management software, communication platforms, analytics tools',
-    keywords: ['technology', 'tool', 'software', 'platform', 'system', 'application']
-  },
-  'cultural-transformation': {
-    label: 'Cultural Transformation',
-    description: 'Shifting organizational culture, values alignment, behavior change',
-    keywords: ['culture', 'transformation', 'values', 'behavior', 'mindset', 'alignment']
-  },
-  'change-leadership': {
-    label: 'Change Leadership',
-    description: 'Leadership roles in change, leadership training, change champions',
-    keywords: ['leadership', 'champion', 'sponsor', 'executive', 'management', 'guidance']
-  },
-  'employee-training': {
-    label: 'Employee Training & Development',
-    description: 'Skill development programs, training initiatives, continuous learning',
-    keywords: ['training', 'development', 'learning', 'skill', 'education', 'capability']
+  'change-readiness': {
+    label: 'Change Readiness',
+    description: 'Assessing and preparing organizations for change',
+    keywords: ['readiness', 'assessment', 'preparation', 'capability', 'capacity', 'evaluation']
   },
   'change-sustainability': {
     label: 'Change Sustainability',
@@ -83,24 +53,36 @@ const INSIGHT_FOCUS_AREAS: Record<InsightFocusArea, { label: string, description
   }
 }
 
+interface SearchResult {
+  title: string
+  content: string
+  url: string
+  source?: string
+  published_date?: string
+  description?: string
+  relevanceScore?: number
+}
+
 async function searchTavily(
   query: string, 
   focusArea: InsightFocusArea,
   industries?: string[],
-  changeFocus?: string[],
   timeframe?: string
-) {
+): Promise<SearchResult[]> {
   if (!TAVILY_API_KEY) {
     console.error('Tavily API key is missing')
     throw new Error('Tavily API key not configured')
   }
 
-  console.log('Tavily API Key check:', {
-    exists: !!TAVILY_API_KEY,
-    firstFiveChars: TAVILY_API_KEY.substring(0, 5)
+  console.log('Starting Tavily search with:', {
+    query,
+    focusArea,
+    industries,
+    timeframe,
+    hasApiKey: !!TAVILY_API_KEY
   })
 
-  // Handle time ranges - convert our timeframe values to Tavily's format
+  // Handle time ranges
   let time_range: string | undefined
   switch (timeframe) {
     case 'last_day': time_range = 'day'; break
@@ -110,70 +92,45 @@ async function searchTavily(
     default: time_range = undefined
   }
 
-  // Construct the search query with all context
+  // Construct search query - Simplified to improve results
   const queryParts = []
+  const focusAreaInfo = INSIGHT_FOCUS_AREAS[focusArea]
   
-  // Add the user's search query if provided
+  // Start with the main query
   if (query) {
     queryParts.push(query)
   }
   
-  // Add focus area keywords
-  const focusAreaInfo = INSIGHT_FOCUS_AREAS[focusArea]
-  if (!focusAreaInfo) {
-    console.error('Invalid focus area:', focusArea)
-    throw new Error('Invalid focus area')
-  }
-
-  // Add focus area label and keywords with proper formatting
+  // Add focus area as a single term
   queryParts.push(focusAreaInfo.label)
-  // Add a subset of keywords to avoid over-constraining the search
-  const selectedKeywords = focusAreaInfo.keywords.slice(0, 2)
-  queryParts.push(...selectedKeywords)
   
-  // Add industries if specified, but without strict quotes
-  if (industries && industries.length > 0) {
-    queryParts.push(industries[0]) // Only use first industry to avoid over-constraining
-  }
-  
-  // Add change focus areas if specified, but without strict quotes
-  if (changeFocus && changeFocus.length > 0) {
-    queryParts.push(changeFocus[0]) // Only use first change focus to avoid over-constraining
+  // Add industries if specified (but keep it simple)
+  if (industries?.length) {
+    // Only add the first industry to avoid over-filtering
+    queryParts.push(industries[0])
   }
 
-  // Add "change management" as a concept but not a strict phrase
-  queryParts.push('change management')
-
+  // Combine with simple spaces - no special weighting or complex combinations
   const searchQuery = queryParts.join(' ')
-  console.log('Constructed Tavily search query:', searchQuery)
+  console.log('Constructed search query:', searchQuery)
 
   const searchParams = {
     query: searchQuery,
     search_depth: "advanced",
     include_answer: true,
-    max_results: 25, // Increased from 15 to 25
-    search_type: "semantic",
-    semantic_ranker: true,
+    max_results: 20, // Reduced from 40 to get more focused results
+    search_type: "keyword", // Changed from semantic to keyword for broader matches
     include_domains: [
-      'hbr.org',
-      'mckinsey.com',
-      'bcg.com',
-      'deloitte.com',
-      'pwc.com',
-      'accenture.com',
-      'gartner.com',
-      'forrester.com',
-      'prosci.com',
-      'change-management.com',
-      'apm.org.uk',
-      'pmi.org'
+      // Prioritize most relevant sources but keep the list shorter
+      'hbr.org', 'mckinsey.com', 'bcg.com',
+      'deloitte.com', 'pwc.com', 'accenture.com',
+      'gartner.com', 'forrester.com',
+      'researchgate.net', 'academia.edu'
     ],
     exclude_domains: [
-      'youtube.com',
-      'facebook.com',
-      'twitter.com',
-      'instagram.com',
-      'linkedin.com'
+      'youtube.com', 'facebook.com', 'twitter.com',
+      'instagram.com', 'linkedin.com', 'pinterest.com',
+      'reddit.com'
     ],
     ...(time_range && { time_range })
   }
@@ -193,86 +150,58 @@ async function searchTavily(
 
     console.log('Tavily API response status:', response.status)
 
-    // Log the raw response for debugging
-    const rawResponse = await response.text()
-    console.log('Raw Tavily API response:', rawResponse)
-
     if (!response.ok) {
-      console.error('Tavily API error response:', {
+      const errorText = await response.text()
+      console.error('Tavily API error:', {
         status: response.status,
         statusText: response.statusText,
-        rawResponse
+        error: errorText
       })
-      throw new Error(`Tavily API error: ${rawResponse}`)
+      throw new Error(`Tavily API error: ${errorText}`)
     }
 
-    let data
-    try {
-      data = JSON.parse(rawResponse)
-    } catch (error) {
-      console.error('Failed to parse Tavily API response:', error)
-      throw new Error('Invalid JSON response from Tavily API')
-    }
-    
-    // Validate response structure
-    if (!data || typeof data !== 'object') {
+    const data = await response.json()
+    console.log('Tavily API response:', {
+      hasResults: !!data.results,
+      resultCount: data.results?.length || 0,
+      firstResult: data.results?.[0] ? {
+        hasTitle: !!data.results[0].title,
+        hasContent: !!data.results[0].content,
+        url: data.results[0].url
+      } : null
+    })
+
+    if (!Array.isArray(data.results)) {
       console.error('Invalid response format:', data)
       throw new Error('Invalid response format from Tavily API')
     }
 
-    if (!Array.isArray(data.results)) {
-      console.error('No results array in response:', data)
-      throw new Error('No results array in Tavily API response')
-    }
+    // Simplify the scoring and filtering of results
+    const scoredResults = data.results
+      .filter((result: SearchResult) => {
+        // Only filter out empty content
+        return result.content && result.content.length > 0
+      })
+      .slice(0, 10) // Take top 10 results from Tavily's ranking
 
-    console.log('Tavily API success response:', {
-      resultCount: data.results.length,
-      firstResult: data.results[0] ? {
-        title: data.results[0].title,
-        hasContent: !!data.results[0].content,
-        hasDescription: !!data.results[0].description,
-        url: data.results[0].url
-      } : null,
-      allUrls: data.results.map((r: { url: string }) => r.url)
+    console.log('Search results processed:', {
+      originalCount: data.results.length,
+      filteredCount: scoredResults.length,
+      sampleUrls: scoredResults.slice(0, 3).map((r: SearchResult) => r.url)
     })
-    
-    return data.results || []
+
+    return scoredResults
   } catch (error) {
-    console.error('Error in searchTavily:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    })
+    console.error('Error in Tavily search:', error)
     throw error
   }
 }
 
-async function generateTitle(content: string, originalTitle: string) {
+async function generateTitle(content: string, originalTitle: string): Promise<string> {
   const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
-  if (!DEEPSEEK_API_KEY) {
-    return originalTitle.replace(/["']/g, '')
-  }
+  if (!DEEPSEEK_API_KEY) return originalTitle.replace(/["']/g, '')
 
   try {
-    const systemMessage = `You are an expert at creating clear, descriptive titles for business content.
-Your task is to create a concise, informative title that accurately represents the content.
-The title should:
-- Be 5-10 words long
-- Focus on the main insight or learning
-- Use action words where appropriate
-- Not include source names, URLs, or any punctuation
-- Remove any quotes or speech marks
-- Be consistently formatted in title case
-- Be clear and professional
-- Focus on the business value or key takeaway
-- For PDFs, extract the main topic and create an appropriate title`
-
-    const userContent = `Please create a clear, descriptive title for the following content:
-
-Original Title: ${originalTitle}
-
-Content:
-${content.substring(0, 1000)}`
-
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -282,55 +211,181 @@ ${content.substring(0, 1000)}`
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: [
-          { role: 'system', content: systemMessage },
-          { role: 'user', content: userContent }
+          {
+            role: 'system',
+            content: 'Create a clear, concise (5-10 words) title in title case that captures the main business insight. No punctuation or quotes.'
+          },
+          {
+            role: 'user',
+            content: `Original Title: ${originalTitle}\n\nContent:\n${content.substring(0, 1000)}`
+          }
         ],
         temperature: 0.2,
         max_tokens: 50
       })
     })
 
-    if (!response.ok) {
-      throw new Error('Failed to generate title')
-    }
-
+    if (!response.ok) throw new Error('Failed to generate title')
     const data = await response.json()
     return data.choices[0].message.content.trim().replace(/["']/g, '')
   } catch (error) {
-    console.error('Error generating title:', error)
+    console.error('Title generation error:', error)
     return originalTitle.replace(/["']/g, '')
   }
 }
 
-async function summarizeWithDeepseek(content: string, focusArea: InsightFocusArea) {
-  const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
-  if (!DEEPSEEK_API_KEY) {
-    console.warn('Deepseek API key not configured, skipping summarization')
-    return content
+async function summarizeWithDeepseek(
+  content: string, 
+  focusArea: InsightFocusArea, 
+  searchQuery: string,
+  useCreativeMode: boolean = false,
+  searchContext: {
+    query: string,
+    focusArea: InsightFocusArea,
+    industries: string[],
+    timeframe?: string
   }
+): Promise<string> {
+  const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
+  if (!DEEPSEEK_API_KEY) return content
 
   const focusAreaInfo = INSIGHT_FOCUS_AREAS[focusArea]
+  
+  // Format the context information
+  const contextInfo = `Search Information:
+Query: ${searchContext.query}
+Focus Area: ${focusAreaInfo.label}
+${searchContext.industries.length ? `Industries: ${searchContext.industries.join(', ')}` : ''}
+${searchContext.timeframe ? `Time Range: ${searchContext.timeframe.replace('_', ' ')}` : ''}`
 
   try {
-    const systemMessage = `You are an expert in change management, focusing specifically on ${focusAreaInfo.label}.
-Your task is to extract only the most relevant insights related to ${focusAreaInfo.label} from the content.
-Create 3-5 clear, concise bullet points that specifically address: ${focusAreaInfo.description}
+    // First, generate a title
+    const titleResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          {
+            role: 'system',
+            content: 'Create a clear, specific title (5-10 words) that captures the focus of this research. Use title case, without any punctuation, quotes, or special characters.'
+          },
+          {
+            role: 'user',
+            content: `Search Query: ${searchQuery}\nFocus Area: ${focusAreaInfo.label}\n\nFirst paragraph of content:\n${content.split('\n')[0]}`
+          }
+        ],
+        temperature: 0.2,
+        max_tokens: 50
+      })
+    })
 
-Rules:
-- Only include information directly related to ${focusAreaInfo.label}
-- Each bullet point must be a single, clear, actionable insight
-- Keep each point to 1-2 lines maximum
-- Start each point with • followed by a clear action verb
-- Remove any quotes, speech marks, or unnecessary punctuation
-- Skip any information not relevant to ${focusAreaInfo.label}
-- Focus on practical, implementable insights
-- Use clear, professional business language
-- Ensure each point stands alone as a complete insight
-- Do not include any headers, categories, or other formatting`
+    const titleData = await titleResponse.json()
+    const generatedTitle = titleData.choices[0].message.content.trim()
 
-    const userContent = `Extract the most important insights about ${focusAreaInfo.label} from the following content:
+    // Then generate the summary with either normal or creative mode
+    const systemPrompt = useCreativeMode ? 
+      `You are an expert in change management and organizational transformation. Create a comprehensive analysis focused on ${focusAreaInfo.label} (${focusAreaInfo.description}). 
 
-${content}`
+Use British English spelling and grammar.
+
+Format the response with these exact section headings (without any special characters or numbers):
+
+Context
+
+Key Findings
+
+Patterns
+
+Implications
+
+Follow-up Questions
+
+For the Context section:
+- List the search query and filters used
+- Format as "Search Query: [query]"
+- List any industries specified
+- List the time range if specified
+- Keep it clear and concise
+
+For all other sections:
+- Start each point with a bullet point character (•)
+- Write in clear, concise business language
+- One point per line
+- No special characters, asterisks, or markdown
+- No numbering
+- No quotes
+- Start each point with a capital letter
+- End each point with a period
+
+For the Implications section specifically:
+- Translate the findings into practical implementation guidance
+- Focus on how the insights impact change planning and execution
+- Provide actionable recommendations
+- Connect directly to change management practices
+
+Your analysis should:
+- Be specific to ${focusAreaInfo.label}
+- Use clear business language
+- Combine insights from sources with expert analysis
+- Provide actionable takeaways
+- Keep points concise but informative` :
+      // Original prompt for normal mode
+      `You are an expert in change management and organizational transformation. Create a comprehensive analysis focused on ${focusAreaInfo.label} (${focusAreaInfo.description}). 
+
+Use British English spelling and grammar.
+
+While there are limited direct sources available, use your expertise to:
+- Analyze the available content thoroughly
+- Expand on the key themes with your expert knowledge
+- Provide practical insights based on industry best practices
+- Draw from your understanding of similar cases and scenarios
+- Offer actionable recommendations
+
+Format the response with these exact section headings (without any special characters or numbers):
+
+Context
+
+Key Findings
+
+Patterns
+
+Implications
+
+Follow-up Questions
+
+For the Context section:
+- List the search query and filters used
+- Format as "Search Query: [query]"
+- List any industries specified
+- List the time range if specified
+- Keep it clear and concise
+
+For all other sections:
+- Start each point with a bullet point character (•)
+- Write in clear, concise business language
+- One point per line
+- No special characters, asterisks, or markdown
+- No numbering
+- No quotes
+- Start each point with a capital letter
+- End each point with a period
+
+For the Implications section specifically:
+- Translate the findings into practical implementation guidance
+- Focus on how the insights impact change planning and execution
+- Provide actionable recommendations
+- Connect directly to change management practices
+
+Your analysis should:
+- Be specific to ${focusAreaInfo.label}
+- Use clear business language
+- Combine limited source insights with expert analysis
+- Provide actionable takeaways
+- Keep points concise but informative`
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -341,257 +396,225 @@ ${content}`
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: [
-          { role: 'system', content: systemMessage },
-          { role: 'user', content: userContent }
+          {
+            role: 'system',
+            content: systemPrompt
+          },
+          {
+            role: 'user',
+            content: `${contextInfo}\n\n${content}`
+          }
         ],
-        temperature: 0.2,
-        max_tokens: 500
+        temperature: useCreativeMode ? 0.7 : 0.3,
+        max_tokens: 1000
       })
     })
 
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Deepseek API error: ${error}`)
-    }
-
+    if (!response.ok) throw new Error(`Deepseek API error: ${await response.text()}`)
     const data = await response.json()
-    return data.choices[0].message.content
+    const summary = data.choices[0].message.content
+
+    // Clean up any remaining special characters and ensure proper spacing
+    const cleanedSummary = summary
+      .replace(/[#*"`]/g, '')  // Remove any remaining special characters
+      .replace(/\n{3,}/g, '\n\n')  // Replace multiple newlines with double newlines
+      .trim()
+
+    // Combine title and summary
+    return `${generatedTitle}\n\n${cleanedSummary}`
   } catch (error) {
-    console.error('Error in summarizeWithDeepseek:', error)
+    console.error('Summarization error:', error)
     return content
   }
 }
 
 export async function GET(request: Request) {
   try {
-    // Check authentication using Clerk
+    console.log('Starting search request...')
     const { userId } = auth()
     
-    // If no userId, return unauthorized
+    // Check authentication
     if (!userId) {
-      console.error('Unauthorized request to search endpoint')
+      console.log('No user ID found')
       return new NextResponse(
-        JSON.stringify({ error: 'Please sign in to search insights' }),
-        { 
-          status: 401,
-          headers: { 'Content-Type': 'application/json' }
-        }
+        JSON.stringify({ 
+          error: 'Unauthorized',
+          details: 'Authentication required'
+        }),
+        { status: 401 }
       )
     }
 
-    console.log('Search endpoint called by user:', userId)
+    // Validate API keys
+    const missingKeys = []
+    if (!TAVILY_API_KEY) missingKeys.push('TAVILY_API_KEY')
+    if (!process.env.DEEPSEEK_API_KEY) missingKeys.push('DEEPSEEK_API_KEY')
+    
+    if (missingKeys.length > 0) {
+      console.error('Missing API keys:', missingKeys)
+      return new NextResponse(
+        JSON.stringify({ 
+          error: 'Configuration Error',
+          details: `Missing required API keys: ${missingKeys.join(', ')}`
+        }),
+        { status: 503 }
+      )
+    }
+
+    // Parse and validate search parameters
     const { searchParams } = new URL(request.url)
-    
-    // Log all search parameters
-    console.log('All search parameters:', Object.fromEntries(searchParams.entries()))
-    
-    // Get and validate search parameters
     const query = searchParams.get('query') || ''
     const focusArea = searchParams.get('focusArea') as InsightFocusArea
     const industries = searchParams.get('industries')?.split(',').filter(Boolean)
-    const changeFocus = searchParams.get('changeFocus')?.split(',').filter(Boolean)
     const timeframe = searchParams.get('timeframe') || undefined
 
-    // Validate focus area
-    if (!focusArea || !INSIGHT_FOCUS_AREAS[focusArea]) {
-      console.error('Invalid focus area:', focusArea)
-      return new NextResponse(
-        JSON.stringify({ error: 'Please select a valid focus area' }),
-        { 
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
-    // Validate API key
-    if (!TAVILY_API_KEY) {
-      console.error('Missing Tavily API key')
-      return new NextResponse(
-        JSON.stringify({ error: 'Search service is temporarily unavailable' }),
-        { 
-          status: 503,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
-    // Detailed parameter logging
-    console.log('Processed search parameters:', {
+    console.log('Search parameters received:', {
       query,
       focusArea,
       industries,
-      changeFocus,
       timeframe,
-      hasTavilyKey: !!TAVILY_API_KEY,
-      hasDeepseekKey: !!process.env.DEEPSEEK_API_KEY
+      url: request.url
     })
 
-    // Search using Tavily
-    console.log('Initiating Tavily search...')
-    const searchResults = await searchTavily(
-      query,
-      focusArea,
-      industries,
-      changeFocus,
-      timeframe
-    )
-    
-    console.log('Tavily search completed:', {
-      resultCount: searchResults?.length,
-      hasResults: !!searchResults?.length,
-      firstResultUrl: searchResults?.[0]?.url
-    })
-
-    if (!Array.isArray(searchResults)) {
-      console.error('Invalid search results format:', {
-        type: typeof searchResults,
-        value: searchResults
+    if (!focusArea || !INSIGHT_FOCUS_AREAS[focusArea]) {
+      console.log('Invalid focus area:', { 
+        provided: focusArea, 
+        validAreas: Object.keys(INSIGHT_FOCUS_AREAS)
       })
       return new NextResponse(
-        JSON.stringify({ error: 'Invalid search results format' }),
-        { 
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        }
+        JSON.stringify({ 
+          error: 'Invalid Parameters',
+          details: 'Invalid focus area',
+          validAreas: Object.keys(INSIGHT_FOCUS_AREAS)
+        }),
+        { status: 400 }
       )
     }
 
-    if (searchResults.length === 0) {
-      console.log('No results found')
+    // Perform search
+    console.log('Starting Tavily search...')
+    let searchResults
+    try {
+      searchResults = await searchTavily(query, focusArea, industries, timeframe)
+    } catch (searchError) {
+      console.error('Tavily search failed:', searchError)
       return new NextResponse(
-        JSON.stringify([]),
-        { 
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        }
+        JSON.stringify({ 
+          error: 'Search Failed',
+          details: searchError instanceof Error ? searchError.message : 'Search service error',
+          query,
+          focusArea
+        }),
+        { status: 500 }
+      )
+    }
+
+    console.log('Tavily search completed:', {
+      resultCount: searchResults.length,
+      hasResults: searchResults.length > 0
+    })
+
+    if (!searchResults.length) {
+      console.log('No results found for query:', {
+        query,
+        focusArea,
+        industries
+      })
+      return new NextResponse(
+        JSON.stringify({ 
+          results: [],
+          message: 'No results found. Try broadening your search or using different terms.',
+          searchParams: {
+            query,
+            focusArea,
+            industries,
+            timeframe
+          }
+        }),
+        { status: 200 }
       )
     }
 
     // Process results
     console.log('Processing search results...')
-    const insights = await Promise.all(
-      searchResults.map(async (result: any, index: number) => {
+    const processedResults = await Promise.all(
+      searchResults.map(async (result, index) => {
         try {
           console.log(`Processing result ${index + 1}/${searchResults.length}`)
-          
-          // Validate content
           const content = result.content || result.description || ''
           if (!content) {
-            console.log(`Skipping result ${index + 1} - no content:`, result.url)
+            console.log(`Skipping result ${index + 1} - no content`)
             return null
           }
 
-          // Generate title
           console.log(`Generating title for result ${index + 1}`)
-          let title = result.title
-          try {
-            title = await generateTitle(content, result.title)
-          } catch (error) {
-            console.error(`Title generation failed for result ${index + 1}:`, error)
-          }
-
-          // Generate summary
-          console.log(`Generating summary for result ${index + 1}`)
-          let summary = content
-          try {
-            summary = await summarizeWithDeepseek(content, focusArea)
-          } catch (error) {
-            console.error(`Summary generation failed for result ${index + 1}:`, error)
-          }
-
-          // Create insight object
-          const insight = {
-            id: result.url,
-            title,
-            url: result.url,
-            summary,
-            content: content.split('\n'),
-            category: INSIGHT_FOCUS_AREAS[focusArea].label,
-            tags: [
-              INSIGHT_FOCUS_AREAS[focusArea].label,
-              ...(industries || []),
-              ...(changeFocus || [])
-            ],
-            readTime: `${Math.ceil(content.length / 1000)} min`,
-            focus_area: focusArea,
-            source: result.source || 'Web',
-            created_at: result.published_date || new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
-
-          console.log(`Successfully processed result ${index + 1}:`, {
-            title: insight.title,
-            summaryLength: insight.summary.length,
-            tagsCount: insight.tags.length
-          })
+          const title = await generateTitle(content, result.title)
           
-          return insight
+          return {
+            id: `result-${index}`,
+            title,
+            content,
+            url: result.url,
+            focus_area: focusArea,
+            source: result.source,
+            published_date: result.published_date
+          }
         } catch (error) {
-          console.error(`Failed to process result ${index + 1}:`, error)
+          console.error(`Error processing result ${index + 1}:`, error)
           return null
         }
       })
-    ).then(results => results.filter((result): result is NonNullable<typeof result> => result !== null))
+    ).then(results => results.filter((r): r is NonNullable<typeof r> => r !== null))
 
-    console.log('Search completed successfully:', {
-      totalResults: insights.length,
-      processedResults: insights.length
-    })
+    // Generate immediate summary from all results
+    console.log('Generating summary from all results...')
+    const combinedContent = processedResults
+      .map(result => `Title: ${result.title}\n\nContent: ${result.content}`)
+      .join('\n\n---\n\n')
+    
+    // Determine if we should use the creative mode based on result count
+    const useCreativeMode = processedResults.length <= 3 // Threshold for limited results
+    
+    // Prepare search context
+    const searchContext = {
+      query,
+      focusArea,
+      industries: industries || [],
+      timeframe
+    }
+    
+    const summary = await summarizeWithDeepseek(
+      combinedContent, 
+      focusArea, 
+      query,
+      useCreativeMode,
+      searchContext // Pass the search context
+    )
 
-    // Format the response before sending
-    const formattedResults = insights.map(result => {
-      // Clean and format the summary
-      const summary = result.summary
-        .split('\n')
-        .map((point: string) => {
-          // Remove existing bullet points or dashes
-          const cleaned = point.replace(/^[-•*]\s*/, '').trim()
-          // Skip empty lines or single words
-          if (!cleaned || cleaned.split(' ').length < 3) return null
-          // Ensure each point is a complete sentence
-          return cleaned.charAt(0).toUpperCase() + cleaned.slice(1) + (cleaned.endsWith('.') ? '' : '.')
-        })
-        .filter(Boolean)
-        .map(point => `• ${point}`)
-        .join('\n')
-
-      return {
-        ...result,
-        summary,
-        // Format content similarly if it exists
-        content: Array.isArray(result.content) 
-          ? result.content.map((point: string) => {
-              const cleaned = point.replace(/^[-•*]\s*/, '').trim()
-              if (!cleaned || cleaned.split(' ').length < 3) return null
-              return `• ${cleaned.charAt(0).toUpperCase() + cleaned.slice(1)}${cleaned.endsWith('.') ? '' : '.'}`
-            }).filter(Boolean)
-          : result.content
-      }
-    })
+    // Add References section to the summary
+    const references = processedResults
+      .map((result, index) => `${index + 1}. ${result.title} - ${result.url}`)
+      .join('\n')
+    
+    const summaryWithReferences = `${summary}\n\nReferences:\n${references}`
 
     return new NextResponse(
-      JSON.stringify(formattedResults),
-      { 
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      }
+      JSON.stringify({
+        results: processedResults,
+        summary: summaryWithReferences
+      }),
+      { status: 200 }
     )
+
   } catch (error) {
-    console.error('Search endpoint error:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    })
-    
+    console.error('Search error:', error)
     return new NextResponse(
       JSON.stringify({ 
-        error: 'Failed to search insights',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      }), 
-      { 
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      }
+        error: 'Search Error',
+        details: error instanceof Error ? error.message : 'An unexpected error occurred',
+        stack: error instanceof Error ? error.stack : undefined
+      }),
+      { status: 500 }
     )
   }
 }
