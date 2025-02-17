@@ -1,26 +1,46 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-export async function POST(
-  request: Request,
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error('Missing required Supabase environment variables')
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false
+  }
+})
+
+export async function PUT(
+  request: NextRequest,
   { params }: { params: { projectId: string } }
 ) {
   try {
     const { userId } = auth()
+    
+    console.log('PUT /api/projects/[projectId]/tasks/reorder:', {
+      userId,
+      projectId: params.projectId
+    })
+
     if (!userId) {
+      console.log('Unauthorized: No user ID found')
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { 
+          error: 'Unauthorized',
+          details: 'Please sign in to reorder tasks'
+        },
         { status: 401 }
       )
     }
 
-    // Verify project ownership
+    // First verify project exists and belongs to user
+    console.log('Verifying project ownership:', { projectId: params.projectId, userId })
     const { data: project, error: projectError } = await supabase
       .from('projects')
       .select('id')
@@ -29,69 +49,162 @@ export async function POST(
       .single()
 
     if (projectError) {
+      console.error('Project verification error:', {
+        code: projectError.code,
+        message: projectError.message,
+        details: projectError.details,
+        hint: projectError.hint,
+        userId,
+        projectId: params.projectId
+      })
+      
+      if (projectError.code === 'PGRST116') {
+        return NextResponse.json(
+          { 
+            error: 'Project not found',
+            details: 'Project does not exist or you do not have access to it'
+          },
+          { status: 404 }
+        )
+      }
+      throw projectError
+    }
+
+    const body = await request.json()
+    const { tasks } = body
+
+    console.log('Reordering tasks:', {
+      projectId: params.projectId,
+      userId,
+      taskCount: tasks?.length,
+      tasks
+    })
+
+    if (!Array.isArray(tasks)) {
       return NextResponse.json(
-        { error: 'Project not found or access denied' },
-        { status: 404 }
+        { 
+          error: 'Invalid request body',
+          details: 'Tasks must be an array'
+        },
+        { status: 400 }
       )
     }
 
-    const { taskId, newPosition } = await request.json()
-
-    // Get all tasks for the project ordered by position
-    const { data: tasks, error: tasksError } = await supabase
+    // Verify all tasks belong to the project
+    const taskIds = tasks.map(task => task.id)
+    const { data: existingTasks, error: verifyError } = await supabase
       .from('project_tasks')
-      .select('id, position')
+      .select('id')
       .eq('project_id', params.projectId)
-      .order('position')
+      .in('id', taskIds)
 
-    if (tasksError) {
+    if (verifyError) {
+      console.error('Error verifying tasks:', {
+        error: verifyError,
+        projectId: params.projectId,
+        taskIds
+      })
       return NextResponse.json(
-        { error: 'Failed to fetch tasks' },
+        { 
+          error: 'Failed to verify tasks',
+          details: verifyError.message
+        },
         { status: 500 }
       )
     }
 
-    // Calculate new positions
-    const updatedTasks = tasks.map((task, index) => ({
-      id: task.id,
-      position: index
-    }))
-
-    // Move the task to its new position
-    const taskToMove = updatedTasks.find(t => t.id === taskId)
-    if (!taskToMove) {
+    if (!existingTasks || existingTasks.length !== tasks.length) {
+      console.error('Task count mismatch:', {
+        existingCount: existingTasks?.length,
+        requestedCount: tasks.length,
+        existingTasks,
+        requestedTasks: tasks
+      })
       return NextResponse.json(
-        { error: 'Task not found' },
-        { status: 404 }
+        { 
+          error: 'Invalid tasks',
+          details: 'Some tasks do not belong to this project'
+        },
+        { status: 400 }
       )
     }
 
-    updatedTasks.splice(updatedTasks.indexOf(taskToMove), 1)
-    updatedTasks.splice(newPosition, 0, taskToMove)
+    // Update task positions in a transaction
+    const updates = tasks.map((task, index) => ({
+      id: task.id,
+      position: index,
+      updated_at: new Date().toISOString()
+    }))
 
-    // Update all task positions
+    console.log('Updating task positions:', {
+      updates,
+      projectId: params.projectId
+    })
+
+    // First get the existing tasks to preserve their data
+    const { data: existingTaskData, error: fetchError } = await supabase
+      .from('project_tasks')
+      .select('*')
+      .in('id', tasks.map(t => t.id))
+
+    if (fetchError) {
+      console.error('Error fetching existing tasks:', {
+        error: fetchError,
+        updates,
+        projectId: params.projectId
+      })
+      return NextResponse.json(
+        { 
+          error: 'Failed to fetch existing tasks',
+          details: fetchError.message
+        },
+        { status: 500 }
+      )
+    }
+
+    // Merge the position updates with existing data
+    const mergedUpdates = updates.map(update => {
+      const existingTask = existingTaskData?.find(t => t.id === update.id)
+      return {
+        ...existingTask,
+        position: update.position,
+        updated_at: update.updated_at
+      }
+    })
+
     const { error: updateError } = await supabase
       .from('project_tasks')
-      .upsert(
-        updatedTasks.map((task, index) => ({
-          id: task.id,
-          position: index,
-          updated_at: new Date().toISOString()
-        }))
-      )
+      .upsert(mergedUpdates)
 
     if (updateError) {
+      console.error('Error updating task positions:', {
+        error: updateError,
+        updates,
+        projectId: params.projectId
+      })
       return NextResponse.json(
-        { error: 'Failed to update task positions' },
+        { 
+          error: 'Failed to update task positions',
+          details: updateError.message
+        },
         { status: 500 }
       )
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error reordering tasks:', error)
+    console.error('Error in PUT /api/projects/[projectId]/tasks/reorder:', {
+      error: error instanceof Error ? {
+        message: error.message,
+        stack: error.stack
+      } : error,
+      projectId: params.projectId
+    })
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }

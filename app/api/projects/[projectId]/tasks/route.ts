@@ -57,6 +57,7 @@ export async function GET(
       .from('project_tasks')
       .select('*')
       .eq('project_id', params.projectId)
+      .order('position', { ascending: true })
       .order('created_at', { ascending: false })
 
     if (error) {

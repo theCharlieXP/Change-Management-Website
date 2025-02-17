@@ -197,6 +197,45 @@ export default function ProjectPage() {
     setTasks((prev) => prev.filter((task) => task.id !== taskId))
   }
 
+  const handleReorderTasks = async (reorderedTasks: ProjectTask[]) => {
+    try {
+      // Optimistically update the UI
+      setTasks(reorderedTasks)
+
+      const response = await fetch(`/api/projects/${projectId}/tasks/reorder`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tasks: reorderedTasks }),
+      })
+
+      if (!response.ok) {
+        // Revert on error
+        setTasks(tasks)
+        const errorData = await response.json()
+        console.error('Task reordering failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+          tasks: reorderedTasks
+        })
+        throw new Error(errorData.details || 'Failed to reorder tasks')
+      }
+    } catch (error) {
+      console.error('Error reordering tasks:', {
+        error: error instanceof Error ? {
+          message: error.message,
+          stack: error.stack
+        } : error,
+        tasks: reorderedTasks
+      })
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to reorder tasks",
+        variant: "destructive"
+      })
+    }
+  }
+
   const handleAddNote = async (note: { content: string }): Promise<ProjectNote> => {
     const response = await fetch(`/api/projects/${projectId}/notes`, {
       method: 'POST',
@@ -384,6 +423,7 @@ export default function ProjectPage() {
             onAdd={handleAddTask}
             onUpdate={handleUpdateTask}
             onDelete={handleDeleteTask}
+            onReorder={handleReorderTasks}
           />
         </CardContent>
       </Card>

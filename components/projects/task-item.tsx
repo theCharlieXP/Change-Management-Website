@@ -4,7 +4,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Pencil, X } from 'lucide-react'
+import { Pencil, X, GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ProjectTask, TaskStatus } from '@/types/projects'
 
@@ -17,11 +17,11 @@ interface TaskItemProps {
   deletingId: string | null
 }
 
-const TASK_STATUSES: { value: TaskStatus; label: string; color: string }[] = [
-  { value: 'todo', label: 'To Do', color: 'bg-slate-100 text-slate-800 border-slate-200' },
-  { value: 'in-progress', label: 'In Progress', color: 'bg-blue-100 text-blue-800 border-blue-200' },
-  { value: 'completed', label: 'Completed', color: 'bg-green-100 text-green-800 border-green-200' },
-  { value: 'blocked', label: 'Blocked', color: 'bg-red-100 text-red-800 border-red-200' }
+const TASK_STATUSES: { value: TaskStatus; label: string }[] = [
+  { value: 'todo', label: 'To Do' },
+  { value: 'in-progress', label: 'In Progress' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'blocked', label: 'Blocked' }
 ]
 
 export function TaskItem({ 
@@ -44,39 +44,45 @@ export function TaskItem({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
-    cursor: 'grab'
+    zIndex: isDragging ? 1 : 0
   }
 
   return (
     <div 
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
       className={cn(
         "p-4 rounded-lg border border-border hover:border-border/80 hover:bg-muted/50 transition-colors",
         isDragging && "shadow-lg"
       )}
     >
       <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-2">
-            <h4 className="font-medium text-base truncate">{task.title}</h4>
-            <Badge className={cn("capitalize", getStatusBadgeColor(task.status))}>
-              {TASK_STATUSES.find(s => s.value === task.status)?.label || task.status}
-            </Badge>
+        <div className="flex items-start gap-2">
+          <button
+            className="p-1 hover:bg-muted rounded cursor-grab active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-2">
+              <h4 className="font-medium text-base truncate">{task.title}</h4>
+              <Badge className={cn("capitalize", getStatusBadgeColor(task.status))}>
+                {TASK_STATUSES.find(s => s.value === task.status)?.label || task.status}
+              </Badge>
+            </div>
+            {task.description && (
+              <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                {task.description}
+              </p>
+            )}
+            {task.due_date && (
+              <p className="text-sm text-muted-foreground">
+                Due: {formatDate(task.due_date)}
+              </p>
+            )}
           </div>
-          {task.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-              {task.description}
-            </p>
-          )}
-          {task.due_date && (
-            <p className="text-sm text-muted-foreground">
-              Due: {formatDate(task.due_date)}
-            </p>
-          )}
         </div>
         <div className="flex items-start gap-2">
           <Button

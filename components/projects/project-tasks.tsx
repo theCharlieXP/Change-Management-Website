@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -15,6 +15,9 @@ import type { ProjectTask, TaskStatus } from '@/types/projects'
 import { toast } from '@/components/ui/use-toast'
 import { TaskEditModal } from './task-edit-modal'
 import CustomDatePicker from '@/components/ui/custom-date-picker'
+import { DndContext, DragEndEvent, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { TaskItem } from './task-item'
 
 interface ProjectTasksProps {
   tasks: ProjectTask[]
@@ -22,6 +25,7 @@ interface ProjectTasksProps {
   onAdd: (task: Omit<ProjectTask, 'id' | 'created_at' | 'updated_at'>) => Promise<void>
   onUpdate: (id: string, task: Partial<ProjectTask>) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  onReorder: (tasks: ProjectTask[]) => Promise<void>
 }
 
 const TASK_STATUSES: { value: TaskStatus; label: string; color: string }[] = [
@@ -31,7 +35,7 @@ const TASK_STATUSES: { value: TaskStatus; label: string; color: string }[] = [
   { value: 'blocked', label: 'Blocked', color: 'bg-red-100 text-red-800 border-red-200' }
 ]
 
-export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete }: ProjectTasksProps) {
+export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete, onReorder }: ProjectTasksProps) {
   const [showAddForm, setShowAddForm] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -42,6 +46,13 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete }: Pr
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [editingTask, setEditingTask] = useState<ProjectTask | null>(null)
   const [taskToDelete, setTaskToDelete] = useState<ProjectTask | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -54,7 +65,9 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete }: Pr
         title,
         description,
         status,
-        due_date: dueDate && isValid(dueDate) ? dueDate.toISOString() : null
+        due_date: dueDate && isValid(dueDate) ? dueDate.toISOString() : null,
+        position: tasks.length,
+        user_id: ''
       })
 
       // Reset form
@@ -83,6 +96,49 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete }: Pr
       setTaskToDelete(null)
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      const oldIndex = tasks.findIndex(task => task.id === active.id)
+      const newIndex = tasks.findIndex(task => task.id === over.id)
+
+      console.log('Reordering tasks:', {
+        oldIndex,
+        newIndex,
+        activeId: active.id,
+        overId: over.id,
+        tasks
+      })
+
+      const newTasks = [...tasks]
+      const [movedTask] = newTasks.splice(oldIndex, 1)
+      newTasks.splice(newIndex, 0, movedTask)
+
+      // Update positions
+      const updatedTasks = newTasks.map((task, index) => ({
+        ...task,
+        position: index
+      }))
+
+      console.log('Updated task order:', {
+        updatedTasks,
+        originalTasks: tasks
+      })
+
+      try {
+        await onReorder(updatedTasks)
+      } catch (error) {
+        console.error('Failed to reorder tasks:', error)
+        toast({
+          title: "Error",
+          description: "Failed to reorder tasks. Please try again.",
+          variant: "destructive"
+        })
+      }
     }
   }
 
@@ -177,8 +233,8 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete }: Pr
                     <label className="text-sm font-medium">Due Date</label>
                     <div className="w-full">
                       <CustomDatePicker
-                        selectedDate={dueDate}
-                        onChange={setDueDate}
+                        selectedDate={dueDate || null}
+                        onChange={(date: Date | null) => setDueDate(date || undefined)}
                         disabled={loading}
                         className="w-full"
                       />
@@ -213,58 +269,36 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete }: Pr
         </div>
       )}
 
-      <div className="space-y-3">
-        {tasks.map((task) => (
-          <div 
-            key={task.id} 
-            className="p-4 rounded-lg border border-border hover:border-border/80 hover:bg-muted/50 transition-colors"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-2">
-                  <h4 className="font-medium text-base truncate">{task.title}</h4>
-                  <Badge className={cn("capitalize", getStatusBadgeColor(task.status))}>
-                    {TASK_STATUSES.find(s => s.value === task.status)?.label || task.status}
-                  </Badge>
-                </div>
-                {task.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                    {task.description}
-                  </p>
-                )}
-                {task.due_date && (
-                  <p className="text-sm text-muted-foreground">
-                    Due: {formatDate(task.due_date)}
-                  </p>
-                )}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={tasks.map(task => task.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-3">
+            {tasks.map((task) => (
+              <TaskItem
+                key={task.id}
+                task={task}
+                onEdit={setEditingTask}
+                onDelete={setTaskToDelete}
+                getStatusBadgeColor={getStatusBadgeColor}
+                formatDate={formatDate}
+                deletingId={deletingId}
+              />
+            ))}
+            
+            {tasks.length === 0 && (
+              <div className="py-8 text-center text-muted-foreground">
+                No tasks yet. Click "Add Task" to create one.
               </div>
-              <div className="flex items-start gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setEditingTask(task)}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setTaskToDelete(task)}
-                  disabled={deletingId === task.id}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+            )}
           </div>
-        ))}
-        
-        {tasks.length === 0 && (
-          <div className="py-8 text-center text-muted-foreground">
-            No tasks yet. Click "Add Task" to create one.
-          </div>
-        )}
-      </div>
+        </SortableContext>
+      </DndContext>
 
       {editingTask && (
         <TaskEditModal
