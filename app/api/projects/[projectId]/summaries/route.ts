@@ -268,6 +268,16 @@ export async function PUT(
       )
     }
 
+    // Update the project's updated_at timestamp
+    const { error: projectUpdateError } = await supabase
+      .from('projects')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', params.projectId)
+
+    if (projectUpdateError) {
+      console.error('Error updating project timestamp:', projectUpdateError)
+    }
+
     return new NextResponse(
       JSON.stringify(updatedSummary),
       { status: 200 }

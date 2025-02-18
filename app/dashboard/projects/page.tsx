@@ -99,15 +99,20 @@ const ProjectsPage: React.FC = () => {
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-4">
                     <CardTitle className="text-base font-medium flex-1">{project.title}</CardTitle>
-                    <Badge className={`${STATUS_COLORS[project.status]} text-xs px-2 py-0.5 whitespace-nowrap shrink-0`}>
-                      {STATUS_LABELS[project.status]}
-                    </Badge>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-3">
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>Created {format(new Date(project.created_at), 'MMM d, yyyy')}</span>
+                    <div className="space-y-1">
+                      <div>Created {format(new Date(project.created_at), 'MMM d, yyyy')}</div>
+                      <div>Last edited {format(new Date(project.updated_at), 'MMM d, yyyy')}</div>
+                    </div>
                     <ArrowRight className="h-4 w-4" />
+                  </div>
+                  <div className="flex justify-center">
+                    <Badge className={`${STATUS_COLORS[project.status]} text-xs px-2 py-0.5 whitespace-nowrap`}>
+                      {STATUS_LABELS[project.status]}
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>

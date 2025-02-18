@@ -205,6 +205,16 @@ export async function PUT(
       )
     }
 
+    // Update the project's updated_at timestamp
+    const { error: projectUpdateError } = await supabase
+      .from('projects')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', params.projectId)
+
+    if (projectUpdateError) {
+      console.error('Error updating project timestamp:', projectUpdateError)
+    }
+
     return NextResponse.json(note)
   } catch (error) {
     console.error('Error in PUT /api/projects/[projectId]/notes:', error)

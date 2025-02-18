@@ -293,6 +293,16 @@ export async function PATCH(
       )
     }
 
+    // Update the project's updated_at timestamp
+    const { error: projectUpdateError } = await supabase
+      .from('projects')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', params.projectId)
+
+    if (projectUpdateError) {
+      console.error('Error updating project timestamp:', projectUpdateError)
+    }
+
     return NextResponse.json(task)
   } catch (error) {
     console.error('Error in PATCH /api/projects/[projectId]/tasks:', error)

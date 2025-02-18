@@ -228,3 +228,63 @@ CHANGE-MAN-WEBSITE
 # Rules
 - All new components should go in /components and be named like example-component.tsx unless otherwise specified.
 - All new pages go in /app
+
+Section 1: Hero & Feature Cards
+Hero Header
+Content:
+Headline:
+"Welcome to Change Amigo – A Friendly Change Management Partner"
+Subheading:
+"Simplifying change management with AI-driven insights and practical project tools."
+Call-to-Action:
+A prominently placed “Get Started” button in emerald green.
+Design:
+A full-width hero section featuring a professional background image (such as a modern office scene with subtle abstract elements). The text is centre-aligned, and ample whitespace is used to maintain a clean appearance. The button should have a gentle hover effect.
+Four Feature Cards
+
+Positioned immediately below the hero header in a responsive grid (displayed side by side on larger screens and stacking vertically on mobile). Each card should have a white background, softly rounded corners, a light drop shadow, and emerald green accents (such as borders or icons).
+
+Streamlined Change Management
+"Experience a simplified approach to managing change projects with an intuitive interface and comprehensive tools."
+Instant AI Insights
+"Enter search terms and receive a concise summary generated from the most relevant information across the web."
+Effortless Project Organisation
+"Save generated summaries directly to projects for quick access to key insights, ensuring efficient tracking and review."
+Coming Soon: Document & Communication Assistance
+"Soon, saved insights will be used to assist in drafting change management documents and communications—transforming insights into actionable plans."
+
+Section 2: How It Works – Step-by-Step Guide
+This section appears as the user scrolls down, with each step presented in its own card or panel featuring a clear number, an appropriate icon, and a brief description.
+
+Sign In:
+"Log in securely using a Google account for a quick and hassle-free start."
+Create a Project:
+"Set up a new change project by providing a name and a brief description, ensuring proper organisation from the outset."
+Search for Insights:
+"Enter search terms and receive a generated summary that encapsulates the most relevant information available."
+Save Your Insights:
+"Review the summary and save it directly to the project, making all key findings easily accessible."
+Coming Soon – Document & Communication Assistance:
+"Soon, saved insights will be used to help draft change management documents and communications, turning analysis into actionable plans."
+Design:
+Each step card includes a clear icon (for example: a key for Sign In, a folder for Create Project, a magnifying glass for Search, a save icon for Save, and a document icon for the upcoming feature). The cards should animate (slide or fade in) as the user scrolls.
+
+Section 3: Testimonials Slider
+Below the step-by-step guide, include a testimonials section with a humorous, tongue-in-cheek note acknowledging that no testimonials are available yet.
+Title & Intro Text:
+Heading: "Testimonials"
+Subtext:
+"As can be seen, there are no testimonials yet. Perhaps a fortunate user might be the first to leave one. Short and to the point—maybe even a testimonial from a satisfied user like this."
+Design:
+Use white, curved rectangular cards arranged side by side in a horizontal slider that slowly moves across the screen. Each card should include a placeholder for testimonial text and a small placeholder avatar. The overall style remains clean and professional.
+
+Section 4: Contact / Feedback
+At the bottom of the page, provide a simple contact form.
+Title:
+"Get in Touch"
+Content:
+"If there are any questions, ideas, or feedback about Change Amigo, please use the form below to share them. Every input is appreciated."
+Form Fields:
+Name, Email, and Message, with a “Send Feedback” button styled in emerald green.
+Design:
+The contact form should be clearly laid out with well-spaced input fields and labels, set against a slightly contrasting background (a very light grey or subtle pattern) to differentiate it from the rest of the page. Ensure responsiveness for both desktop and mobile devices.
