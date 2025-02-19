@@ -1,7 +1,9 @@
 import { SignedOut } from "@clerk/nextjs"
 import { Card } from "@/components/ui/card"
 import { GetStartedButton } from "@/components/auth-buttons"
-import { BarChart3, FolderKanban, Brain, Rocket } from "lucide-react"
+import { BarChart3, FolderKanban, Brain, Rocket, KeyRound, FolderPlus, Search, Save, FileText, User } from "lucide-react"
+import { ScrollReveal } from "@/components/scroll-reveal"
+import { TestimonialCarousel } from "@/components/testimonial-carousel"
 
 export default function Home() {
   return (
@@ -10,12 +12,11 @@ export default function Home() {
       <section className="min-h-screen px-6 py-20">
         <div className="max-w-5xl mx-auto text-center mb-20">
           <h1 className="text-5xl font-bold mb-6">
-            <div>Transform Change Management</div>
-            <div className="mt-2">with AI-Powered Insights</div>
+            Welcome to Change Amigo
+            <div className="mt-2">A Friendly Change Management Partner</div>
           </h1>
           <p className="text-xl text-muted-foreground mb-10">
-            Discover a new way to manage your projects and gain valuable insights
-            with our intuitive and powerful tools.
+            Simplifying change management with AI-driven insights and practical project tools.
           </p>
           <div className="flex justify-center">
             <SignedOut>
@@ -31,12 +32,10 @@ export default function Home() {
                 <BarChart3 className="w-8 h-8 text-emerald-600" />
               </div>
               <h3 className="text-xl font-semibold mb-4">
-                Comprehensive Change Management Tools
+                Streamlined Change Management
               </h3>
               <p className="text-muted-foreground">
-                Access a suite of AI-driven features, including automated document generation and
-                insightful project analysis, to streamline every aspect of your
-                change management process.
+                Experience a simplified approach to managing change projects with an intuitive interface and comprehensive tools.
               </p>
             </div>
           </Card>
@@ -47,12 +46,10 @@ export default function Home() {
                 <FolderKanban className="w-8 h-8 text-emerald-600" />
               </div>
               <h3 className="text-xl font-semibold mb-4">
-                Personalised Project Organisation
+                Instant AI Insights
               </h3>
               <p className="text-muted-foreground">
-                Easily save and manage your insights and documents within
-                dedicated projects, ensuring all your change initiatives are
-                organised and accessible in one centralised location.
+                Enter search terms and receive a concise summary generated from the most relevant information across the web.
               </p>
             </div>
           </Card>
@@ -63,37 +60,158 @@ export default function Home() {
                 <Brain className="w-8 h-8 text-emerald-600" />
               </div>
               <h3 className="text-xl font-semibold mb-4">
-                Data-Driven Decision Making
+                Effortless Project Organisation
               </h3>
               <p className="text-muted-foreground">
-                Leverage real-world case studies and AI-summarised insights to inform your
-                strategies, reduce risks, and enhance the effectiveness of
-                your change initiatives.
+                Save generated summaries directly to projects for quick access to key insights, ensuring efficient tracking and review.
               </p>
             </div>
           </Card>
 
-          <Card className="p-6 transition-all duration-300 hover:bg-emerald-50 hover:transform hover:-translate-y-1 hover:shadow-lg">
+          <Card className="p-6 transition-all duration-300 hover:bg-emerald-50 hover:transform hover:-translate-y-1 hover:shadow-lg relative">
+            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-emerald-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
+              COMING SOON
+            </div>
             <div className="flex flex-col items-center text-center">
               <div className="mb-6 p-3 bg-emerald-100 rounded-lg">
                 <Rocket className="w-8 h-8 text-emerald-600" />
               </div>
               <h3 className="text-xl font-semibold mb-4">
-                Enhanced Efficiency and Productivity
+                Document & Communication Assistance
               </h3>
               <p className="text-muted-foreground">
-                Utilise advanced AI capabilities to speed up the creation and
-                refinement of change management documents, allowing you to focus on
-                strategic planning and execution.
+                Soon, saved insights will be used to assist in drafting change management documents and communications—transforming insights into actionable plans.
               </p>
             </div>
           </Card>
         </div>
       </section>
 
+      {/* How It Works Section */}
+      <section className="px-6 py-20 bg-gray-50">
+        <div className="max-w-3xl mx-auto text-center mb-12">
+          <h2 className="text-4xl font-bold mb-4">How It Works</h2>
+          <p className="text-lg text-muted-foreground">
+            Get started with Change Amigo in just a few simple steps
+          </p>
+        </div>
+
+        <div className="max-w-2xl mx-auto space-y-4">
+          <ScrollReveal>
+            <Card className="p-4 h-[100px] transition-all duration-300 hover:bg-emerald-50 hover:transform hover:-translate-y-1 hover:shadow-lg">
+              <div className="flex items-center gap-4 h-full">
+                <div className="shrink-0">
+                  <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                    <KeyRound className="w-5 h-5 text-emerald-600" />
+                  </div>
+                </div>
+                <div className="min-w-0 flex flex-col justify-center">
+                  <h3 className="text-lg font-semibold">Sign In</h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    Log in securely using a Google account for a quick and hassle-free start.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </ScrollReveal>
+
+          <ScrollReveal delay={200}>
+            <Card className="p-4 h-[100px] transition-all duration-300 hover:bg-emerald-50 hover:transform hover:-translate-y-1 hover:shadow-lg">
+              <div className="flex items-center gap-4 h-full">
+                <div className="shrink-0">
+                  <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                    <FolderPlus className="w-5 h-5 text-emerald-600" />
+                  </div>
+                </div>
+                <div className="min-w-0 flex flex-col justify-center">
+                  <h3 className="text-lg font-semibold">Create a Project</h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    Set up a new change project by providing a name and a brief description.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </ScrollReveal>
+
+          <ScrollReveal delay={400}>
+            <Card className="p-4 h-[100px] transition-all duration-300 hover:bg-emerald-50 hover:transform hover:-translate-y-1 hover:shadow-lg">
+              <div className="flex items-center gap-4 h-full">
+                <div className="shrink-0">
+                  <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                    <Search className="w-5 h-5 text-emerald-600" />
+                  </div>
+                </div>
+                <div className="min-w-0 flex flex-col justify-center">
+                  <h3 className="text-lg font-semibold">Search for Insights</h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    Enter search terms and receive a generated summary of relevant information.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </ScrollReveal>
+
+          <ScrollReveal delay={600}>
+            <Card className="p-4 h-[100px] transition-all duration-300 hover:bg-emerald-50 hover:transform hover:-translate-y-1 hover:shadow-lg">
+              <div className="flex items-center gap-4 h-full">
+                <div className="shrink-0">
+                  <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                    <Save className="w-5 h-5 text-emerald-600" />
+                  </div>
+                </div>
+                <div className="min-w-0 flex flex-col justify-center">
+                  <h3 className="text-lg font-semibold">Save Your Insights</h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    Review and save summaries directly to your project for easy access.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </ScrollReveal>
+
+          <ScrollReveal delay={800}>
+            <Card className="p-4 h-[100px] transition-all duration-300 hover:bg-emerald-50 hover:transform hover:-translate-y-1 hover:shadow-lg relative">
+              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-emerald-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                COMING SOON
+              </div>
+              <div className="flex items-center gap-4 h-full">
+                <div className="shrink-0">
+                  <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-emerald-600" />
+                  </div>
+                </div>
+                <div className="min-w-0 flex flex-col justify-center">
+                  <h3 className="text-lg font-semibold">Document Assistance</h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    Soon, use saved insights to help draft change management documents and communications.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="px-6 py-20">
+        <div className="max-w-3xl mx-auto text-center mb-12">
+          <h2 className="text-4xl font-bold mb-4">Testimonials</h2>
+          <p className="text-lg text-muted-foreground">
+            As can be seen, there are no testimonials yet. Perhaps a fortunate user might be the first to leave one.
+            Short and to the point—maybe even a testimonial from a satisfied user like this.
+          </p>
+        </div>
+
+        <div className="relative max-w-[1272px] mx-auto">
+          <div className="absolute left-0 top-0 bottom-0 w-40 bg-gradient-to-r from-background via-background to-transparent z-10" />
+          <div className="absolute right-0 top-0 bottom-0 w-40 bg-gradient-to-l from-background via-background to-transparent z-10" />
+          <TestimonialCarousel />
+        </div>
+      </section>
+
       <footer className="py-6 px-6 border-t">
         <div className="max-w-7xl mx-auto text-center text-sm text-muted-foreground">
-          © 2023 Change Buddy. All rights reserved.
+          © 2024 Change Amigo. All rights reserved.
         </div>
       </footer>
     </main>

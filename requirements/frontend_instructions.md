@@ -229,6 +229,7 @@ CHANGE-MAN-WEBSITE
 - All new components should go in /components and be named like example-component.tsx unless otherwise specified.
 - All new pages go in /app
 
+# Landing Page Design
 Section 1: Hero & Feature Cards
 Hero Header
 Content:
