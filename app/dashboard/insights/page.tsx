@@ -80,7 +80,6 @@ export default function InsightsPage() {
   const [query, setQuery] = useState("")
   const [focusArea, setFocusArea] = useState<InsightFocusArea | undefined>(undefined)
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([])
-  const [timeframe, setTimeframe] = useState<TimeframeValue | undefined>(undefined)
   const [insights, setInsights] = useState<Insight[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingStage, setLoadingStage] = useState<string | null>(null)
@@ -163,7 +162,6 @@ export default function InsightsPage() {
     // Reset all state values
     setFocusArea(undefined)
     setSelectedIndustries([])
-    setTimeframe(undefined)
     
     // Force a re-render of all components
     setResetKey(prev => prev + 1)
@@ -186,7 +184,6 @@ export default function InsightsPage() {
       if (query) params.append('query', query)
       if (focusArea) params.append('focusArea', focusArea)
       if (selectedIndustries.length > 0) params.append('industries', selectedIndustries.join(','))
-      if (timeframe) params.append('timeframe', timeframe)
 
       await new Promise(resolve => setTimeout(resolve, 800))
 
@@ -373,7 +370,7 @@ export default function InsightsPage() {
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">
               Insight Focus Area <span className="text-red-500">*</span>
@@ -409,27 +406,6 @@ export default function InsightsPage() {
               disabled={loading}
               className="h-9"
             />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Time Range
-            </label>
-            <Select
-              value={timeframe}
-              onValueChange={(value: TimeframeValue) => setTimeframe(value)}
-              disabled={loading}
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Select Time Range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="last_day">Last 24 Hours</SelectItem>
-                <SelectItem value="last_week">Last Week</SelectItem>
-                <SelectItem value="last_month">Last Month</SelectItem>
-                <SelectItem value="last_year">Last Year</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
 

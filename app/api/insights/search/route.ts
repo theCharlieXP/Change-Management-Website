@@ -67,7 +67,6 @@ async function searchTavily(
   query: string, 
   focusArea: InsightFocusArea,
   industries?: string[],
-  timeframe?: string
 ): Promise<SearchResult[]> {
   if (!TAVILY_API_KEY) {
     console.error('Tavily API key is missing')
@@ -78,19 +77,8 @@ async function searchTavily(
     query,
     focusArea,
     industries,
-    timeframe,
     hasApiKey: !!TAVILY_API_KEY
   })
-
-  // Handle time ranges
-  let time_range: string | undefined
-  switch (timeframe) {
-    case 'last_day': time_range = 'day'; break
-    case 'last_week': time_range = 'week'; break
-    case 'last_month': time_range = 'month'; break
-    case 'last_year': time_range = 'year'; break
-    default: time_range = undefined
-  }
 
   // Construct search query - Simplified to improve results
   const queryParts = []
@@ -131,8 +119,7 @@ async function searchTavily(
       'youtube.com', 'facebook.com', 'twitter.com',
       'instagram.com', 'linkedin.com', 'pinterest.com',
       'reddit.com'
-    ],
-    ...(time_range && { time_range })
+    ]
   }
 
   try {
@@ -243,7 +230,6 @@ async function summarizeWithDeepseek(
     query: string,
     focusArea: InsightFocusArea,
     industries: string[],
-    timeframe?: string
   }
 ): Promise<string> {
   const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
@@ -255,8 +241,7 @@ async function summarizeWithDeepseek(
   const contextInfo = `Search Information:
 Query: ${searchContext.query}
 Focus Area: ${focusAreaInfo.label}
-${searchContext.industries.length ? `Industries: ${searchContext.industries.join(', ')}` : ''}
-${searchContext.timeframe ? `Time Range: ${searchContext.timeframe.replace('_', ' ')}` : ''}`
+${searchContext.industries.length ? `Industries: ${searchContext.industries.join(', ')}` : ''}`
 
   try {
     // First, generate a title
@@ -308,7 +293,6 @@ For the Context section:
 - List the search query and filters used
 - Format as "Search Query: [query]"
 - List any industries specified
-- List the time range if specified
 - Keep it clear and concise
 
 For all other sections:
@@ -361,7 +345,6 @@ For the Context section:
 - List the search query and filters used
 - Format as "Search Query: [query]"
 - List any industries specified
-- List the time range if specified
 - Keep it clear and concise
 
 For all other sections:
@@ -466,13 +449,11 @@ export async function GET(request: Request) {
     const query = searchParams.get('query') || ''
     const focusArea = searchParams.get('focusArea') as InsightFocusArea
     const industries = searchParams.get('industries')?.split(',').filter(Boolean)
-    const timeframe = searchParams.get('timeframe') || undefined
 
     console.log('Search parameters received:', {
       query,
       focusArea,
       industries,
-      timeframe,
       url: request.url
     })
 
@@ -495,7 +476,7 @@ export async function GET(request: Request) {
     console.log('Starting Tavily search...')
     let searchResults
     try {
-      searchResults = await searchTavily(query, focusArea, industries, timeframe)
+      searchResults = await searchTavily(query, focusArea, industries)
     } catch (searchError) {
       console.error('Tavily search failed:', searchError)
       return new NextResponse(
@@ -527,8 +508,7 @@ export async function GET(request: Request) {
           searchParams: {
             query,
             focusArea,
-            industries,
-            timeframe
+            industries
           }
         }),
         { status: 200 }
@@ -580,7 +560,6 @@ export async function GET(request: Request) {
       query,
       focusArea,
       industries: industries || [],
-      timeframe
     }
     
     const summary = await summarizeWithDeepseek(
