@@ -4,6 +4,7 @@ import { GetStartedButton } from "@/components/auth-buttons"
 import { BarChart3, FolderKanban, Brain, Rocket, KeyRound, FolderPlus, Search, Save, FileText, User } from "lucide-react"
 import { ScrollReveal } from "@/components/scroll-reveal"
 import { TestimonialCarousel } from "@/components/testimonial-carousel"
+import { FeedbackForm } from "@/components/FeedbackForm"
 
 export default function Home() {
   return (
@@ -198,7 +199,7 @@ export default function Home() {
           <h2 className="text-3xl sm:text-4xl font-bold mb-3 sm:mb-4">Testimonials</h2>
           <p className="text-base sm:text-lg text-muted-foreground px-2">
             As can be seen, there are no testimonials yet. Perhaps a fortunate user might be the first to leave one.
-            Short and to the point—maybe even a testimonial from a satisfied user like this.
+            Short and to the point&mdash;maybe even a testimonial from a satisfied user like this.
           </p>
         </div>
 
@@ -209,9 +210,20 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Contact Form Section */}
+      <section className="px-4 sm:px-6 py-12 sm:py-20 bg-gray-50">
+        <div className="max-w-3xl mx-auto text-center mb-8 sm:mb-12">
+          <h2 className="text-3xl sm:text-4xl font-bold mb-3 sm:mb-4">Get in Touch</h2>
+          <p className="text-base sm:text-lg text-muted-foreground px-2">
+            We'd love to hear your thoughts! Share your feedback, suggestions, or questions with us.
+          </p>
+        </div>
+        <FeedbackForm />
+      </section>
+
       <footer className="py-4 sm:py-6 px-4 sm:px-6 border-t">
         <div className="max-w-7xl mx-auto text-center text-xs sm:text-sm text-muted-foreground">
-          © 2024 Change Amigo. All rights reserved.
+          © 2025 Change Amigo. All rights reserved.
         </div>
       </footer>
     </main>

@@ -1,6 +1,7 @@
 'use client'
 
 import { ClerkProvider } from '@clerk/nextjs'
+import { ThemeProvider } from 'next-themes'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -13,7 +14,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
       afterSignInUrl="/dashboard/projects"
       afterSignUpUrl="/dashboard/projects"
     >
-      {children}
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+      >
+        {children}
+      </ThemeProvider>
     </ClerkProvider>
   )
 } 

@@ -94,6 +94,11 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete, onRe
     try {
       await onDelete(id)
       setTaskToDelete(null)
+      toast({
+        title: "Success",
+        description: `Task &quot;${taskToDelete?.title}&quot; deleted successfully.`,
+        variant: "default"
+      })
     } finally {
       setDeletingId(null)
     }
