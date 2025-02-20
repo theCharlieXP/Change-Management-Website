@@ -13,6 +13,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }}
       afterSignInUrl="/dashboard/projects"
       afterSignUpUrl="/dashboard/projects"
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
     >
       <ThemeProvider
         attribute="class"

@@ -1,10 +1,12 @@
-import { SignedOut } from "@clerk/nextjs"
+import { SignedIn, SignedOut } from "@clerk/nextjs"
+import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { GetStartedButton } from "@/components/auth-buttons"
 import { BarChart3, FolderKanban, Brain, Rocket, KeyRound, FolderPlus, Search, Save, FileText, User } from "lucide-react"
 import { ScrollReveal } from "@/components/scroll-reveal"
 import { TestimonialCarousel } from "@/components/testimonial-carousel"
 import { FeedbackForm } from "@/components/FeedbackForm"
+import { Button } from "@/components/ui/button"
 
 export default function Home() {
   return (
@@ -20,9 +22,7 @@ export default function Home() {
             Simplifying change management with AI-driven insights and practical project tools.
           </p>
           <div className="flex justify-center">
-            <SignedOut>
-              <GetStartedButton />
-            </SignedOut>
+            <GetStartedButton />
           </div>
         </div>
 
@@ -211,7 +211,7 @@ export default function Home() {
       </section>
 
       {/* Contact Form Section */}
-      <section className="px-4 sm:px-6 py-12 sm:py-20 bg-gray-50">
+      <section id="contact" className="px-4 sm:px-6 py-12 sm:py-20 bg-gray-50">
         <div className="max-w-3xl mx-auto text-center mb-8 sm:mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold mb-3 sm:mb-4">Get in Touch</h2>
           <p className="text-base sm:text-lg text-muted-foreground px-2">

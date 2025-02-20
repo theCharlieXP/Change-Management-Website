@@ -352,14 +352,14 @@ export default function InsightsPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyPress={handleKeyPress}
-              className="w-full"
+              className="w-full bg-white border-input"
               disabled={loading}
             />
           </div>
           <Button 
             onClick={fetchInsights}
             disabled={loading || !focusArea}
-            className="w-32"
+            className="w-32 bg-emerald-600 hover:bg-emerald-700 text-white"
           >
             {loading ? (
               <>

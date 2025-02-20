@@ -1,7 +1,7 @@
 'use client'
 
 import Link from "next/link"
-import { FolderKanban, Brain } from "lucide-react"
+import { FolderKanban, Brain, Handshake } from "lucide-react"
 import { usePathname } from 'next/navigation'
 
 export default function Sidebar() {
@@ -24,11 +24,28 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 bg-white border-r">
-      <div className="h-16 flex items-center gap-2 px-4 border-b">
-        <div className="w-3 h-3 bg-emerald-500 rounded-full" />
-        <Link href="/" className="text-xl font-semibold">
-          Change Buddy
-        </Link>
+      <style jsx>{`
+        @keyframes handshake {
+          0% { transform: rotate(0deg) translateY(0); }
+          25% { transform: rotate(-10deg) translateY(-2px); }
+          50% { transform: rotate(0deg) translateY(0); }
+          75% { transform: rotate(10deg) translateY(-2px); }
+          100% { transform: rotate(0deg) translateY(0); }
+        }
+        .handshake-hover:hover {
+          animation: handshake 0.5s ease-in-out infinite;
+        }
+      `}</style>
+      <div className="h-16 flex items-center justify-center gap-2 px-4 border-b group">
+          <div className="relative handshake-hover">
+            <Handshake 
+              className="w-6 h-6 text-emerald-600 transition-colors duration-500
+                group-hover:text-emerald-500" 
+            />
+          </div>
+          <span className="text-xl font-semibold text-emerald-600 transition-colors duration-500 group-hover:text-emerald-500">
+            Change Amigo
+          </span>
       </div>
       
       <nav className="p-4 space-y-2">
