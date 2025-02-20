@@ -9,13 +9,13 @@ export default function Home() {
   return (
     <main className="flex-1">
       {/* Hero Section with Features */}
-      <section className="min-h-screen px-6 py-20">
-        <div className="max-w-5xl mx-auto text-center mb-20">
-          <h1 className="text-5xl font-bold mb-6">
+      <section className="min-h-screen px-6 pt-2 pb-12">
+        <div className="max-w-5xl mx-auto text-center mb-8">
+          <h1 className="text-5xl font-bold mb-3">
             Welcome to Change Amigo
             <div className="mt-2">A Friendly Change Management Partner</div>
           </h1>
-          <p className="text-xl text-muted-foreground mb-10">
+          <p className="text-xl text-muted-foreground mb-6">
             Simplifying change management with AI-driven insights and practical project tools.
           </p>
           <div className="flex justify-center">
@@ -80,7 +80,7 @@ export default function Home() {
                 Document & Communication Assistance
               </h3>
               <p className="text-muted-foreground">
-                Soon, saved insights will be used to assist in drafting change management documents and communications—transforming insights into actionable plans.
+                Use insights to assist in drafting change management documents and communications—transforming insights into actionable plans.
               </p>
             </div>
           </Card>
