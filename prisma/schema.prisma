@@ -59,3 +59,35 @@ model Insight {
   readTime    Int        // in minutes
   source      String?    // URL or reference
 }
+
+// New models for subscription management
+model UserSubscription {
+  id                String    @id @default(cuid())
+  userId            String    // Clerk user ID
+  stripeCustomerId  String?   // Stripe customer ID
+  stripeSubscriptionId String? // Stripe subscription ID
+  stripePriceId     String?   // Stripe price ID
+  stripeCurrentPeriodEnd DateTime? // When the current billing period ends
+  status            String    // 'active', 'canceled', 'past_due', etc.
+  plan              String    // 'basic', 'pro'
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
+}
+
+model UsageTracker {
+  id                String    @id @default(cuid())
+  userId            String    // Clerk user ID
+  featureId         String    // e.g., 'insight_search'
+  count             Int       @default(0)
+  lastUsedAt        DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([featureId])
+  @@unique([userId, featureId], name: "userId_featureId") // Each user can have only one tracker per feature
+}

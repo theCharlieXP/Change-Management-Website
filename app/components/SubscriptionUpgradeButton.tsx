@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { useStripe, useElements } from '@stripe/react-stripe-js';
+import { Button } from "@/components/ui/button";
+import { Loader2, CreditCard } from "lucide-react";
 
-export default function UpgradeButton() {
+export default function SubscriptionUpgradeButton() {
   const stripe = useStripe();
   const elements = useElements();
   const [isLoading, setIsLoading] = useState(false);
@@ -20,6 +22,11 @@ export default function UpgradeButton() {
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID || 'price_1OoXXXXXXXXXXXXXXXXXXXXX',
+          successUrl: `${window.location.origin}/success`,
+          cancelUrl: `${window.location.origin}/cancel`,
+        }),
       });
 
       if (!response.ok) {
@@ -60,39 +67,38 @@ export default function UpgradeButton() {
       console.log('Redirecting to:', checkoutUrl);
       window.location.href = checkoutUrl;
       
-    } catch (err) {
+    } catch (err: any) {
       console.error('Unexpected error:', err);
-      setErrorMessage(`An unexpected error occurred: ${err.message}`);
+      setErrorMessage(`An unexpected error occurred: ${err.message || 'Unknown error'}`);
       setIsLoading(false);
     }
   };
 
   return (
-    <div>
-      <button
+    <div className="w-full">
+      <Button
         onClick={handleClick}
         disabled={isLoading}
-        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors disabled:bg-gray-400"
+        className="w-full bg-emerald-600 hover:bg-emerald-700"
       >
-        {isLoading ? 'Processing...' : 'Upgrade to Pro'}
-      </button>
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Processing...
+          </>
+        ) : (
+          <>
+            <CreditCard className="mr-2 h-4 w-4" />
+            Upgrade to Pro
+          </>
+        )}
+      </Button>
       
       {errorMessage && (
-        <div className="text-red-500 text-sm mt-2">{errorMessage}</div>
+        <div className="mt-2 text-sm text-red-500">
+          {errorMessage}
+        </div>
       )}
-      
-      <div className="mt-4 text-xs text-gray-500">
-        <p>Having trouble? <a 
-          href="#" 
-          className="text-blue-500 underline"
-          onClick={(e) => {
-            e.preventDefault();
-            window.open('https://stripe.com/docs/testing#cards', '_blank');
-          }}
-        >
-          Use these test card numbers
-        </a></p>
-      </div>
     </div>
   );
 } 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Loader2, CalendarIcon, ChevronDown, ChevronUp, ExternalLink, BookmarkPlus } from "lucide-react"
+import { Loader2, CalendarIcon, ChevronDown, ChevronUp, ExternalLink, BookmarkPlus, AlertCircle } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { useAuth } from '@clerk/nextjs'
 import { Textarea } from "@/components/ui/textarea"
 import { SaveToProjectDialog } from '@/components/save-to-project-dialog'
+import InsightSearchUsageTracker from '@/app/components/InsightSearchUsageTracker'
 
 type TimeframeValue = 
   | 'last_day'
@@ -336,199 +337,240 @@ export default function InsightsPage() {
     setShowSaveDialog(true)
   }
 
+  // Add a function to check if user is premium
+  const isPremiumUser = () => {
+    // This is a placeholder - you would replace this with actual premium status check
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('isPremiumUser') === 'true';
+    }
+    return false;
+  };
+
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex flex-col space-y-4">
-        <h1 className="text-2xl font-bold">Insights Search</h1>
-        
-        {/* Search Bar and Button */}
-        <div className="flex space-x-4">
-          <div className="flex-1">
-            <Input 
-              placeholder="Search insights..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="w-full bg-white border-input"
-              disabled={loading}
-            />
-          </div>
-          <Button 
-            onClick={fetchInsights}
-            disabled={loading || !focusArea}
-            className="w-32 bg-emerald-600 hover:bg-emerald-700 text-white"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Searching...
-              </>
-            ) : (
-              'Search'
+    <InsightSearchUsageTracker>
+      {({ 
+        incrementUsage, 
+        remainingSearches, 
+        isLimitReached 
+      }: { 
+        incrementUsage: () => boolean; 
+        remainingSearches: number; 
+        isLimitReached: boolean;
+      }) => (
+        <div className="container mx-auto py-8">
+          <div className="flex flex-col space-y-4">
+            <h1 className="text-2xl font-bold">Insights Search</h1>
+            
+            {/* Usage limit indicator */}
+            {!isPremiumUser() && (
+              <div className="text-sm text-muted-foreground mb-2">
+                {isLimitReached ? (
+                  <div className="flex items-center text-amber-600">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    <span>You've reached your Basic plan limit. <Link href="/dashboard/account" className="underline">Upgrade to Pro</Link></span>
+                  </div>
+                ) : (
+                  <span>You have {remainingSearches} free searches remaining</span>
+                )}
+              </div>
             )}
-          </Button>
-        </div>
-
-        {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Insight Focus Area <span className="text-red-500">*</span>
-            </label>
-            <Select
-              value={focusArea}
-              onValueChange={(value: InsightFocusArea) => setFocusArea(value)}
-              disabled={loading}
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Select Focus Area" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(INSIGHT_FOCUS_AREAS).map(([key, { label }]) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Industry Multi-select */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Industry
-            </label>
-            <MultiSelect
-              options={INDUSTRIES}
-              selected={selectedIndustries}
-              onChange={setSelectedIndustries}
-              placeholder="Select Industries"
-              disabled={loading}
-              className="h-9"
-            />
-          </div>
-        </div>
-
-        {/* Reset Filters Button */}
-        <div className="flex justify-end">
-          <Button 
-            variant="outline" 
-            onClick={resetFilters}
-            disabled={loading}
-            type="button"
-          >
-            Reset Filters
-          </Button>
-        </div>
-
-        {/* Single Loading Stage Indicator */}
-        {loading && loadingStage && (
-          <div className="mt-8 flex flex-col items-center justify-center space-y-4">
-            <div className="flex items-center space-x-3">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <span className="text-sm font-medium text-primary">{loadingStage}</span>
-            </div>
-            <div className="text-xs text-muted-foreground text-center max-w-md">
-              Please wait whilst we analyse multiple sources to provide you with comprehensive insights.
-            </div>
-          </div>
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <div className="mt-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-            {error}
-          </div>
-        )}
-
-        {/* Results */}
-        <div className="mt-8">
-          {/* Summary Section */}
-          {summary && (
-            <div className="mb-8 bg-white p-6 rounded-lg border shadow-sm">
-              <h2 className="text-xl font-semibold mb-8">
-                {summary.split('\n\n')[0].replace(/["']/g, '')}
-              </h2>
-              <div className="space-y-10">
-                {summary.split('\n\n').slice(1).map((section, index) => {
-                  if (section.startsWith('References:')) {
-                    return null // We'll handle references separately
+            
+            {/* Search Bar and Button */}
+            <div className="flex space-x-4">
+              <div className="flex-1">
+                <Input 
+                  placeholder="Search insights..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className="w-full bg-white border-input"
+                  disabled={loading || isLimitReached}
+                />
+              </div>
+              <Button 
+                onClick={() => {
+                  // Check if user can perform the search
+                  const canSearch = incrementUsage();
+                  if (canSearch) {
+                    fetchInsights();
                   }
-                  const [heading, ...points] = section.split('\n')
-                  return (
-                    <div key={index} className="space-y-4">
-                      <h3 className="text-lg font-semibold text-gray-900">{heading.trim()}</h3>
-                      <ul className="space-y-3">
-                        {points.map((point, pointIndex) => (
-                          <li key={pointIndex} className="text-base text-gray-700 flex items-start leading-relaxed">
-                            <span className="mr-3 text-gray-400">•</span>
-                            <span>{point.replace(/^[•-\s]+/, '').trim()}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )
-                })}
-                
-                {/* Notes Section */}
-                <div className="mt-10 space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Notes</h3>
-                  <Textarea
-                    placeholder="Add your notes about this summary here..."
-                    value={summaryNotes}
-                    onChange={(e) => setSummaryNotes(e.target.value)}
-                    className="min-h-[100px] w-full text-base"
-                  />
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={handleSaveSummary}
-                      className="flex items-center gap-2"
-                    >
-                      <BookmarkPlus className="h-4 w-4" />
-                      Save to Project
-                    </Button>
-                  </div>
-                </div>
+                }}
+                disabled={loading || !focusArea || isLimitReached}
+                className="w-32 bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Searching...
+                  </>
+                ) : (
+                  'Search'
+                )}
+              </Button>
+            </div>
 
-                {/* References Section */}
-                <div className="mt-10">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Source Links</h3>
-                  <div className="grid gap-3">
-                    {insights.map((insight, index) => (
-                      <a
-                        key={insight.id}
-                        href={insight.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                      >
-                        <span className="text-base font-medium text-gray-700 mr-4 flex-1">
-                          {index + 1}. {insight.title}
-                        </span>
-                        <ExternalLink className="h-4 w-4 text-gray-400" />
-                      </a>
+            {/* Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Insight Focus Area <span className="text-red-500">*</span>
+                </label>
+                <Select
+                  value={focusArea}
+                  onValueChange={(value: InsightFocusArea) => setFocusArea(value)}
+                  disabled={loading}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select Focus Area" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(INSIGHT_FOCUS_AREAS).map(([key, { label }]) => (
+                      <SelectItem key={key} value={key}>
+                        {label}
+                      </SelectItem>
                     ))}
-                  </div>
-                </div>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Industry Multi-select */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Industry
+                </label>
+                <MultiSelect
+                  options={INDUSTRIES}
+                  selected={selectedIndustries}
+                  onChange={setSelectedIndustries}
+                  placeholder="Select Industries"
+                  disabled={loading}
+                  className="h-9"
+                />
               </div>
             </div>
+
+            {/* Reset Filters Button */}
+            <div className="flex justify-end">
+              <Button 
+                variant="outline" 
+                onClick={resetFilters}
+                disabled={loading}
+                type="button"
+              >
+                Reset Filters
+              </Button>
+            </div>
+
+            {/* Single Loading Stage Indicator */}
+            {loading && loadingStage && (
+              <div className="mt-8 flex flex-col items-center justify-center space-y-4">
+                <div className="flex items-center space-x-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  <span className="text-sm font-medium text-primary">{loadingStage}</span>
+                </div>
+                <div className="text-xs text-muted-foreground text-center max-w-md">
+                  Please wait whilst we analyse multiple sources to provide you with comprehensive insights.
+                </div>
+              </div>
+            )}
+
+            {/* Error Message */}
+            {error && (
+              <div className="mt-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                {error}
+              </div>
+            )}
+
+            {/* Results */}
+            <div className="mt-8">
+              {/* Summary Section */}
+              {summary && (
+                <div className="mb-8 bg-white p-6 rounded-lg border shadow-sm">
+                  <h2 className="text-xl font-semibold mb-8">
+                    {summary.split('\n\n')[0].replace(/["']/g, '')}
+                  </h2>
+                  <div className="space-y-10">
+                    {summary.split('\n\n').slice(1).map((section, index) => {
+                      if (section.startsWith('References:')) {
+                        return null // We'll handle references separately
+                      }
+                      const [heading, ...points] = section.split('\n')
+                      return (
+                        <div key={index} className="space-y-4">
+                          <h3 className="text-lg font-semibold text-gray-900">{heading.trim()}</h3>
+                          <ul className="space-y-3">
+                            {points.map((point, pointIndex) => (
+                              <li key={pointIndex} className="text-base text-gray-700 flex items-start leading-relaxed">
+                                <span className="mr-3 text-gray-400">•</span>
+                                <span>{point.replace(/^[•-\s]+/, '').trim()}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )
+                    })}
+                    
+                    {/* Notes Section */}
+                    <div className="mt-10 space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Notes</h3>
+                      <Textarea
+                        placeholder="Add your notes about this summary here..."
+                        value={summaryNotes}
+                        onChange={(e) => setSummaryNotes(e.target.value)}
+                        className="min-h-[100px] w-full text-base"
+                      />
+                      <div className="flex justify-end">
+                        <Button
+                          onClick={handleSaveSummary}
+                          className="flex items-center gap-2"
+                        >
+                          <BookmarkPlus className="h-4 w-4" />
+                          Save to Project
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* References Section */}
+                    <div className="mt-10">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Source Links</h3>
+                      <div className="grid gap-3">
+                        {insights.map((insight, index) => (
+                          <a
+                            key={insight.id}
+                            href={insight.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                          >
+                            <span className="text-base font-medium text-gray-700 mr-4 flex-1">
+                              {index + 1}. {insight.title}
+                            </span>
+                            <ExternalLink className="h-4 w-4 text-gray-400" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Add Save Dialog */}
+          {showSaveDialog && insightToSave && (
+            <SaveToProjectDialog
+              open={showSaveDialog}
+              onOpenChange={(open) => {
+                setShowSaveDialog(open)
+                if (!open) setInsightToSave(null)
+              }}
+              insight={insightToSave}
+              isLoading={projectsLoading}
+              isSummary={insightToSave.id === 'summary'}
+            />
           )}
         </div>
-      </div>
-
-      {/* Add Save Dialog */}
-      {showSaveDialog && insightToSave && (
-        <SaveToProjectDialog
-          open={showSaveDialog}
-          onOpenChange={(open) => {
-            setShowSaveDialog(open)
-            if (!open) setInsightToSave(null)
-          }}
-          insight={insightToSave}
-          isLoading={projectsLoading}
-          isSummary={insightToSave.id === 'summary'}
-        />
       )}
-    </div>
+    </InsightSearchUsageTracker>
   )
 } 
