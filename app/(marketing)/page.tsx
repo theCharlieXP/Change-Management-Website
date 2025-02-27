@@ -222,8 +222,18 @@ export default function Home() {
       </section>
 
       <footer className="py-4 sm:py-6 px-4 sm:px-6 border-t">
-        <div className="max-w-7xl mx-auto text-center text-xs sm:text-sm text-muted-foreground">
-          © 2025 Change Amigo. All rights reserved.
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center text-xs sm:text-sm text-muted-foreground mb-2">
+            © 2025 Change Amigo. All rights reserved.
+          </div>
+          <div className="flex justify-center space-x-4 text-xs sm:text-sm">
+            <Link href="/privacy-policy" className="text-muted-foreground hover:text-emerald-600 hover:underline">
+              Privacy Policy
+            </Link>
+            <Link href="/terms-of-service" className="text-muted-foreground hover:text-emerald-600 hover:underline">
+              Terms of Service
+            </Link>
+          </div>
         </div>
       </footer>
     </main>
