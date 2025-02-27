@@ -79,7 +79,7 @@ export default function SubscriptionUpgradeButton() {
       <Button
         onClick={handleClick}
         disabled={isLoading}
-        className="w-full bg-emerald-600 hover:bg-emerald-700"
+        className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-medium py-2 px-4 rounded-md transition-all duration-200 transform hover:scale-[1.02] shadow-md"
       >
         {isLoading ? (
           <>

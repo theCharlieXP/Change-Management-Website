@@ -84,8 +84,7 @@ const ProjectsPage: React.FC = () => {
 
       {projects.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-muted-foreground mb-4">No projects yet</p>
-          <CreateProjectDialog onProjectCreated={addProject} />
+          <p className="text-muted-foreground mb-4">No projects yet. Click the "Create Project" button above to get started.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

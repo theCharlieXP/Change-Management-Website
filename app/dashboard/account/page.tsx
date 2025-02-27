@@ -64,88 +64,112 @@ export default function AccountPage() {
         </TabsList>
         
         <TabsContent value="subscription" className="space-y-4 mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Current Plan</span>
-                {isPremium ? (
-                  <Badge className="bg-emerald-500 hover:bg-emerald-600">Pro</Badge>
-                ) : (
-                  <Badge>Basic</Badge>
-                )}
-              </CardTitle>
-              <CardDescription>
-                {isPremium 
-                  ? "You're currently on the Pro plan with unlimited access to all features."
-                  : `You're currently on the Basic plan with ${FREE_TIER_LIMIT} free Insight Searches.`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4">
-                <div className="grid grid-cols-[20px_1fr] items-start pb-4 last:mb-0 last:pb-0">
-                  <CheckCircle2 className={`mr-2 h-5 w-5 ${isPremium ? 'text-emerald-500' : 'text-gray-400'}`} />
-                  <div className="space-y-1">
-                    <p className="font-medium leading-none">Unlimited Insight Searches</p>
-                    <p className="text-sm text-muted-foreground">
-                      {isPremium 
-                        ? "Access unlimited AI-powered insight searches" 
-                        : `Limited to ${FREE_TIER_LIMIT} searches (Basic plan)`}
-                    </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Basic Plan Card */}
+            <Card className="border-2 border-gray-200 h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Basic Plan</span>
+                  {!isPremium && (
+                    <Badge variant="outline" className="ml-2 px-3 py-1 text-sm font-medium">Current Plan</Badge>
+                  )}
+                </CardTitle>
+                <CardDescription>
+                  Free tier with limited features
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-center py-4">
+                  <span className="text-3xl font-bold">Free</span>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-start">
+                    <CheckCircle2 className="mr-2 h-5 w-5 text-gray-400 mt-0.5" />
+                    <div>
+                      <p className="font-medium">Limited Insight Searches</p>
+                      <p className="text-sm text-muted-foreground">
+                        Only {FREE_TIER_LIMIT} searches available
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-[20px_1fr] items-start pb-4 last:mb-0 last:pb-0">
-                  <CheckCircle2 className={`mr-2 h-5 w-5 ${isPremium ? 'text-emerald-500' : 'text-gray-400'}`} />
-                  <div className="space-y-1">
-                    <p className="font-medium leading-none">Priority Support</p>
-                    <p className="text-sm text-muted-foreground">
-                      {isPremium 
-                        ? "Get priority support from our team" 
-                        : "Standard support (Basic plan)"}
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-[20px_1fr] items-start pb-4 last:mb-0 last:pb-0">
-                  <CheckCircle2 className={`mr-2 h-5 w-5 ${isPremium ? 'text-emerald-500' : 'text-gray-400'}`} />
-                  <div className="space-y-1">
-                    <p className="font-medium leading-none">Advanced Analytics</p>
-                    <p className="text-sm text-muted-foreground">
-                      {isPremium 
-                        ? "Access detailed analytics and insights" 
-                        : "Basic analytics only (Basic plan)"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              {isLoading ? (
-                <Button disabled>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Loading...
-                </Button>
-              ) : isPremium ? (
-                <div className="flex flex-col sm:flex-row gap-3 w-full">
-                  <div className="text-sm text-emerald-600 font-medium flex items-center">
-                    <CheckCircle2 className="mr-2 h-5 w-5" />
-                    You're subscribed to the Pro plan
-                  </div>
+              </CardContent>
+              <CardFooter className="flex justify-center pb-6">
+                {!isPremium ? (
                   <Button 
                     variant="outline" 
-                    size="sm" 
-                    className="ml-auto" 
+                    className="w-full opacity-0 cursor-default"
+                    disabled
+                  >
+                    Current Plan
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
                     onClick={resetPremiumStatus}
                   >
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Reset to Basic (Testing)
+                    Downgrade to Basic
                   </Button>
+                )}
+              </CardFooter>
+            </Card>
+
+            {/* Pro Plan Card */}
+            <Card className={`border-2 ${isPremium ? 'border-emerald-500' : 'border-gray-200'} h-full shadow-lg relative overflow-hidden`}>
+              {isPremium && (
+                <div className="absolute top-0 right-0">
+                  <Badge className="bg-emerald-500 hover:bg-emerald-600 rounded-none rounded-bl-lg px-4 py-1.5 text-sm font-medium">Current Plan</Badge>
                 </div>
-              ) : (
-                <Elements stripe={stripePromise}>
-                  <SubscriptionUpgradeButton />
-                </Elements>
               )}
-            </CardFooter>
-          </Card>
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-emerald-600"></div>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Pro Plan</span>
+                  {isPremium && (
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                  )}
+                </CardTitle>
+                <CardDescription>
+                  Unlimited access to all features
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-center py-4">
+                  <span className="text-3xl font-bold">£3</span>
+                  <span className="text-muted-foreground">/month</span>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-start">
+                    <CheckCircle2 className="mr-2 h-5 w-5 text-emerald-500 mt-0.5" />
+                    <div>
+                      <p className="font-medium">Unlimited Insight Searches</p>
+                      <p className="text-sm text-muted-foreground">
+                        No restrictions on usage
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-center pb-6">
+                {isLoading ? (
+                  <Button disabled className="w-full">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading...
+                  </Button>
+                ) : isPremium ? (
+                  <div className="text-sm text-emerald-600 font-medium flex items-center">
+                    <CheckCircle2 className="mr-2 h-5 w-5" />
+                    Pro plan active
+                  </div>
+                ) : (
+                  <Elements stripe={stripePromise}>
+                    <SubscriptionUpgradeButton />
+                  </Elements>
+                )}
+              </CardFooter>
+            </Card>
+          </div>
         </TabsContent>
         
         <TabsContent value="usage" className="space-y-4 mt-4">

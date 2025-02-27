@@ -198,8 +198,8 @@ export default function Home() {
         <div className="max-w-3xl mx-auto text-center mb-8 sm:mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold mb-3 sm:mb-4">Testimonials</h2>
           <p className="text-base sm:text-lg text-muted-foreground px-2">
-            As can be seen, there are no testimonials yet. Perhaps a fortunate user might be the first to leave one.
-            Short and to the point&mdash;maybe even a testimonial from a satisfied user like this.
+            No real testimonials yet! These are 100% made up while I wait for actual users to say nice things about me.
+            Feel free to be the first to leave a genuine review. Or don't. I'm not desperate. (Okay, maybe a little.)
           </p>
         </div>
 

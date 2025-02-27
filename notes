@@ -65,3 +65,9 @@ Implement Analytics Tool
 Improve basic vs pro plan options so it looks more appealing
 Finalise testimonials
 Put on the internet
+
+I've added the Goat Counter script to your website, but there's one important step you need to complete: you need to replace [YOUR_CODE] in the script with your actual Goat Counter code.
+According to the Goat Counter documentation, you need to:
+Sign up for a Goat Counter account at https://www.goatcounter.com/
+Create a site and get your site code
+Replace [YOUR_CODE] in the script with your actual site code
