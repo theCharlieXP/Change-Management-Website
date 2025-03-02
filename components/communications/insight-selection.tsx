@@ -56,7 +56,7 @@ export function InsightSelection({
   }
 
   return (
-    <div className="space-y-3 w-full overflow-hidden" style={{ maxWidth: "100%", width: "100%" }}>
+    <div className="insight-selection-container space-y-3 w-full overflow-hidden" style={{ maxWidth: "100%", width: "100%" }}>
       <div className="flex items-center space-x-2">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -95,7 +95,7 @@ export function InsightSelection({
       <div className="space-y-2 max-h-[calc(100vh-22rem)] overflow-y-auto pr-1 w-full overflow-x-hidden" style={{ maxWidth: "100%" }}>
         {filteredInsights.length > 0 ? (
           filteredInsights.map((insight) => (
-            <Card key={insight.id} className="overflow-hidden hover:shadow-md transition-shadow w-full" style={{ maxWidth: "100%" }}>
+            <Card key={insight.id} className="insight-container overflow-hidden hover:shadow-md transition-shadow w-full" style={{ maxWidth: "100%" }}>
               <div className="flex items-start p-3">
                 <Checkbox
                   id={`insight-${insight.id}`}
@@ -105,7 +105,11 @@ export function InsightSelection({
                 />
                 <div 
                   className="flex-1 min-w-0 cursor-pointer overflow-hidden" 
-                  onClick={() => onViewInsight(insight)}
+                  onClick={(e) => {
+                    // Prevent layout shifts by stopping event propagation
+                    e.stopPropagation();
+                    onViewInsight(insight);
+                  }}
                   style={{ maxWidth: "calc(100% - 2.5rem)" }}
                 >
                   <div className="flex items-center gap-1.5 mb-1 flex-wrap">

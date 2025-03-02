@@ -376,3 +376,34 @@ Options to export the communication (e.g., as a PDF, HTML, or directly send via 
 C. Confirmation Screen:
 Summary & Next Steps:
 After saving, a confirmation screen summarises the saved communication and offers options to create another or return to the project dashboard.
+
+Email Announcement
+Button Label: Email Announcement
+AI Prompt:
+"Compose a formal email announcement for a change initiative. Include a subject line, a courteous greeting, a clear introduction explaining the change, the rationale behind it, details of the impact, any necessary actions, and a polite closing with a call to action. Maintain a professional and clear tone throughout."
+
+Stakeholder Update Memo
+Button Label: Stakeholder Update Memo
+AI Prompt:
+"Draft a concise memo aimed at key stakeholders. Start with an executive summary, then outline the key points of the change initiative, the expected impacts, and any immediate actions required. Use formal language and a structured, bullet-point format where necessary."
+
+Town Hall Presentation Script
+Button Label: Town Hall Presentation Script
+AI Prompt:
+"Generate a detailed script for a town hall meeting on a change management initiative. Begin with an engaging introduction, then list the main discussion points, data highlights or examples, potential Q&A sections, and a conclusion that invites feedback. Use an engaging yet professional tone throughout."
+Change Impact Report
+Button Label: Change Impact Report
+AI Prompt:
+"Write a comprehensive change impact report. The report should include an introduction, a section on methodology, detailed analysis of the impacts on various departments or processes, visual elements where applicable, conclusions, and recommended next steps. Ensure the tone is formal and the structure is clear and logical."
+FAQ Document
+Button Label: FAQ Document
+AI Prompt:
+"Create an FAQ document that addresses common queries regarding the change initiative. Organise it into clearly labelled questions and concise answers. Include sections where applicable to categorise the questions (e.g., implementation, impact, next steps) and maintain an accessible tone."
+Internal Newsletter Article
+Button Label: Internal Newsletter Article
+AI Prompt:
+"Compose an internal newsletter article that highlights recent change initiatives. The article should feature a captivating headline, sub-headings, a brief summary of the changes, success stories, and future plans. Use a semi-formal and engaging tone that is easy for a broad internal audience to understand."
+Poster/Flyer
+Button Label: Poster/Flyer
+AI Prompt:
+"Generate content for a poster or flyer to promote a change initiative. Keep the message concise and visually engaging. Use a bold headline, short bullet points summarising key benefits or dates, and a clear call-to-action. The tone should be catchy and motivating."

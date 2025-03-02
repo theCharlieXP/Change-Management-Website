@@ -40,16 +40,57 @@ export default function CommunicationsPage() {
   const [additionalContext, setAdditionalContext] = useState<string>('')
   const [generatedCommunication, setGeneratedCommunication] = useState<string | null>(null)
 
+  // Function to reset layout issues
+  const resetLayout = () => {
+    setTimeout(() => {
+      // Reset right panel scroll and width
+      const rightPanel = document.getElementById('right-panel');
+      if (rightPanel) {
+        rightPanel.scrollLeft = 0;
+        rightPanel.style.width = '66.67%'; // Reset to original width
+        
+        // Reset any overflow issues with insight containers
+        const insightContainers = document.querySelectorAll('.insight-container');
+        insightContainers.forEach(container => {
+          if (container instanceof HTMLElement) {
+            container.style.maxWidth = '100%';
+            container.style.width = '100%';
+            container.style.overflow = 'hidden';
+          }
+        });
+        
+        // Reset the main selection container
+        const selectionContainer = document.querySelector('.insight-selection-container');
+        if (selectionContainer instanceof HTMLElement) {
+          selectionContainer.style.maxWidth = '100%';
+          selectionContainer.style.width = '100%';
+          selectionContainer.style.overflow = 'hidden';
+        }
+      }
+    }, 100);
+  };
+
+  // Effect to prevent body scrolling when dialog is open
+  useEffect(() => {
+    if (viewingInsight) {
+      // Prevent body scrolling when dialog is open
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Restore body scrolling when dialog is closed
+      document.body.style.overflow = '';
+    }
+    
+    // Cleanup
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [viewingInsight]);
+
   // Effect to reset layout when dialog state changes
   useEffect(() => {
     if (!viewingInsight) {
       // Reset layout when dialog closes
-      setTimeout(() => {
-        const rightPanel = document.getElementById('right-panel');
-        if (rightPanel) {
-          rightPanel.scrollLeft = 0;
-        }
-      }, 100);
+      resetLayout();
     }
   }, [viewingInsight]);
 
@@ -138,7 +179,7 @@ export default function CommunicationsPage() {
     const fetchInsightsForProject = async () => {
       try {
         setLoading(true)
-        const response = await fetch(`/api/projects/${value}/insights`)
+        const response = await fetch(`/api/projects/${value}/summaries`)
         
         if (response.ok) {
           const data = await response.json()
@@ -203,7 +244,15 @@ export default function CommunicationsPage() {
   }
 
   const handleViewInsight = (insight: InsightSummary) => {
-    setViewingInsight(insight)
+    // First, ensure the layout is preserved by setting fixed widths
+    const rightPanel = document.getElementById('right-panel');
+    if (rightPanel) {
+      const currentWidth = rightPanel.offsetWidth;
+      rightPanel.style.width = `${currentWidth}px`;
+    }
+    
+    // Then set the insight to view
+    setViewingInsight(insight);
   }
 
   const handleInsightSelect = (insightId: string) => {
@@ -498,7 +547,10 @@ export default function CommunicationsPage() {
           className="w-2/3 bg-gray-50 p-6 overflow-y-auto overflow-x-hidden flex-shrink-0" 
           style={{ 
             contain: "content",
-            width: "66.67%"
+            width: "66.67%",
+            maxWidth: "66.67%",
+            position: "relative",
+            overflowX: "clip"
           }}
         >
           {selectedProject ? (
@@ -532,13 +584,31 @@ export default function CommunicationsPage() {
         </div>
       </div>
 
+      {/* 
+        The Dialog component from shadcn/ui already uses a portal by default,
+        which renders the dialog outside the DOM hierarchy of the parent component.
+        This prevents layout shifts when the dialog opens/closes.
+      */}
       {viewingInsight && (
-        <Dialog open={!!viewingInsight} onOpenChange={() => setViewingInsight(null)}>
+        <Dialog 
+          open={!!viewingInsight} 
+          onOpenChange={(open) => {
+            if (!open) {
+              setViewingInsight(null);
+              resetLayout();
+            }
+          }}
+        >
           <DialogContent 
             className="max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden" 
             style={{ 
               width: "min(calc(100vw - 40px), 56rem)",
-              maxWidth: "min(calc(100vw - 40px), 56rem)"
+              maxWidth: "min(calc(100vw - 40px), 56rem)",
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              zIndex: 100
             }}
           >
             <div className="absolute right-4 top-4 z-10">
@@ -546,7 +616,10 @@ export default function CommunicationsPage() {
                 variant="ghost"
                 size="sm"
                 className="h-6 w-6 p-0 rounded-md"
-                onClick={() => setViewingInsight(null)}
+                onClick={() => {
+                  setViewingInsight(null);
+                  resetLayout();
+                }}
               >
                 <X className="h-4 w-4" />
                 <span className="sr-only">Close</span>
@@ -609,7 +682,10 @@ export default function CommunicationsPage() {
 
               <div className="flex justify-end gap-2 mt-6">
                 <Button 
-                  onClick={() => setViewingInsight(null)}
+                  onClick={() => {
+                    setViewingInsight(null);
+                    resetLayout();
+                  }}
                   variant="outline"
                   className="flex-shrink-0"
                 >
