@@ -15,9 +15,12 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { INSIGHT_FOCUS_AREAS, InsightFocusArea } from '@/types/insights'
 import { InsightSelection } from '@/components/communications/insight-selection'
-import { CommunicationTypeSelection, CommunicationType } from '@/components/communications/communication-type-selection'
+import { CommunicationTypeSelection, CommunicationType, CommunicationTypeOption } from '@/components/communications/communication-type-selection'
 import { CommunicationCustomization } from '@/components/communications/communication-customization'
 import { ReviewConfirmation } from '@/components/communications/review-confirmation'
+
+// Import the communicationTypes array
+import { communicationTypes } from '@/components/communications/communication-type-selection'
 
 export default function CommunicationsPage() {
   const { isLoaded, isSignedIn } = useAuth()
@@ -272,9 +275,39 @@ export default function CommunicationsPage() {
   }
 
   const handleGenerateCommunication = () => {
-    // Mock generation for now
-    setGeneratedCommunication("Dear Team,\n\nI'm writing to update you on our ongoing change initiative. We've made significant progress and wanted to share some key information.\n\n[Content would be generated based on selected insights and preferences]\n\nPlease reach out if you have any questions.\n\nBest regards,\nThe Change Management Team")
-    setStep(4)
+    // Find the selected communication type to get its AI prompt
+    const selectedCommType = communicationTypes.find((type: CommunicationTypeOption) => type.id === communicationType);
+    
+    if (!selectedCommType) {
+      toast({
+        title: "Error",
+        description: "Please select a communication type",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // In a real implementation, this would call the AI API with the prompt and insights
+    // For now, we'll use a mock response that includes the AI prompt that would be used
+    const mockGeneratedContent = `
+AI Prompt that would be used:
+"${selectedCommType.aiPrompt}"
+
+Based on this prompt and your selected insights, the AI would generate:
+
+Dear Team,
+
+I'm writing to update you on our ongoing change initiative. We've made significant progress and wanted to share some key information.
+
+[Content would be generated based on selected insights and preferences]
+
+Please reach out if you have any questions.
+
+Best regards,
+The Change Management Team`;
+    
+    setGeneratedCommunication(mockGeneratedContent);
+    setStep(4);
   }
 
   // Get selected project name
@@ -393,7 +426,14 @@ export default function CommunicationsPage() {
             </div>
             <Card className="w-full overflow-hidden">
               <CardHeader>
-                <CardTitle>Your {communicationType === 'email' ? 'Email' : communicationType === 'poster' ? 'Poster' : communicationType === 'script' ? 'Script' : 'Announcement'}</CardTitle>
+                <CardTitle>
+                  {communicationType === 'email-announcement' ? 'Email Announcement' : 
+                   communicationType === 'stakeholder-memo' ? 'Stakeholder Update Memo' : 
+                   communicationType === 'presentation-script' ? 'Town Hall Presentation Script' : 
+                   communicationType === 'faq-document' ? 'FAQ Document' : 
+                   communicationType === 'newsletter-article' ? 'Internal Newsletter Article' : 
+                   communicationType === 'poster' ? 'Poster/Flyer' : 'Communication'}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="whitespace-pre-wrap bg-muted p-4 rounded-md">

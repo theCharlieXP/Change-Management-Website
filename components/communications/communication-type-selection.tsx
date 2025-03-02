@@ -1,42 +1,61 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Mail, FileText, Presentation, Megaphone } from 'lucide-react'
+import { Mail, FileText, Presentation, MessageSquare, Newspaper, FileImage } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export type CommunicationType = 'email' | 'poster' | 'script' | 'other'
+export type CommunicationType = 'email-announcement' | 'stakeholder-memo' | 'presentation-script' | 'faq-document' | 'newsletter-article' | 'poster'
 
-interface CommunicationTypeOption {
+export interface CommunicationTypeOption {
   id: CommunicationType
   label: string
   icon: React.ReactNode
   description: string
+  aiPrompt: string
 }
 
-const communicationTypes: CommunicationTypeOption[] = [
+export const communicationTypes: CommunicationTypeOption[] = [
   {
-    id: 'email',
-    label: 'Email',
+    id: 'email-announcement',
+    label: 'Email Announcement',
     icon: <Mail className="h-6 w-6" />,
-    description: 'Create an email to send to stakeholders'
+    description: 'Formal email announcement for a change initiative',
+    aiPrompt: "Compose a formal email announcement for a change initiative. Include a subject line, a courteous greeting, a clear introduction explaining the change, the rationale behind it, details of the impact, any necessary actions, and a polite closing with a call to action. Maintain a professional and clear tone throughout."
+  },
+  {
+    id: 'stakeholder-memo',
+    label: 'Stakeholder Update Memo',
+    icon: <FileText className="h-6 w-6" />,
+    description: 'Concise memo aimed at key stakeholders',
+    aiPrompt: "Draft a concise memo aimed at key stakeholders. Start with an executive summary, then outline the key points of the change initiative, the expected impacts, and any immediate actions required. Use formal language and a structured, bullet-point format where necessary."
+  },
+  {
+    id: 'presentation-script',
+    label: 'Town Hall Presentation Script',
+    icon: <Presentation className="h-6 w-6" />,
+    description: 'Detailed script for a town hall meeting',
+    aiPrompt: "Generate a detailed script for a town hall meeting on a change management initiative. Begin with an engaging introduction, then list the main discussion points, data highlights or examples, potential Q&A sections, and a conclusion that invites feedback. Use an engaging yet professional tone throughout."
+  },
+  {
+    id: 'faq-document',
+    label: 'FAQ Document',
+    icon: <MessageSquare className="h-6 w-6" />,
+    description: 'Document addressing common queries about the change',
+    aiPrompt: "Create an FAQ document that addresses common queries regarding the change initiative. Organise it into clearly labelled questions and concise answers. Include sections where applicable to categorise the questions (e.g., implementation, impact, next steps) and maintain an accessible tone."
+  },
+  {
+    id: 'newsletter-article',
+    label: 'Internal Newsletter Article',
+    icon: <Newspaper className="h-6 w-6" />,
+    description: 'Article for an internal newsletter',
+    aiPrompt: "Compose an internal newsletter article that highlights recent change initiatives. The article should feature a captivating headline, sub-headings, a brief summary of the changes, success stories, and future plans. Use a semi-formal and engaging tone that is easy for a broad internal audience to understand."
   },
   {
     id: 'poster',
-    label: 'Poster',
-    icon: <FileText className="h-6 w-6" />,
-    description: 'Create a poster or announcement'
-  },
-  {
-    id: 'script',
-    label: 'Script',
-    icon: <Presentation className="h-6 w-6" />,
-    description: 'Create a script for a presentation or meeting'
-  },
-  {
-    id: 'other',
-    label: 'Other',
-    icon: <Megaphone className="h-6 w-6" />,
-    description: 'Create a custom communication'
+    label: 'Poster/Flyer',
+    icon: <FileImage className="h-6 w-6" />,
+    description: 'Concise and visually engaging poster content',
+    aiPrompt: "Generate content for a poster to promote a change initiative. Keep the message concise and visually engaging. Use a bold headline, short bullet points summarising key benefits or dates, and a clear call-to-action. The tone should be catchy and motivating."
   }
 ]
 

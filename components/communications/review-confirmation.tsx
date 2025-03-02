@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { CommunicationType } from './communication-type-selection'
-import { ArrowLeft, Send, Mail, FileText, Presentation, Megaphone } from 'lucide-react'
+import { ArrowLeft, Send, Mail, FileText, Presentation, MessageSquare, Newspaper, FileImage } from 'lucide-react'
 import { INSIGHT_FOCUS_AREAS } from '@/types/insights'
 import type { InsightSummary } from '@/types/insights'
 
@@ -44,10 +44,12 @@ export function ReviewConfirmation({
 
   // Map communication type to display values
   const communicationTypeDisplay = {
-    'email': 'Email',
-    'poster': 'Poster',
-    'script': 'Script',
-    'other': 'Announcement'
+    'email-announcement': 'Email Announcement',
+    'stakeholder-memo': 'Stakeholder Update Memo',
+    'presentation-script': 'Town Hall Presentation Script',
+    'faq-document': 'FAQ Document',
+    'newsletter-article': 'Internal Newsletter Article',
+    'poster': 'Poster/Flyer'
   }
 
   return (
@@ -87,16 +89,15 @@ export function ReviewConfirmation({
           <CardContent>
             <div className="flex items-center gap-2">
               <div className="flex-shrink-0">
-                {communicationType === 'email' && <Mail className="h-4 w-4" />}
-                {communicationType === 'poster' && <FileText className="h-4 w-4" />}
-                {communicationType === 'script' && <Presentation className="h-4 w-4" />}
-                {communicationType === 'other' && <Megaphone className="h-4 w-4" />}
+                {communicationType === 'email-announcement' && <Mail className="h-4 w-4" />}
+                {communicationType === 'stakeholder-memo' && <FileText className="h-4 w-4" />}
+                {communicationType === 'presentation-script' && <Presentation className="h-4 w-4" />}
+                {communicationType === 'faq-document' && <MessageSquare className="h-4 w-4" />}
+                {communicationType === 'newsletter-article' && <Newspaper className="h-4 w-4" />}
+                {communicationType === 'poster' && <FileImage className="h-4 w-4" />}
               </div>
               <p className="text-sm break-words">
-                {communicationType === 'email' && 'Email Communication'}
-                {communicationType === 'poster' && 'Poster/Flyer'}
-                {communicationType === 'script' && 'Presentation Script'}
-                {communicationType === 'other' && 'Announcement'}
+                {communicationTypeDisplay[communicationType] || 'Communication'}
               </p>
             </div>
           </CardContent>
