@@ -289,3 +289,90 @@ Form Fields:
 Name, Email, and Message, with a “Send Feedback” button styled in emerald green.
 Design:
 The contact form should be clearly laid out with well-spaced input fields and labels, set against a slightly contrasting background (a very light grey or subtle pattern) to differentiate it from the rest of the page. Ensure responsiveness for both desktop and mobile devices.
+
+# Communications Page Flow
+1. Entry Point & Project Selection
+A. Landing on the Communications Section
+Dashboard Access:
+The user logs in and sees a “Communications” button or tab on the main dashboard.
+On clicking, they are taken to a dedicated communications workspace.
+B. Project Selection
+Project List:
+The first screen presents a dropdown menu with project names from which the user selects the project for which they wish to create a communication.
+Project Context:
+Once a project is selected, the system loads relevant data, such as saved insights and notes linked to that project.
+
+2. Selecting and Customising Insights
+A. Displaying Saved Insights
+Insights Panel:
+A separate panel shows all the insights and notes saved for the selected project.
+Each insight is displayed with the short title and insight focus area pill with the option to expand the insight to see the full insight.
+B. User Selection
+Choosing Content:
+The user selects which insights they want to incorporate by ticking checkboxes.
+Filtering Options:
+Include search and filter functionality (e.g. by date, focus area, or keywords) to help the user quickly find the most relevant insights.
+
+3. Communication Type & Customisation
+A. Selecting the Communication Type
+Type Options:
+The next step requires the user to choose a communication type. Options could be presented as:
+Email
+Poster
+Script
+Other formats (customisable if needed)
+This can be done using icons.
+B. Customisation Inputs
+Essential Details:
+Provide dedicated input fields where the user can add vital information, such as:
+Mandatory Mentions: A text box for “must mention” points (e.g. key dates, figures, or messages).
+Audience/Tone: Options or toggles for tone (e.g. formal vs casual) and audience specifics.
+Additional Context: A field for any extra notes or instructions that need to be included in the communication.
+Interactive Buttons:
+Include buttons or sliders to further customise style (for example, adjusting the length or formality of the content).
+
+4. Review and Confirmation of Selections
+A. Summary Screen
+Consolidated Overview:
+Before generating the communication, display a summary screen that shows:
+The selected project name.
+The list of chosen insights.
+The selected communication type.
+All custom inputs provided by the user.
+B. Edit Options:
+Modify Selections:
+Allow the user to go back and modify any part of the selections if needed, ensuring everything is correct before proceeding.
+
+5. Draft Generation
+A. Initiating Draft Creation
+Generate Button:
+The user clicks on a “Generate Communication” button.
+B. AI Processing and Draft Output
+Processing Inputs:
+The system’s AI takes the selected insights, the custom inputs, and the template corresponding to the chosen communication type to create a first draft.
+Draft Display:
+The generated draft appears in a central rich text editor with clear sections (e.g., a headline, introduction, body, and conclusion).
+
+6. Editing and Refinement
+A. In-Editor Tweaks
+Rich Text Editor:
+The user can manually edit and refine the draft. The editor should support standard text formatting options (bold, italics, lists, headings, etc.).
+Re-generate Options:
+Provide buttons to “Regenerate” specific sections if the user wants an alternative version for part of the communication.
+Inline Annotations:
+Optionally, allow inline comments or annotations for collaborative review or personal notes.
+B. Version Control
+Save Draft Versions:
+Enable the user to save multiple versions or revert to an earlier draft if needed, ensuring they can track changes over time.
+
+7. Finalisation and Saving
+A. Final Preview
+Display Final Layout:
+A preview mode shows the communication as it would be received (e.g., an email layout, poster design, or script format).
+B. Save or Export
+Saving Options:
+The user can save the final version to the project’s communications repository.
+Options to export the communication (e.g., as a PDF, HTML, or directly send via email) should also be available.
+C. Confirmation Screen:
+Summary & Next Steps:
+After saving, a confirmation screen summarises the saved communication and offers options to create another or return to the project dashboard.
