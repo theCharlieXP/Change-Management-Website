@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Loader2, MessageSquare, FileText, Send, ArrowLeft, ArrowRight, Maximize2, X } from "lucide-react"
+import { Loader2, MessageSquare, FileText, Send, ArrowLeft, ArrowRight, Maximize2, X, Highlighter } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from '@clerk/nextjs'
 import type { Project } from '@/types/projects'
@@ -18,6 +18,7 @@ import { InsightSelection } from '@/components/communications/insight-selection'
 import { CommunicationTypeSelection, CommunicationType, CommunicationTypeOption } from '@/components/communications/communication-type-selection'
 import { CommunicationCustomization } from '@/components/communications/communication-customization'
 import { ReviewConfirmation } from '@/components/communications/review-confirmation'
+import { HighlightText } from '@/components/communications/highlight-text'
 
 // Import the communicationTypes array
 import { communicationTypes } from '@/components/communications/communication-type-selection'
@@ -55,6 +56,43 @@ export default function CommunicationsPage() {
   // State for reference documents
   const [referenceDocuments, setReferenceDocuments] = useState<File[]>([])
 
+  // New state for highlighted text
+  const [highlightedTextMap, setHighlightedTextMap] = useState<Record<string, string[]>>({})
+  
+  // Function to handle highlights change
+  const handleHighlightsChange = (insightId: string, highlights: string[]) => {
+    setHighlightedTextMap(prev => ({
+      ...prev,
+      [insightId]: highlights
+    }));
+    
+    // Automatically select the insight if it has highlights and isn't already selected
+    if (highlights.length > 0 && !selectedInsights.includes(insightId)) {
+      handleInsightSelect(insightId);
+      toast({
+        title: "Insight automatically selected",
+        description: "This insight has been added to your communication because you highlighted text in it.",
+      });
+    }
+  };
+
+  // Function to handle insight selection/deselection
+  const handleInsightSelect = (insightId: string) => {
+    // Check if we're unselecting an insight with highlights
+    if (selectedInsights.includes(insightId) && highlightedTextMap[insightId]?.length > 0) {
+      // Show confirmation dialog
+      if (!confirm("This insight has highlighted text. Unselecting it will not include these highlights in your communication. Continue?")) {
+        return; // User cancelled the unselection
+      }
+    }
+    
+    setSelectedInsights(prev => 
+      prev.includes(insightId) 
+        ? prev.filter(id => id !== insightId)
+        : [...prev, insightId]
+    );
+  };
+
   // Function to reset layout issues
   const resetLayout = () => {
     setTimeout(() => {
@@ -81,6 +119,13 @@ export default function CommunicationsPage() {
           selectionContainer.style.width = '100%';
           selectionContainer.style.overflow = 'hidden';
         }
+      }
+      
+      // Reset any dialog content overflow issues
+      const dialogContent = document.querySelector('.dialog-content');
+      if (dialogContent instanceof HTMLElement) {
+        dialogContent.style.overflowX = 'hidden';
+        dialogContent.style.wordBreak = 'break-word';
       }
     }, 100);
   };
@@ -278,14 +323,6 @@ export default function CommunicationsPage() {
     setViewingInsight(insight);
   }
 
-  const handleInsightSelect = (insightId: string) => {
-    setSelectedInsights(prev => 
-      prev.includes(insightId) 
-        ? prev.filter(id => id !== insightId)
-        : [...prev, insightId]
-    )
-  }
-
   const handleNextStep = () => {
     setStep(prev => prev + 1)
   }
@@ -318,9 +355,16 @@ export default function CommunicationsPage() {
     // Prepare the prompt
     const basePrompt = communicationTypeDetails.aiPrompt
     
-    // Add insights content
+    // Add insights content with highlighted text prioritized
     const insightsContent = insightsData.map(insight => {
-      return `${insight.title}: ${insight.content}`
+      const highlights = highlightedTextMap[insight.id] || [];
+      let highlightedContent = '';
+      
+      if (highlights.length > 0) {
+        highlightedContent = `\nHIGHLIGHTED KEY POINTS:\n${highlights.map(h => `• ${h}`).join('\n')}`;
+      }
+      
+      return `${insight.title}: ${insight.content}${highlightedContent}`;
     }).join('\n\n')
     
     // Add customization details
@@ -349,6 +393,8 @@ TITLE/HEADLINE: ${title || 'Use an appropriate title based on the content'}
 
 INSIGHTS TO INCLUDE:
 ${insightsContent}
+
+IMPORTANT: For each insight, prioritize and emphasize the highlighted key points in the generated communication.
 
 TARGET AUDIENCE: ${audienceMap[audience]}
 
@@ -425,6 +471,11 @@ The Change Management Team
     selectedInsights.includes(insight.id) && insight.project_id === selectedProject
   )
 
+  // Function to check if any insights have highlights
+  const hasHighlightedInsights = () => {
+    return Object.values(highlightedTextMap).some(highlights => highlights.length > 0);
+  };
+
   // Render the appropriate step content
   const renderStepContent = () => {
     switch (step) {
@@ -444,6 +495,12 @@ The Change Management Team
             </div>
             <p className="text-muted-foreground">
               Choose insights from your project to include in your communication.
+              {hasHighlightedInsights() && (
+                <span className="ml-1 text-yellow-600 inline-flex items-center">
+                  <Highlighter className="h-3.5 w-3.5 mr-1" />
+                  Some insights have highlighted key points that will be prioritized.
+                </span>
+              )}
             </p>
             <InsightSelection 
               insights={projectInsights}
@@ -451,6 +508,7 @@ The Change Management Team
               onInsightSelect={handleInsightSelect}
               onViewInsight={(insight) => handleViewInsight(insight)}
               loading={loading}
+              highlightedTextMap={highlightedTextMap}
             />
           </div>
         )
@@ -500,6 +558,54 @@ The Change Management Team
                 </Button>
               </div>
             </div>
+            {hasHighlightedInsights() && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 flex items-start gap-2">
+                <Highlighter className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm text-yellow-800 font-medium">Highlighted Key Points</p>
+                  <p className="text-xs text-yellow-700 mb-2">
+                    You've highlighted key points in {Object.keys(highlightedTextMap).filter(id => highlightedTextMap[id].length > 0).length} insight(s). 
+                    These points will be prioritized in the generated communication.
+                  </p>
+                  
+                  <details className="text-sm">
+                    <summary className="cursor-pointer text-yellow-800 hover:text-yellow-900 font-medium">
+                      View all highlighted points
+                    </summary>
+                    <div className="mt-2 space-y-3 max-h-[300px] overflow-y-auto pr-1" style={{ overflowX: 'hidden' }}>
+                      {selectedInsightsData.map(insight => {
+                        const highlights = highlightedTextMap[insight.id] || [];
+                        if (highlights.length === 0) return null;
+                        
+                        return (
+                          <div key={insight.id} className="border-l-2 border-yellow-300 pl-3 py-1">
+                            <p className="font-medium text-sm">{insight.title}</p>
+                            <div className="mt-1 space-y-1.5">
+                              {highlights.map((highlight, idx) => (
+                                <div key={idx} className="bg-yellow-50 p-2 rounded text-sm flex items-start gap-2">
+                                  <p className="text-sm break-words flex-1">{highlight}</p>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0 text-yellow-700 hover:bg-yellow-100 rounded-full flex-shrink-0"
+                                    onClick={() => {
+                                      const newHighlights = [...(highlightedTextMap[insight.id] || [])].filter(h => h !== highlight);
+                                      handleHighlightsChange(insight.id, newHighlights);
+                                    }}
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </details>
+                </div>
+              </div>
+            )}
             <CommunicationCustomization
               communicationType={communicationType as CommunicationType}
               mandatoryPoints={mandatoryPoints}
@@ -579,6 +685,7 @@ The Change Management Team
             customTerminology={customTerminology}
             additionalInstructions={additionalInstructions}
             referenceDocuments={referenceDocuments}
+            highlightedTextMap={highlightedTextMap}
           />
         )
       
@@ -766,15 +873,18 @@ The Change Management Team
           }}
         >
           <DialogContent 
-            className="max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden" 
+            className="max-w-4xl overflow-hidden dialog-content" 
             style={{ 
               width: "min(calc(100vw - 40px), 56rem)",
               maxWidth: "min(calc(100vw - 40px), 56rem)",
+              maxHeight: "90vh",
               position: "fixed",
               top: "50%",
               left: "50%",
               transform: "translate(-50%, -50%)",
-              zIndex: 100
+              zIndex: 100,
+              display: "flex",
+              flexDirection: "column"
             }}
           >
             <div className="absolute right-4 top-4 z-10">
@@ -792,8 +902,8 @@ The Change Management Team
               </Button>
             </div>
             
-            <div className="w-full overflow-hidden">
-              <DialogHeader className="pr-6">
+            <div className="w-full overflow-hidden flex flex-col max-h-[90vh]">
+              <DialogHeader className="pr-6 flex-shrink-0">
                 <div className="flex items-start justify-between gap-4 flex-wrap w-full">
                   <DialogTitle className="break-words mr-4 max-w-full">{viewingInsight.title}</DialogTitle>
                   {viewingInsight.focus_area && (
@@ -804,60 +914,87 @@ The Change Management Team
                 </div>
               </DialogHeader>
 
-              <div className="grid gap-4 mt-2 w-full">
+              <div className="grid gap-4 mt-2 w-full overflow-y-auto pr-1 pb-4 flex-grow" style={{ overflowX: 'hidden' }}>
                 {/* Content */}
                 <div className="space-y-4 w-full">
                   <h4 className="text-sm font-medium text-foreground border-b pb-1">Summary</h4>
                   <div className="w-full">
-                    {viewingInsight.content.split('\n').map((point, index) => {
-                      const cleanPoint = point.replace(/^[-•]\s*/, '').trim()
-                      if (!cleanPoint) return null
-                      
-                      // Check if this is likely a heading (ends with a colon or is short)
-                      const isHeading = cleanPoint.endsWith(':') || (cleanPoint.length < 30 && !cleanPoint.includes(' and ') && !cleanPoint.includes(','))
-                      
-                      if (isHeading) {
-                        return (
-                          <h5 key={index} className="text-sm font-semibold mt-3 text-foreground break-words">
-                            {cleanPoint}
-                          </h5>
-                        )
-                      }
-                      
-                      return (
-                        <div key={index} className="flex items-start gap-2 w-full">
-                          <span className="text-muted-foreground leading-tight flex-shrink-0">•</span>
-                          <p className="text-sm text-foreground flex-1 break-words">
-                            {cleanPoint}
-                          </p>
-                        </div>
-                      )
-                    })}
+                    <HighlightText 
+                      text={viewingInsight.content}
+                      insightId={viewingInsight.id}
+                      onHighlightsChange={handleHighlightsChange}
+                      existingHighlights={highlightedTextMap[viewingInsight.id] || []}
+                      preserveFormatting={true}
+                    />
                   </div>
                 </div>
-
+                
+                {/* Notes */}
                 {viewingInsight.notes && (
-                  <div className="space-y-2 border-t pt-4 w-full">
+                  <div className="space-y-2 w-full">
                     <h4 className="text-sm font-medium text-foreground border-b pb-1">Notes</h4>
-                    <p className="text-sm whitespace-pre-wrap break-words">
-                      {viewingInsight.notes}
-                    </p>
+                    <div className="w-full">
+                      <HighlightText 
+                        text={viewingInsight.notes}
+                        insightId={`${viewingInsight.id}-notes`}
+                        onHighlightsChange={(_, highlights) => {
+                          // When notes are highlighted, add them to the main insight's highlights
+                          const currentHighlights = highlightedTextMap[viewingInsight.id] || [];
+                          handleHighlightsChange(viewingInsight.id, [...currentHighlights, ...highlights]);
+                        }}
+                        existingHighlights={[]}
+                        preserveFormatting={true}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
-
-              <div className="flex justify-end gap-2 mt-6">
-                <Button 
-                  onClick={() => {
-                    setViewingInsight(null);
-                    resetLayout();
-                  }}
-                  variant="outline"
-                  className="flex-shrink-0"
-                >
-                  Close
-                </Button>
-              </div>
+              
+              <DialogFooter className="mt-4 pt-3 border-t flex-shrink-0">
+                <div className="flex flex-wrap justify-between w-full gap-2">
+                  <div>
+                    {!selectedInsights.includes(viewingInsight.id) ? (
+                      <Button 
+                        onClick={() => {
+                          handleInsightSelect(viewingInsight.id);
+                          toast({
+                            title: "Insight added",
+                            description: "This insight has been added to your communication.",
+                          });
+                        }}
+                        size="sm"
+                      >
+                        Add to Communication
+                      </Button>
+                    ) : (
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          handleInsightSelect(viewingInsight.id);
+                          toast({
+                            title: "Insight removed",
+                            description: "This insight has been removed from your communication.",
+                          });
+                        }}
+                        size="sm"
+                      >
+                        Remove from Communication
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setViewingInsight(null);
+                      resetLayout();
+                    }}
+                  >
+                    Close
+                  </Button>
+                </div>
+              </DialogFooter>
             </div>
           </DialogContent>
         </Dialog>

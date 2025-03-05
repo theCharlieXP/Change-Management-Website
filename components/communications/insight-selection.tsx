@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, Maximize2, Loader2 } from 'lucide-react'
+import { Search, Maximize2, Loader2, Highlighter } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,6 +14,7 @@ interface InsightSelectionProps {
   onInsightSelect: (insightId: string) => void
   onViewInsight: (insight: InsightSummary) => void
   loading?: boolean
+  highlightedTextMap?: Record<string, string[]>
 }
 
 export function InsightSelection({ 
@@ -21,7 +22,8 @@ export function InsightSelection({
   selectedInsights, 
   onInsightSelect,
   onViewInsight,
-  loading = false
+  loading = false,
+  highlightedTextMap = {}
 }: InsightSelectionProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [focusAreaFilter, setFocusAreaFilter] = useState<string | null>(null)
@@ -117,6 +119,12 @@ export function InsightSelection({
                     {insight.focus_area && (
                       <Badge className={`${INSIGHT_FOCUS_AREAS[insight.focus_area as InsightFocusArea]?.color} flex-shrink-0`}>
                         {INSIGHT_FOCUS_AREAS[insight.focus_area as InsightFocusArea]?.label}
+                      </Badge>
+                    )}
+                    {highlightedTextMap[insight.id]?.length > 0 && (
+                      <Badge variant="outline" className="flex items-center gap-1 bg-yellow-50 text-yellow-800 border-yellow-200 flex-shrink-0">
+                        <Highlighter className="h-3 w-3" />
+                        <span className="text-xs">{highlightedTextMap[insight.id].length}</span>
                       </Badge>
                     )}
                     <Maximize2 className="h-3.5 w-3.5 text-muted-foreground ml-auto flex-shrink-0" />

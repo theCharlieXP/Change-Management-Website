@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { CommunicationType } from './communication-type-selection'
-import { ArrowLeft, Send, Mail, FileText, Presentation, MessageSquare, Newspaper, FileImage, File } from 'lucide-react'
+import { ArrowLeft, Send, Mail, FileText, Presentation, MessageSquare, Newspaper, FileImage, File, Highlighter, X } from 'lucide-react'
 import { INSIGHT_FOCUS_AREAS } from '@/types/insights'
 import type { InsightSummary } from '@/types/insights'
 
@@ -24,6 +25,8 @@ interface ReviewConfirmationProps {
   additionalInstructions: string
   // Document upload props
   referenceDocuments: File[]
+  // New prop for highlighted text
+  highlightedTextMap?: Record<string, string[]>
   onBack: () => void
   onConfirm: () => void
 }
@@ -46,9 +49,14 @@ export function ReviewConfirmation({
   additionalInstructions,
   // Document upload props
   referenceDocuments,
+  // New prop for highlighted text
+  highlightedTextMap = {},
   onBack,
   onConfirm
 }: ReviewConfirmationProps) {
+  // Add state to manage local changes to highlighted text
+  const [localHighlightedTextMap, setLocalHighlightedTextMap] = useState(highlightedTextMap);
+
   // Map audience and tone to display values
   const audienceDisplay = {
     'all-employees': 'All Employees',
@@ -177,15 +185,64 @@ export function ReviewConfirmation({
         </CardHeader>
         <CardContent className="py-2 px-3">
           <div className="space-y-1.5 max-h-[150px] overflow-y-auto pr-2 overflow-x-hidden">
-            {selectedInsights.map((insight) => (
-              <div key={insight.id} className="flex items-start gap-2 border-b pb-1.5 last:border-0 last:pb-0">
-                <div className="h-2 w-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                <div className="min-w-0 w-full">
-                  <p className="text-sm font-medium truncate">{insight.title}</p>
-                  <p className="text-xs text-muted-foreground line-clamp-1 break-words">{insight.content}</p>
+            {selectedInsights.map((insight) => {
+              const highlights = localHighlightedTextMap[insight.id] || [];
+              return (
+                <div key={insight.id} className="flex items-start gap-2 border-b pb-1.5 last:border-0 last:pb-0">
+                  <div className="h-2 w-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                  <div className="min-w-0 w-full">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-medium truncate">{insight.title}</p>
+                      {highlights.length > 0 && (
+                        <Badge variant="outline" className="flex items-center gap-1 bg-yellow-50 text-yellow-800 border-yellow-200">
+                          <Highlighter className="h-3 w-3" />
+                          <span className="text-xs">{highlights.length}</span>
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-1 break-words">{insight.content}</p>
+                    
+                    {highlights.length > 0 && (
+                      <div className="mt-1">
+                        <details className="text-xs">
+                          <summary className="cursor-pointer text-yellow-800 hover:text-yellow-900 font-medium">
+                            View highlighted points
+                          </summary>
+                          <div className="pl-2 border-l-2 border-yellow-200 mt-1 space-y-1 max-h-[150px] overflow-y-auto pr-1" style={{ overflowX: 'hidden' }}>
+                            {highlights.map((highlight, idx) => (
+                              <div key={idx} className="flex items-start gap-1.5 bg-yellow-50 px-1.5 py-1 rounded">
+                                <p className="text-xs break-words flex-1">{highlight}</p>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-5 w-5 p-0 text-yellow-700 hover:bg-yellow-100 rounded-full flex-shrink-0"
+                                  onClick={() => {
+                                    // Create a new map without this highlight
+                                    const newHighlightMap = {...localHighlightedTextMap};
+                                    newHighlightMap[insight.id] = (newHighlightMap[insight.id] || []).filter(h => h !== highlight);
+                                    
+                                    // Update the parent component's state
+                                    // This is just for UI display in the review step
+                                    // The actual state is managed in the parent component
+                                    const updatedHighlights = {...localHighlightedTextMap};
+                                    updatedHighlights[insight.id] = (updatedHighlights[insight.id] || []).filter(h => h !== highlight);
+                                    
+                                    // Force a re-render
+                                    setLocalHighlightedTextMap(updatedHighlights);
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
