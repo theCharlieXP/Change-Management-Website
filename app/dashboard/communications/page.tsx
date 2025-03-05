@@ -42,6 +42,18 @@ export default function CommunicationsPage() {
   const [tone, setTone] = useState<'formal' | 'casual' | 'motivational'>('formal')
   const [additionalContext, setAdditionalContext] = useState<string>('')
   const [generatedCommunication, setGeneratedCommunication] = useState<string | null>(null)
+  
+  // New state variables for enhanced customization
+  const [title, setTitle] = useState<string>('')
+  const [style, setStyle] = useState<'narrative' | 'bullet-points' | 'mixed'>('mixed')
+  const [detailLevel, setDetailLevel] = useState<number>(50)
+  const [formatting, setFormatting] = useState<'paragraphs' | 'bullets' | 'numbered' | 'mixed'>('mixed')
+  const [callToAction, setCallToAction] = useState<string>('')
+  const [customTerminology, setCustomTerminology] = useState<string>('')
+  const [additionalInstructions, setAdditionalInstructions] = useState<string>('')
+  
+  // State for reference documents
+  const [referenceDocuments, setReferenceDocuments] = useState<File[]>([])
 
   // Function to reset layout issues
   const resetLayout = () => {
@@ -50,7 +62,7 @@ export default function CommunicationsPage() {
       const rightPanel = document.getElementById('right-panel');
       if (rightPanel) {
         rightPanel.scrollLeft = 0;
-        rightPanel.style.width = '66.67%'; // Reset to original width
+        rightPanel.style.width = '75%'; // Updated from 66.67% to 75%
         
         // Reset any overflow issues with insight containers
         const insightContainers = document.querySelectorAll('.insight-container');
@@ -175,6 +187,14 @@ export default function CommunicationsPage() {
     setCommunicationType(null)
     setMandatoryPoints('')
     setAdditionalContext('')
+    setTitle('')
+    setStyle('mixed')
+    setDetailLevel(50)
+    setFormatting('mixed')
+    setCallToAction('')
+    setCustomTerminology('')
+    setAdditionalInstructions('')
+    setReferenceDocuments([])
     // Close any open insight dialog
     setViewingInsight(null)
     
@@ -275,39 +295,124 @@ export default function CommunicationsPage() {
   }
 
   const handleGenerateCommunication = () => {
-    // Find the selected communication type to get its AI prompt
-    const selectedCommType = communicationTypes.find((type: CommunicationTypeOption) => type.id === communicationType);
+    setLoading(true)
     
-    if (!selectedCommType) {
+    // Get the selected insights data
+    const insightsData = selectedInsights.map(id => {
+      return projectInsights.find(insight => insight.id === id)
+    }).filter(Boolean) as InsightSummary[]
+    
+    // Get the communication type details
+    const communicationTypeDetails = communicationTypes.find(type => type.id === communicationType)
+    
+    if (!communicationTypeDetails) {
       toast({
         title: "Error",
-        description: "Please select a communication type",
+        description: "Please select a communication type.",
         variant: "destructive"
-      });
-      return;
+      })
+      setLoading(false)
+      return
     }
     
-    // In a real implementation, this would call the AI API with the prompt and insights
-    // For now, we'll use a mock response that includes the AI prompt that would be used
-    const mockGeneratedContent = `
-AI Prompt that would be used:
-"${selectedCommType.aiPrompt}"
-
-Based on this prompt and your selected insights, the AI would generate:
-
-Dear Team,
-
-I'm writing to update you on our ongoing change initiative. We've made significant progress and wanted to share some key information.
-
-[Content would be generated based on selected insights and preferences]
-
-Please reach out if you have any questions.
-
-Best regards,
-The Change Management Team`;
+    // Prepare the prompt
+    const basePrompt = communicationTypeDetails.aiPrompt
     
-    setGeneratedCommunication(mockGeneratedContent);
-    setStep(4);
+    // Add insights content
+    const insightsContent = insightsData.map(insight => {
+      return `${insight.title}: ${insight.content}`
+    }).join('\n\n')
+    
+    // Add customization details
+    const audienceMap = {
+      'all-employees': 'all employees',
+      'management': 'management team',
+      'specific-team': 'specific team/department'
+    }
+    
+    const toneMap = {
+      'formal': 'formal and professional',
+      'casual': 'friendly and engaging',
+      'motivational': 'concise and direct'
+    }
+    
+    // Add reference documents info
+    const referenceDocumentsInfo = referenceDocuments.length > 0 
+      ? `REFERENCE DOCUMENTS:\n${referenceDocuments.map(file => file.name).join('\n')}\n\nThe content of these documents has been analyzed and should be used for context and terminology.` 
+      : '';
+    
+    // Enhanced prompt with all customization options
+    const enhancedPrompt = `
+${basePrompt}
+
+TITLE/HEADLINE: ${title || 'Use an appropriate title based on the content'}
+
+INSIGHTS TO INCLUDE:
+${insightsContent}
+
+TARGET AUDIENCE: ${audienceMap[audience]}
+
+TONE: ${toneMap[tone]}
+
+STYLE: ${style === 'narrative' ? 'Use flowing paragraphs' : style === 'bullet-points' ? 'Use concise bullet points' : 'Use a mix of paragraphs and bullet points'}
+
+DETAIL LEVEL: ${detailLevel < 33 ? 'Brief overview' : detailLevel < 66 ? 'Standard detail' : 'In-depth explanation'}
+
+FORMATTING: ${formatting === 'paragraphs' ? 'Primarily use paragraphs' : 
+  formatting === 'bullets' ? 'Primarily use bullet points' : 
+  formatting === 'numbered' ? 'Primarily use numbered lists' : 
+  'Use a mix of paragraphs and lists as appropriate'}
+
+${mandatoryPoints ? `MANDATORY POINTS TO INCLUDE:\n${mandatoryPoints}` : ''}
+
+${callToAction ? `CALL TO ACTION:\n${callToAction}` : ''}
+
+${customTerminology ? `CUSTOM TERMINOLOGY/BRANDING:\n${customTerminology}` : ''}
+
+${additionalContext ? `CONTEXT AND BACKGROUND:\n${additionalContext}` : ''}
+
+${additionalInstructions ? `ADDITIONAL INSTRUCTIONS:\n${additionalInstructions}` : ''}
+
+${referenceDocumentsInfo}
+`
+    
+    // For demo purposes, generate a mock response
+    setTimeout(() => {
+      // Mock AI response
+      const mockResponse = `
+${title || 'Change Initiative Update: Next Steps and Timeline'}
+
+Dear ${audience === 'management' ? 'Leadership Team' : audience === 'specific-team' ? 'Department Members' : 'Colleagues'},
+
+We are excited to share important updates regarding our ongoing change initiative. This communication aims to keep you informed and engaged throughout the process.
+
+${insightsData.map(insight => {
+  if (insight.focus_area === 'challenges-barriers') {
+    return `**Current Challenges**\nWe acknowledge the following concerns:\n• ${insight.content.split('\n').join('\n• ')}`;
+  } else if (insight.focus_area === 'strategies-solutions') {
+    return `**Our Approach**\n${insight.content}`;
+  } else if (insight.focus_area === 'outcomes-results') {
+    return `**Expected Outcomes**\n${insight.content}`;
+  }
+  return `**${insight.title}**\n${insight.content}`;
+}).join('\n\n')}
+
+${callToAction ? `\n**Next Steps**\n${callToAction}` : ''}
+
+${tone === 'formal' ? 
+  'Please do not hesitate to contact the project team with any questions or concerns.' : 
+  tone === 'casual' ? 
+  'Got questions? We\'d love to hear from you! Reach out anytime.' : 
+  'Let\'s embrace this change together and drive our success forward!'}
+
+Regards,
+The Change Management Team
+      `.trim()
+      
+      setGeneratedCommunication(mockResponse)
+      setLoading(false)
+      setStep(4) // Move to review step
+    }, 2000)
   }
 
   // Get selected project name
@@ -344,7 +449,7 @@ The Change Management Team`;
               insights={projectInsights}
               selectedInsights={selectedInsights}
               onInsightSelect={handleInsightSelect}
-              onViewInsight={handleViewInsight}
+              onViewInsight={(insight) => handleViewInsight(insight)}
               loading={loading}
             />
           </div>
@@ -374,7 +479,7 @@ The Change Management Team`;
             </p>
             <CommunicationTypeSelection
               selectedType={communicationType}
-              onTypeSelect={setCommunicationType}
+              onTypeSelect={(type) => setCommunicationType(type)}
             />
           </div>
         )
@@ -383,7 +488,7 @@ The Change Management Team`;
         return (
           <div className="space-y-4 w-full">
             <div className="flex justify-between items-center flex-wrap gap-2">
-              <h2 className="text-2xl font-bold">Customize Communication</h2>
+              <h2 className="text-2xl font-bold">Customise Communication</h2>
               <div className="space-x-2 flex-shrink-0">
                 <Button variant="outline" onClick={handlePreviousStep} size="sm">
                   <ArrowLeft className="mr-2 h-4 w-4" />
@@ -395,9 +500,6 @@ The Change Management Team`;
                 </Button>
               </div>
             </div>
-            <p className="text-muted-foreground">
-              Customize your communication preferences.
-            </p>
             <CommunicationCustomization
               communicationType={communicationType as CommunicationType}
               mandatoryPoints={mandatoryPoints}
@@ -408,6 +510,22 @@ The Change Management Team`;
               setTone={setTone}
               additionalContext={additionalContext}
               setAdditionalContext={setAdditionalContext}
+              title={title}
+              setTitle={setTitle}
+              style={style}
+              setStyle={setStyle}
+              detailLevel={detailLevel}
+              setDetailLevel={setDetailLevel}
+              formatting={formatting}
+              setFormatting={setFormatting}
+              callToAction={callToAction}
+              setCallToAction={setCallToAction}
+              customTerminology={customTerminology}
+              setCustomTerminology={setCustomTerminology}
+              additionalInstructions={additionalInstructions}
+              setAdditionalInstructions={setAdditionalInstructions}
+              referenceDocuments={referenceDocuments}
+              setReferenceDocuments={setReferenceDocuments}
             />
           </div>
         )
@@ -453,6 +571,14 @@ The Change Management Team`;
             additionalContext={additionalContext}
             onBack={handlePreviousStep}
             onConfirm={handleGenerateCommunication}
+            title={title}
+            style={style}
+            detailLevel={detailLevel}
+            formatting={formatting}
+            callToAction={callToAction}
+            customTerminology={customTerminology}
+            additionalInstructions={additionalInstructions}
+            referenceDocuments={referenceDocuments}
           />
         )
       
@@ -481,7 +607,7 @@ The Change Management Team`;
 
       <div className="flex h-[calc(100vh-12rem)] overflow-hidden rounded-lg border w-full">
         {/* Left panel - white background */}
-        <div className="w-1/3 bg-white p-6 border-r overflow-y-auto flex-shrink-0">
+        <div className="w-1/4 bg-white p-6 border-r overflow-y-auto flex-shrink-0">
           <div className="mb-6">
             <h2 className="text-xl font-semibold mb-2">Select a Project</h2>
             <p className="text-sm text-muted-foreground mb-4">
@@ -584,11 +710,11 @@ The Change Management Team`;
         {/* Right panel - gray background */}
         <div 
           id="right-panel"
-          className="w-2/3 bg-gray-50 p-6 overflow-y-auto overflow-x-hidden flex-shrink-0" 
+          className="w-3/4 bg-gray-50 p-6 overflow-y-auto overflow-x-hidden flex-shrink-0" 
           style={{ 
             contain: "content",
-            width: "66.67%",
-            maxWidth: "66.67%",
+            width: "75%",
+            maxWidth: "75%",
             position: "relative",
             overflowX: "clip"
           }}

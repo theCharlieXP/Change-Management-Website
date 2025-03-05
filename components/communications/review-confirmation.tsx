@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { CommunicationType } from './communication-type-selection'
-import { ArrowLeft, Send, Mail, FileText, Presentation, MessageSquare, Newspaper, FileImage } from 'lucide-react'
+import { ArrowLeft, Send, Mail, FileText, Presentation, MessageSquare, Newspaper, FileImage, File } from 'lucide-react'
 import { INSIGHT_FOCUS_AREAS } from '@/types/insights'
 import type { InsightSummary } from '@/types/insights'
 
@@ -14,6 +14,16 @@ interface ReviewConfirmationProps {
   audience: 'all-employees' | 'management' | 'specific-team'
   tone: 'formal' | 'casual' | 'motivational'
   additionalContext: string
+  // New props for enhanced customization
+  title: string
+  style: 'narrative' | 'bullet-points' | 'mixed'
+  detailLevel: number
+  formatting: 'paragraphs' | 'bullets' | 'numbered' | 'mixed'
+  callToAction: string
+  customTerminology: string
+  additionalInstructions: string
+  // Document upload props
+  referenceDocuments: File[]
   onBack: () => void
   onConfirm: () => void
 }
@@ -26,6 +36,16 @@ export function ReviewConfirmation({
   audience,
   tone,
   additionalContext,
+  // New props for enhanced customization
+  title,
+  style,
+  detailLevel,
+  formatting,
+  callToAction,
+  customTerminology,
+  additionalInstructions,
+  // Document upload props
+  referenceDocuments,
   onBack,
   onConfirm
 }: ReviewConfirmationProps) {
@@ -37,9 +57,9 @@ export function ReviewConfirmation({
   }
 
   const toneDisplay = {
-    'formal': 'Formal',
-    'casual': 'Casual',
-    'motivational': 'Motivational'
+    'formal': 'Formal and Professional',
+    'casual': 'Friendly and Engaging',
+    'motivational': 'Concise and Direct'
   }
 
   // Map communication type to display values
@@ -52,10 +72,48 @@ export function ReviewConfirmation({
     'poster': 'Poster/Flyer'
   }
 
+  // Map style and formatting to display values
+  const styleDisplay = {
+    'narrative': 'Narrative (flowing paragraphs)',
+    'bullet-points': 'Bullet Points (concise lists)',
+    'mixed': 'Mixed (combination of both)'
+  }
+
+  const formattingDisplay = {
+    'paragraphs': 'Primarily Paragraphs',
+    'bullets': 'Primarily Bullet Points',
+    'numbered': 'Primarily Numbered Lists',
+    'mixed': 'Mixed Format'
+  }
+
+  // Get detail level display
+  const getDetailLevelDisplay = () => {
+    if (detailLevel < 33) return 'Brief Overview';
+    if (detailLevel < 66) return 'Standard Detail';
+    return 'In-Depth Explanation';
+  }
+
+  // Get file icon based on file extension
+  const getFileIcon = (fileName: string) => {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    
+    if (extension === 'pdf') {
+      return <FileText className="h-4 w-4 text-red-500" />;
+    } else if (['doc', 'docx', 'rtf', 'txt'].includes(extension || '')) {
+      return <FileText className="h-4 w-4 text-blue-500" />;
+    } else if (['ppt', 'pptx'].includes(extension || '')) {
+      return <FileText className="h-4 w-4 text-orange-500" />;
+    } else if (['jpg', 'jpeg', 'png', 'gif'].includes(extension || '')) {
+      return <FileImage className="h-4 w-4 text-green-500" />;
+    } else {
+      return <File className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
   return (
-    <div className="space-y-4 w-full" style={{ maxWidth: "100%" }}>
+    <div className="space-y-3 w-full" style={{ maxWidth: "100%" }}>
       <div className="flex justify-between items-center flex-wrap gap-2">
-        <h2 className="text-2xl font-bold">Review & Generate</h2>
+        <h2 className="text-xl font-bold">Review & Generate</h2>
         <div className="space-x-2 flex-shrink-0">
           <Button variant="outline" onClick={onBack} size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -68,25 +126,21 @@ export function ReviewConfirmation({
         </div>
       </div>
       
-      <p className="text-muted-foreground text-sm mb-4">
-        Review your selections before generating the communication.
-      </p>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full" style={{ maxWidth: "100%" }}>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
         <Card className="w-full overflow-hidden">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Project</CardTitle>
+          <CardHeader className="py-2 px-3">
+            <CardTitle className="text-sm">Project</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="py-2 px-3">
             <p className="text-sm break-words">{projectName}</p>
           </CardContent>
         </Card>
         
         <Card className="w-full overflow-hidden">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Communication Type</CardTitle>
+          <CardHeader className="py-2 px-3">
+            <CardTitle className="text-sm">Communication Type</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="py-2 px-3">
             <div className="flex items-center gap-2">
               <div className="flex-shrink-0">
                 {communicationType === 'email-announcement' && <Mail className="h-4 w-4" />}
@@ -102,16 +156,29 @@ export function ReviewConfirmation({
             </div>
           </CardContent>
         </Card>
+
+        {title && (
+          <Card className="w-full overflow-hidden">
+            <CardHeader className="py-2 px-3">
+              <CardTitle className="text-sm">
+                {communicationType === 'email-announcement' ? 'Subject Line' : 'Title/Headline'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2 px-3">
+              <p className="text-sm break-words">{title}</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
       
       <Card className="w-full overflow-hidden">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Selected Insights ({selectedInsights.length})</CardTitle>
+        <CardHeader className="py-2 px-3">
+          <CardTitle className="text-sm">Selected Insights ({selectedInsights.length})</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 overflow-x-hidden">
+        <CardContent className="py-2 px-3">
+          <div className="space-y-1.5 max-h-[150px] overflow-y-auto pr-2 overflow-x-hidden">
             {selectedInsights.map((insight) => (
-              <div key={insight.id} className="flex items-start gap-2 border-b pb-2 last:border-0">
+              <div key={insight.id} className="flex items-start gap-2 border-b pb-1.5 last:border-0 last:pb-0">
                 <div className="h-2 w-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
                 <div className="min-w-0 w-full">
                   <p className="text-sm font-medium truncate">{insight.title}</p>
@@ -123,56 +190,124 @@ export function ReviewConfirmation({
         </CardContent>
       </Card>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full" style={{ maxWidth: "100%" }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 w-full">
         <Card className="w-full overflow-hidden">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Audience & Tone</CardTitle>
+          <CardHeader className="py-2 px-3">
+            <CardTitle className="text-sm">Audience & Tone</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Audience</p>
-                <p className="text-sm break-words">
-                  {audience === 'all-employees' && 'All Employees'}
-                  {audience === 'management' && 'Management Team'}
-                  {audience === 'specific-team' && 'Specific Team/Department'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Tone</p>
-                <p className="text-sm break-words">
-                  {tone === 'formal' && 'Formal'}
-                  {tone === 'casual' && 'Casual'}
-                  {tone === 'motivational' && 'Motivational'}
-                </p>
-              </div>
+          <CardContent className="py-2 px-3 space-y-1.5">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Audience</p>
+              <p className="text-sm break-words">{audienceDisplay[audience]}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Tone</p>
+              <p className="text-sm break-words">{toneDisplay[tone]}</p>
             </div>
           </CardContent>
         </Card>
         
         <Card className="w-full overflow-hidden">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Additional Details</CardTitle>
+          <CardHeader className="py-2 px-3">
+            <CardTitle className="text-sm">Style & Format</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {mandatoryPoints ? (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Mandatory Points</p>
-                <p className="text-sm break-words">{mandatoryPoints}</p>
-              </div>
-            ) : null}
-            
-            {additionalContext ? (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Additional Context</p>
-                <p className="text-sm break-words">{additionalContext}</p>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground italic">No additional details provided</p>
-            )}
+          <CardContent className="py-2 px-3 space-y-1.5">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Style</p>
+              <p className="text-sm break-words">{styleDisplay[style]}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Formatting</p>
+              <p className="text-sm break-words">{formattingDisplay[formatting]}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Detail Level</p>
+              <p className="text-sm break-words">{getDetailLevelDisplay()}</p>
+            </div>
           </CardContent>
         </Card>
+
+        {(mandatoryPoints || callToAction) && (
+          <Card className="w-full overflow-hidden">
+            <CardHeader className="py-2 px-3">
+              <CardTitle className="text-sm">Key Content</CardTitle>
+            </CardHeader>
+            <CardContent className="py-2 px-3 space-y-1.5">
+              {mandatoryPoints && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Key Points</p>
+                  <p className="text-sm break-words line-clamp-3">{mandatoryPoints}</p>
+                </div>
+              )}
+              {callToAction && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Call to Action</p>
+                  <p className="text-sm break-words line-clamp-2">{callToAction}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
+
+      {/* Reference Documents */}
+      {referenceDocuments.length > 0 && (
+        <Card className="w-full overflow-hidden">
+          <CardHeader className="py-2 px-3">
+            <CardTitle className="text-sm">Reference Documents ({referenceDocuments.length})</CardTitle>
+          </CardHeader>
+          <CardContent className="py-2 px-3">
+            <div className="space-y-1.5">
+              {referenceDocuments.map((file, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  {getFileIcon(file.name)}
+                  <p className="text-sm truncate">{file.name}</p>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {(file.size / 1024).toFixed(0)} KB
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {(additionalContext || customTerminology || additionalInstructions) && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+          {additionalContext && (
+            <Card className="w-full overflow-hidden">
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-sm">Context & Background</CardTitle>
+              </CardHeader>
+              <CardContent className="py-2 px-3">
+                <p className="text-sm break-words line-clamp-4">{additionalContext}</p>
+              </CardContent>
+            </Card>
+          )}
+          
+          {customTerminology && (
+            <Card className="w-full overflow-hidden">
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-sm">Custom Terminology</CardTitle>
+              </CardHeader>
+              <CardContent className="py-2 px-3">
+                <p className="text-sm break-words line-clamp-4">{customTerminology}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {additionalInstructions && (
+            <Card className="w-full overflow-hidden">
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-sm">Additional Instructions</CardTitle>
+              </CardHeader>
+              <CardContent className="py-2 px-3">
+                <p className="text-sm break-words line-clamp-4">{additionalInstructions}</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   )
 } 
