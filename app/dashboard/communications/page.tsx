@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Loader2, MessageSquare, FileText, Send, ArrowLeft, ArrowRight, Maximize2, X, Highlighter } from "lucide-react"
+import { Loader2, MessageSquare, FileText, Send, ArrowLeft, ArrowRight, Maximize2, X, Highlighter, RefreshCw, Wand2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from '@clerk/nextjs'
 import type { Project } from '@/types/projects'
@@ -19,6 +19,8 @@ import { CommunicationTypeSelection, CommunicationType, CommunicationTypeOption 
 import { CommunicationCustomization } from '@/components/communications/communication-customization'
 import { ReviewConfirmation } from '@/components/communications/review-confirmation'
 import { HighlightText } from '@/components/communications/highlight-text'
+import { useRouter } from "next/navigation"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 // Import the communicationTypes array
 import { communicationTypes } from '@/components/communications/communication-type-selection'
@@ -29,7 +31,11 @@ export default function CommunicationsPage() {
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
-
+  const { userId } = useAuth()
+  
+  // Add state for client-side detection
+  const [isClient, setIsClient] = useState(false)
+  
   // Add state for viewing insight
   const [viewingInsight, setViewingInsight] = useState<InsightSummary | null>(null)
   
@@ -56,25 +62,26 @@ export default function CommunicationsPage() {
   // State for reference documents
   const [referenceDocuments, setReferenceDocuments] = useState<File[]>([])
 
-  // New state for highlighted text
+  // Add state for highlighted text if it doesn't exist
   const [highlightedTextMap, setHighlightedTextMap] = useState<Record<string, string[]>>({})
   
-  // Function to handle highlights change
+  // Add selectedInsightsData if it doesn't exist
+  const selectedInsightsData = selectedInsights.map(id => {
+    return projectInsights.find(insight => insight.id === id) || { id, title: "Unknown Insight" };
+  })
+  
+  // Add the hasHighlightedInsights function if it doesn't exist
+  const hasHighlightedInsights = () => {
+    return Object.values(highlightedTextMap).some(highlights => highlights.length > 0);
+  }
+  
+  // Add the handleHighlightsChange function if it doesn't exist
   const handleHighlightsChange = (insightId: string, highlights: string[]) => {
     setHighlightedTextMap(prev => ({
       ...prev,
       [insightId]: highlights
     }));
-    
-    // Automatically select the insight if it has highlights and isn't already selected
-    if (highlights.length > 0 && !selectedInsights.includes(insightId)) {
-      handleInsightSelect(insightId);
-      toast({
-        title: "Insight automatically selected",
-        description: "This insight has been added to your communication because you highlighted text in it.",
-      });
-    }
-  };
+  }
 
   // Function to handle insight selection/deselection
   const handleInsightSelect = (insightId: string) => {
@@ -331,7 +338,7 @@ export default function CommunicationsPage() {
     setStep(prev => prev - 1)
   }
 
-  const handleGenerateCommunication = () => {
+  const handleGenerateCommunication = async () => {
     setLoading(true)
     
     // Get the selected insights data
@@ -367,98 +374,62 @@ export default function CommunicationsPage() {
       return `${insight.title}: ${insight.content}${highlightedContent}`;
     }).join('\n\n')
     
-    // Add customization details
-    const audienceMap = {
-      'all-employees': 'all employees',
-      'management': 'management team',
-      'specific-team': 'specific team/department'
-    }
-    
-    const toneMap = {
-      'formal': 'formal and professional',
-      'casual': 'friendly and engaging',
-      'motivational': 'concise and direct'
-    }
+    // Prepare highlighted points for the API
+    const allHighlightedPoints = Object.entries(highlightedTextMap)
+      .filter(([insightId]) => selectedInsights.includes(insightId))
+      .flatMap(([_, highlights]) => highlights)
+      .map(highlight => `• ${highlight}`)
+      .join('\n');
     
     // Add reference documents info
     const referenceDocumentsInfo = referenceDocuments.length > 0 
       ? `REFERENCE DOCUMENTS:\n${referenceDocuments.map(file => file.name).join('\n')}\n\nThe content of these documents has been analyzed and should be used for context and terminology.` 
       : '';
     
-    // Enhanced prompt with all customization options
-    const enhancedPrompt = `
-${basePrompt}
+    try {
+      // Call the DeepSeek API endpoint
+      const response = await fetch('/api/communications/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: basePrompt,
+          insightsContent,
+          highlightedPoints: allHighlightedPoints,
+          title,
+          audience,
+          tone,
+          style,
+          detailLevel,
+          formatting,
+          mandatoryPoints,
+          callToAction,
+          customTerminology,
+          additionalContext,
+          additionalInstructions,
+          referenceDocuments
+        }),
+      });
 
-TITLE/HEADLINE: ${title || 'Use an appropriate title based on the content'}
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate communication');
+      }
 
-INSIGHTS TO INCLUDE:
-${insightsContent}
-
-IMPORTANT: For each insight, prioritize and emphasize the highlighted key points in the generated communication.
-
-TARGET AUDIENCE: ${audienceMap[audience]}
-
-TONE: ${toneMap[tone]}
-
-STYLE: ${style === 'narrative' ? 'Use flowing paragraphs' : style === 'bullet-points' ? 'Use concise bullet points' : 'Use a mix of paragraphs and bullet points'}
-
-DETAIL LEVEL: ${detailLevel < 33 ? 'Brief overview' : detailLevel < 66 ? 'Standard detail' : 'In-depth explanation'}
-
-FORMATTING: ${formatting === 'paragraphs' ? 'Primarily use paragraphs' : 
-  formatting === 'bullets' ? 'Primarily use bullet points' : 
-  formatting === 'numbered' ? 'Primarily use numbered lists' : 
-  'Use a mix of paragraphs and lists as appropriate'}
-
-${mandatoryPoints ? `MANDATORY POINTS TO INCLUDE:\n${mandatoryPoints}` : ''}
-
-${callToAction ? `CALL TO ACTION:\n${callToAction}` : ''}
-
-${customTerminology ? `CUSTOM TERMINOLOGY/BRANDING:\n${customTerminology}` : ''}
-
-${additionalContext ? `CONTEXT AND BACKGROUND:\n${additionalContext}` : ''}
-
-${additionalInstructions ? `ADDITIONAL INSTRUCTIONS:\n${additionalInstructions}` : ''}
-
-${referenceDocumentsInfo}
-`
-    
-    // For demo purposes, generate a mock response
-    setTimeout(() => {
-      // Mock AI response
-      const mockResponse = `
-${title || 'Change Initiative Update: Next Steps and Timeline'}
-
-Dear ${audience === 'management' ? 'Leadership Team' : audience === 'specific-team' ? 'Department Members' : 'Colleagues'},
-
-We are excited to share important updates regarding our ongoing change initiative. This communication aims to keep you informed and engaged throughout the process.
-
-${insightsData.map(insight => {
-  if (insight.focus_area === 'challenges-barriers') {
-    return `**Current Challenges**\nWe acknowledge the following concerns:\n• ${insight.content.split('\n').join('\n• ')}`;
-  } else if (insight.focus_area === 'strategies-solutions') {
-    return `**Our Approach**\n${insight.content}`;
-  } else if (insight.focus_area === 'outcomes-results') {
-    return `**Expected Outcomes**\n${insight.content}`;
-  }
-  return `**${insight.title}**\n${insight.content}`;
-}).join('\n\n')}
-
-${callToAction ? `\n**Next Steps**\n${callToAction}` : ''}
-
-${tone === 'formal' ? 
-  'Please do not hesitate to contact the project team with any questions or concerns.' : 
-  tone === 'casual' ? 
-  'Got questions? We\'d love to hear from you! Reach out anytime.' : 
-  'Let\'s embrace this change together and drive our success forward!'}
-
-Regards,
-The Change Management Team
-      `.trim()
-      
-      setGeneratedCommunication(mockResponse)
-      setLoading(false)
-      setStep(4) // Move to review step
-    }, 2000)
+      const data = await response.json();
+      setGeneratedCommunication(data.content);
+      setLoading(false);
+      setStep(4); // Move to review step
+    } catch (error) {
+      console.error('Error generating communication:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate communication. Please try again.",
+        variant: "destructive"
+      });
+      setLoading(false);
+    }
   }
 
   // Get selected project name
@@ -466,15 +437,125 @@ The Change Management Team
     ? projects.find(p => p.id === selectedProject)?.title || 'Selected Project'
     : ''
 
-  // Get selected insights data
-  const selectedInsightsData = projectInsights.filter(insight => 
-    selectedInsights.includes(insight.id) && insight.project_id === selectedProject
-  )
-
-  // Function to check if any insights have highlights
-  const hasHighlightedInsights = () => {
-    return Object.values(highlightedTextMap).some(highlights => highlights.length > 0);
+  // Function to navigate to Communications Amigo
+  const handleOpenAmigo = () => {
+    if (!generatedCommunication) {
+      toast({
+        title: "Error",
+        description: "Please generate a communication first.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      // Ensure we're on the client side
+      if (typeof window === 'undefined') {
+        return;
+      }
+      
+      // Prepare the URL parameters in a more compact way
+      // Store only essential data to avoid URL length issues
+      const communicationData = {
+        communication: generatedCommunication,
+        title: title || '',
+        audience,
+        tone,
+        style,
+        detailLevel,
+        formatting,
+        mandatoryPoints: mandatoryPoints || '',
+        callToAction: callToAction || '',
+        customTerminology: customTerminology || '',
+        additionalContext: additionalContext || '',
+        additionalInstructions: additionalInstructions || '',
+        // Include only essential insight data
+        insightsContent: selectedInsightsData.map(insight => ({
+          id: insight.id,
+          title: insight.title,
+          content: 'content' in insight ? insight.content : '',
+          highlights: highlightedTextMap[insight.id] || []
+        })),
+        // Get the communication type details
+        basePrompt: communicationTypes.find(type => type.id === communicationType)?.aiPrompt || ''
+      };
+      
+      // Store the data in sessionStorage
+      sessionStorage.setItem('communicationAmigoData', JSON.stringify(communicationData));
+      
+      // Open the Communications Amigo page in a new tab
+      window.open('/communications-amigo', '_blank');
+    } catch (error) {
+      console.error('Error opening Communications Amigo:', error);
+      toast({
+        title: "Error",
+        description: "Failed to open Communications Amigo. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
+
+  // Add the handlePopulateTestData function
+  const handlePopulateTestData = () => {
+    // Set predefined values for customization options
+    setTitle("Q3 2023 Organizational Changes");
+    setAudience("all-employees");
+    setTone("formal");
+    setStyle("mixed");
+    setDetailLevel(3);
+    setFormatting("mixed");
+    setMandatoryPoints("Restructuring of the marketing department\nNew leadership appointments\nOffice relocation plans");
+    setCallToAction("Please review the changes and attend the town hall meeting on Friday");
+    setCustomTerminology("OKRs, KPIs, Agile methodology");
+    setAdditionalContext("These changes are part of our 5-year growth strategy");
+    setAdditionalInstructions("Include a brief timeline of implementation");
+    
+    toast({
+      title: "Test data populated",
+      description: "Customization options have been filled with test data",
+    });
+  };
+
+  // Check for updated communication from Communications Amigo
+  useEffect(() => {
+    // Set isClient to true when component mounts on client
+    setIsClient(true)
+    
+    // Only run on client side
+    if (typeof window === 'undefined') return
+    
+    try {
+      // Check if we're returning from Communications Amigo
+      const returningFromAmigo = sessionStorage.getItem('returningFromAmigo')
+      
+      if (returningFromAmigo === 'true') {
+        // Get the updated communication
+        const updatedCommunication = sessionStorage.getItem('updatedCommunication')
+        
+        if (updatedCommunication) {
+          // Update the generated communication with the new version
+          setGeneratedCommunication(updatedCommunication)
+          
+          // If we're not already on the review step, go to it
+          if (step !== 4) {
+            setStep(4)
+          }
+          
+          // Show a toast notification
+          toast({
+            title: "Communication Updated",
+            description: "Your communication has been updated from Communications Amigo.",
+          })
+        }
+        
+        // Clear the sessionStorage items
+        sessionStorage.removeItem('returningFromAmigo')
+        sessionStorage.removeItem('updatedCommunication')
+      }
+    } catch (error) {
+      console.error('Error checking for updated communication:', error)
+    }
+  }, [isClient, toast, step, setStep, setGeneratedCommunication])
 
   // Render the appropriate step content
   const renderStepContent = () => {
@@ -544,27 +625,23 @@ The Change Management Team
       
       case 3:
         return (
-          <div className="space-y-4 w-full">
-            <div className="flex justify-between items-center flex-wrap gap-2">
-              <h2 className="text-2xl font-bold">Customise Communication</h2>
-              <div className="space-x-2 flex-shrink-0">
-                <Button variant="outline" onClick={handlePreviousStep} size="sm">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                <Button onClick={handleNextStep}>
-                  Review
-                  <ArrowRight className="ml-2 h-4 w-4" />
+          <div className="space-y-6 w-full">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Customize Communication</h2>
+              <div className="flex space-x-2">
+                <Button variant="outline" onClick={handlePreviousStep}>
+                  <ArrowLeft className="mr-2 h-4 w-4" /> Back
                 </Button>
               </div>
             </div>
+            
             {hasHighlightedInsights() && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 flex items-start gap-2">
                 <Highlighter className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm text-yellow-800 font-medium">Highlighted Key Points</p>
                   <p className="text-xs text-yellow-700 mb-2">
-                    You've highlighted key points in {Object.keys(highlightedTextMap).filter(id => highlightedTextMap[id].length > 0).length} insight(s). 
+                    You&apos;ve highlighted key points in {Object.keys(highlightedTextMap).filter(id => highlightedTextMap[id].length > 0).length} insight(s). 
                     These points will be prioritized in the generated communication.
                   </p>
                   
@@ -606,87 +683,99 @@ The Change Management Team
                 </div>
               </div>
             )}
+            
             <CommunicationCustomization
               communicationType={communicationType as CommunicationType}
-              mandatoryPoints={mandatoryPoints}
-              setMandatoryPoints={setMandatoryPoints}
+              title={title}
+              setTitle={setTitle}
               audience={audience}
               setAudience={setAudience}
               tone={tone}
               setTone={setTone}
-              additionalContext={additionalContext}
-              setAdditionalContext={setAdditionalContext}
-              title={title}
-              setTitle={setTitle}
               style={style}
               setStyle={setStyle}
               detailLevel={detailLevel}
               setDetailLevel={setDetailLevel}
               formatting={formatting}
               setFormatting={setFormatting}
+              mandatoryPoints={mandatoryPoints}
+              setMandatoryPoints={setMandatoryPoints}
               callToAction={callToAction}
               setCallToAction={setCallToAction}
               customTerminology={customTerminology}
               setCustomTerminology={setCustomTerminology}
+              additionalContext={additionalContext}
+              setAdditionalContext={setAdditionalContext}
               additionalInstructions={additionalInstructions}
               setAdditionalInstructions={setAdditionalInstructions}
               referenceDocuments={referenceDocuments}
               setReferenceDocuments={setReferenceDocuments}
             />
+            
+            <div className="flex justify-between items-center mt-6">
+              <Button 
+                variant="secondary" 
+                onClick={handlePopulateTestData}
+              >
+                <Wand2 className="mr-2 h-4 w-4" /> Populate Test Data
+              </Button>
+              <Button onClick={handleNextStep}>
+                Review <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
           </div>
         )
       
       case 4:
-        return generatedCommunication ? (
-          <div className="space-y-4 w-full">
-            <div className="flex justify-between items-center flex-wrap gap-2">
-              <h2 className="text-2xl font-bold">Generated Communication</h2>
-              <div className="space-x-2 flex-shrink-0">
-                <Button variant="outline" onClick={() => setStep(3)} size="sm">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Edit
+        return (
+          <div className="space-y-6 w-full">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Review Communication</h2>
+              <div className="flex space-x-2">
+                <Button variant="outline" onClick={() => setStep(3)}>
+                  <ArrowLeft className="mr-2 h-4 w-4" /> Back to Customize
                 </Button>
               </div>
             </div>
-            <Card className="w-full overflow-hidden">
+            
+            <Card>
               <CardHeader>
-                <CardTitle>
-                  {communicationType === 'email-announcement' ? 'Email Announcement' : 
-                   communicationType === 'stakeholder-memo' ? 'Stakeholder Update Memo' : 
-                   communicationType === 'presentation-script' ? 'Town Hall Presentation Script' : 
-                   communicationType === 'faq-document' ? 'FAQ Document' : 
-                   communicationType === 'newsletter-article' ? 'Internal Newsletter Article' : 
-                   communicationType === 'poster' ? 'Poster/Flyer' : 'Communication'}
-                </CardTitle>
+                <CardTitle>Generated Communication</CardTitle>
+                <CardDescription>
+                  Review your generated communication based on the selected insights and customization options
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="whitespace-pre-wrap bg-muted p-4 rounded-md">
-                  {generatedCommunication}
-                </div>
+                {loading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="ml-2">Generating communication...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="bg-white border rounded-md p-6 whitespace-pre-line">
+                      {generatedCommunication}
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2 justify-end">
+                      <Button variant="outline" onClick={() => setStep(3)}>
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Customize
+                      </Button>
+                      <Button variant="outline" onClick={handleGenerateCommunication}>
+                        <RefreshCw className="mr-2 h-4 w-4" /> Regenerate
+                      </Button>
+                      <Button variant="secondary" onClick={handleOpenAmigo}>
+                        <Maximize2 className="mr-2 h-4 w-4" /> Communications Amigo
+                      </Button>
+                      <Button>
+                        <Send className="mr-2 h-4 w-4" /> Send Communication
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
-        ) : (
-          <ReviewConfirmation
-            projectName={selectedProjectName}
-            selectedInsights={selectedInsightsData}
-            communicationType={communicationType as CommunicationType}
-            mandatoryPoints={mandatoryPoints}
-            audience={audience}
-            tone={tone}
-            additionalContext={additionalContext}
-            onBack={handlePreviousStep}
-            onConfirm={handleGenerateCommunication}
-            title={title}
-            style={style}
-            detailLevel={detailLevel}
-            formatting={formatting}
-            callToAction={callToAction}
-            customTerminology={customTerminology}
-            additionalInstructions={additionalInstructions}
-            referenceDocuments={referenceDocuments}
-            highlightedTextMap={highlightedTextMap}
-          />
         )
       
       default:

@@ -11,6 +11,7 @@ export default authMiddleware({
     "/api/send",      // Contact form endpoint
     "/sign-in",       // Sign in page
     "/sign-up",       // Sign up page
+    "/communications-amigo", // Communications Amigo page
   ],
   
   // Routes that can always be accessed, even if not authenticated
