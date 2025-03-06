@@ -4,15 +4,29 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, ArrowLeft, Send, Bot } from "lucide-react"
+import { Loader2, ArrowLeft, Send, Handshake, Save, CheckCircle } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { Textarea } from "@/components/ui/textarea"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 // import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
 }
+
+// Custom Handshake icon component with hover animation
+const HandshakeIcon = ({ className }: { className?: string }) => {
+  return (
+    <div className="handshake-icon-container">
+      <Handshake 
+        className={`text-emerald-600 transition-colors duration-500 group-hover:text-emerald-500 ${className}`}
+      />
+    </div>
+  );
+};
 
 export default function CommunicationsAmigoPage() {
   const router = useRouter()
@@ -21,14 +35,25 @@ export default function CommunicationsAmigoPage() {
   
   // State for the communication
   const [communication, setCommunication] = useState<string>('')
+  const [previousCommunication, setPreviousCommunication] = useState<string>('')
   const [loading, setLoading] = useState<boolean>(false)
   const [isClient, setIsClient] = useState(false)
   const [dataLoaded, setDataLoaded] = useState(false)
+  const [processingCommunication, setProcessingCommunication] = useState(false)
   
   // Chat state
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
+  
+  // Finalize dialog state
+  const [showFinalizeDialog, setShowFinalizeDialog] = useState(false)
+  const [communicationTitle, setCommunicationTitle] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  
+  // Project data
+  const [projectId, setProjectId] = useState<string>('')
+  const [communicationType, setCommunicationType] = useState<string>('')
   
   // First useEffect just to set isClient to true
   useEffect(() => {
@@ -65,6 +90,15 @@ export default function CommunicationsAmigoPage() {
       if (storedData) {
         const data = JSON.parse(storedData);
         setCommunication(data.communication || '');
+        setCommunicationTitle(data.title || 'Untitled Communication');
+        
+        // Store project ID and communication type if available
+        if (data.projectId) {
+          setProjectId(data.projectId);
+        }
+        if (data.communicationType) {
+          setCommunicationType(data.communicationType);
+        }
         
         // Add initial welcome message
         setMessages([{
@@ -111,6 +145,68 @@ export default function CommunicationsAmigoPage() {
       router.push('/dashboard/communications');
     }
   }
+  
+  // Function to open the finalize dialog
+  const handleOpenFinalizeDialog = () => {
+    setShowFinalizeDialog(true);
+  }
+  
+  // Function to save the communication and finalize
+  const handleFinalize = async () => {
+    if (!communication.trim()) {
+      toast({
+        title: "Error",
+        description: "Cannot save an empty communication.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsSaving(true);
+    
+    try {
+      // Call the API to save the communication
+      const response = await fetch('/api/communications/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          projectId: projectId,
+          title: communicationTitle || 'Untitled Communication',
+          content: communication,
+          communicationType: communicationType,
+          messages: messages
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save communication');
+      }
+
+      const data = await response.json();
+      
+      toast({
+        title: "Success",
+        description: "Your communication has been saved successfully.",
+      });
+      
+      // Close the dialog
+      setShowFinalizeDialog(false);
+      
+      // Navigate back to the communications page
+      handleBack();
+    } catch (error) {
+      console.error('Error saving communication:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save the communication. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   // Function to handle sending a message
   const handleSendMessage = async () => {
@@ -119,6 +215,10 @@ export default function CommunicationsAmigoPage() {
     const userMessage = input.trim();
     setInput('');
     setIsProcessing(true);
+    setProcessingCommunication(true);
+    
+    // Store the current communication before updating
+    setPreviousCommunication(communication);
     
     // Add user message to chat
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
@@ -145,6 +245,11 @@ export default function CommunicationsAmigoPage() {
       // Update the communication
       setCommunication(data.updatedCommunication);
       
+      // First turn off processing state with a slight delay
+      setTimeout(() => {
+        setProcessingCommunication(false);
+      }, 800);
+      
       // Add assistant's response to chat
       setMessages(prev => [...prev, { 
         role: 'assistant', 
@@ -163,6 +268,9 @@ export default function CommunicationsAmigoPage() {
         role: 'assistant', 
         content: "I apologize, but I encountered an error while trying to update the communication. Please try again or rephrase your request."
       }]);
+      
+      // Turn off processing state
+      setProcessingCommunication(false);
     } finally {
       setIsProcessing(false);
     }
@@ -190,17 +298,24 @@ export default function CommunicationsAmigoPage() {
       {/* Left sidebar for chat (30% width) */}
       <div className="w-[30%] h-screen flex flex-col border-r bg-white">
         <div className="flex justify-between items-center p-4 border-b">
-          <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5" />
+          <div className="flex items-center gap-2 group">
+            <div className="handshake-hover">
+              <HandshakeIcon className="h-5 w-5" />
+            </div>
             <h1 className="text-xl font-bold">Communications Amigo</h1>
           </div>
-          <Button variant="outline" size="sm" onClick={handleBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleBack}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back
+            </Button>
+            <Button variant="default" size="sm" onClick={handleOpenFinalizeDialog} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              <CheckCircle className="mr-2 h-4 w-4" /> Finalize
+            </Button>
+          </div>
         </div>
         
         <div className="flex-1 p-4 overflow-auto">
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[calc(100vh-180px)]">
             {messages.map((message, index) => (
               <div
                 key={index}
@@ -227,7 +342,7 @@ export default function CommunicationsAmigoPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Tell me what changes you'd like to make..."
-              className="min-h-[60px]"
+              className="min-h-[100px]"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -238,7 +353,7 @@ export default function CommunicationsAmigoPage() {
             <Button 
               onClick={handleSendMessage}
               disabled={!input.trim() || isProcessing}
-              className="px-3"
+              className="px-3 bg-emerald-600 hover:bg-emerald-700 text-white"
             >
               {isProcessing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -261,13 +376,76 @@ export default function CommunicationsAmigoPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="bg-white border rounded-md p-6 min-h-[calc(100vh-250px)] whitespace-pre-line">
-                {communication}
+              <div 
+                className={`bg-white border rounded-md p-6 min-h-[calc(100vh-250px)] whitespace-pre-line relative ${
+                  processingCommunication ? 'communication-processing' : ''
+                }`}
+              >
+                {processingCommunication ? (
+                  <>
+                    <div className="absolute top-0 left-0 w-full h-full bg-white/50 flex items-center justify-center z-10">
+                      <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="text-sm text-muted-foreground">Updating communication...</p>
+                      </div>
+                    </div>
+                    <div className="communication-text-shimmer">{communication}</div>
+                  </>
+                ) : (
+                  communication
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+      
+      {/* Finalize Dialog */}
+      <Dialog open={showFinalizeDialog} onOpenChange={setShowFinalizeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Finalize Communication</DialogTitle>
+            <DialogDescription>
+              Save your communication to access it later from your communications list.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Communication Title</Label>
+              <Input
+                id="title"
+                value={communicationTitle}
+                onChange={(e) => setCommunicationTitle(e.target.value)}
+                placeholder="Enter a title for your communication"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowFinalizeDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleFinalize}
+              disabled={isSaving}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Communication
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 

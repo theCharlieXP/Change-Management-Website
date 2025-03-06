@@ -21,9 +21,20 @@ import { ReviewConfirmation } from '@/components/communications/review-confirmat
 import { HighlightText } from '@/components/communications/highlight-text'
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { format } from 'date-fns'
 
 // Import the communicationTypes array
 import { communicationTypes } from '@/components/communications/communication-type-selection'
+
+// Define the SavedCommunication interface
+interface SavedCommunication {
+  id: string
+  title: string
+  content: string
+  communication_type: string | null
+  created_at: string
+  updated_at: string
+}
 
 export default function CommunicationsPage() {
   const { isLoaded, isSignedIn } = useAuth()
@@ -143,7 +154,7 @@ export default function CommunicationsPage() {
     if (viewingInsight) {
       // Prevent body scrolling when dialog is open
       document.body.style.overflow = 'hidden';
-    } else {
+    }else {
       // Restore body scrolling when dialog is closed
       document.body.style.overflow = '';
     }
@@ -170,86 +181,62 @@ export default function CommunicationsPage() {
     }
   }, [selectedProject]);
 
-  // Fetch projects when auth is ready
+  // Fetch projects when component mounts
   useEffect(() => {
-    let isMounted = true
+    let isMounted = true;
     
     const fetchProjects = async () => {
-      // Skip if auth isn't ready
-      if (!isLoaded) {
-        console.log('Auth not loaded yet, waiting...')
-        return
-      }
-
-      // Skip if not signed in
-      if (!isSignedIn) {
-        console.log('User not signed in, skipping project fetch')
-        setLoading(false)
-        return
-      }
-
       try {
-        console.log('Auth ready, fetching projects...')
-        setLoading(true)
-
-        const response = await fetch('/api/projects')
-        
-        // Handle response
+        const response = await fetch('/api/projects');
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          console.error('Project fetch failed:', { 
-            status: response.status, 
-            statusText: response.statusText,
-            errorData 
-          })
-          throw new Error(errorData.details || 'Failed to fetch projects')
+          throw new Error(`Failed to fetch projects: ${response.status}`);
         }
-
-        const data = await response.json()
-        console.log('Successfully fetched projects:', data)
+        
+        const data = await response.json();
+        console.log('Successfully fetched projects:', data);
         
         if (isMounted) {
-          setProjects(data)
-          setLoading(false)
+          setProjects(data);
+          setLoading(false);
         }
       } catch (error) {
-        console.error('Error fetching projects:', error)
+        console.error('Error fetching projects:', error);
         if (isMounted) {
-          setLoading(false)
+          setLoading(false);
           toast({
             title: "Error",
             description: error instanceof Error ? error.message : "Failed to load projects. Please try refreshing the page.",
             variant: "destructive"
-          })
+          });
         }
       }
-    }
+    };
 
-    fetchProjects()
+    fetchProjects();
 
     return () => {
-      isMounted = false
-    }
-  }, [isLoaded, isSignedIn, toast])
+      isMounted = false;
+    };
+  }, []); // Empty dependency array since we only want to run this once on mount
 
   const handleProjectChange = (value: string) => {
-    setSelectedProject(value)
+    setSelectedProject(value);
     // Reset workflow
-    setStep(1)
-    setSelectedInsights([])
-    setCommunicationType(null)
-    setMandatoryPoints('')
-    setAdditionalContext('')
-    setTitle('')
-    setStyle('mixed')
-    setDetailLevel(50)
-    setFormatting('mixed')
-    setCallToAction('')
-    setCustomTerminology('')
-    setAdditionalInstructions('')
-    setReferenceDocuments([])
+    setStep(1);
+    setSelectedInsights([]);
+    setCommunicationType(null);
+    setMandatoryPoints('');
+    setAdditionalContext('');
+    setTitle('');
+    setStyle('mixed');
+    setDetailLevel(50);
+    setFormatting('mixed');
+    setCallToAction('');
+    setCustomTerminology('');
+    setAdditionalInstructions('');
+    setReferenceDocuments([]);
     // Close any open insight dialog
-    setViewingInsight(null)
+    setViewingInsight(null);
     
     // First try to fetch real insights from the API
     const fetchInsightsForProject = async () => {
@@ -268,7 +255,7 @@ export default function CommunicationsPage() {
         
         // If API call fails or returns empty, fall back to mock data
         provideMockInsights(value)
-      } catch (error) {
+      }catch (error) {
         console.error('Error fetching insights:', error)
         // Fall back to mock data
         provideMockInsights(value)
@@ -422,7 +409,7 @@ export default function CommunicationsPage() {
       setGeneratedCommunication(data.content);
       setLoading(false);
       setStep(4); // Move to review step
-    } catch (error) {
+    }catch (error) {
       console.error('Error generating communication:', error);
       toast({
         title: "Error",
@@ -460,6 +447,8 @@ export default function CommunicationsPage() {
       const communicationData = {
         communication: generatedCommunication,
         title: title || '',
+        projectId: selectedProject,
+        communicationType: communicationType,
         audience,
         tone,
         style,
@@ -489,8 +478,8 @@ export default function CommunicationsPage() {
       
       // Navigate to the root-level communications-amigo page instead of the one under dashboard
       router.push('/communications-amigo');
-    } catch (error) {
-      console.error('Error opening Communications Amigo:', error);
+    }catch (error) {
+      console.error('Error navigating to Communications Amigo:', error);
       toast({
         title: "Error",
         description: "Failed to open Communications Amigo. Please try again.",
@@ -499,7 +488,7 @@ export default function CommunicationsPage() {
     }
   };
 
-  // Add the handlePopulateTestData function
+  // Function to populate test data
   const handlePopulateTestData = () => {
     // Set predefined values for customization options
     setTitle("Q3 2023 Organizational Changes");
@@ -554,7 +543,7 @@ export default function CommunicationsPage() {
             title: "Communication Updated",
             description: "Your communication has been updated from Communications Amigo.",
           })
-        } else {
+        }else {
           console.log('No updated communication found')
         }
         
@@ -562,10 +551,114 @@ export default function CommunicationsPage() {
         sessionStorage.removeItem('returningFromAmigo')
         sessionStorage.removeItem('updatedCommunication')
       }
-    } catch (error) {
+    }catch (error) {
       console.error('Error checking for updated communication:', error)
     }
   }, [isClient, toast, step, setStep, setGeneratedCommunication])
+
+  // Add state for saved communications
+  const [savedCommunications, setSavedCommunications] = useState<SavedCommunication[]>([])
+  const [loadingSaved, setLoadingSaved] = useState(false)
+  const [selectedSavedCommunication, setSelectedSavedCommunication] = useState<SavedCommunication | null>(null)
+  
+  // Add useEffect to fetch saved communications when a project is selected
+  useEffect(() => {
+    if (!selectedProject || !isSignedIn) return;
+    
+    const fetchSavedCommunications = async () => {
+      setLoadingSaved(true);
+      try {
+        const response = await fetch(`/api/communications/save?projectId=${selectedProject}`);
+        
+        if (!response.ok) {
+          // Try to get the error message from the response
+          let errorMessage = 'Failed to fetch saved communications';
+          try {
+            const errorData = await response.json();
+            if (errorData.message) {
+              errorMessage = errorData.message;
+            }
+          } catch (parseError) {
+            // If we can't parse the JSON, just use the default error message
+            console.error('Error parsing error response:', parseError);
+          }
+          
+          throw new Error(errorMessage);
+        }
+        
+        const data = await response.json();
+        setSavedCommunications(data);
+      } catch (error) {
+        console.error('Error fetching saved communications:', error);
+        
+        // Check if the error is related to the table not existing
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const isTableNotExistError = errorMessage.includes('table not ready') || 
+                                    errorMessage.includes('does not exist');
+        
+        if (isTableNotExistError) {
+          // If the table doesn't exist, just set an empty array and don't show an error
+          console.log('Table does not exist yet, setting empty saved communications');
+          setSavedCommunications([]);
+        } else {
+          // For other errors, show a toast
+          toast({
+            title: "Error",
+            description: "Failed to load saved communications.",
+            variant: "destructive"
+          });
+        }
+      } finally {
+        setLoadingSaved(false);
+      }
+    };
+    
+    fetchSavedCommunications();
+  }, [selectedProject, isSignedIn, toast]);
+  
+  // Function to view a saved communication
+  const handleViewSavedCommunication = (communication: SavedCommunication) => {
+    setSelectedSavedCommunication(communication);
+  }
+  
+  // Function to edit a saved communication with Amigo
+  const handleEditWithAmigo = (communication: SavedCommunication) => {
+    try {
+      // Ensure we're on the client side
+      if (typeof window === 'undefined') {
+        return;
+      }
+      
+      // Get the communication type details
+      const communicationTypeDetails = communicationTypes.find(
+        type => type.id === communication.communication_type
+      );
+      
+      // Prepare the data for Amigo
+      const communicationData = {
+        communication: communication.content,
+        title: communication.title,
+        projectId: selectedProject,
+        communicationType: communication.communication_type
+      };
+      
+      // Store the data in sessionStorage
+      sessionStorage.setItem('communicationAmigoData', JSON.stringify(communicationData));
+      
+      // Add a flag to indicate we're intentionally navigating to Communications Amigo
+      sessionStorage.setItem('navigatingToAmigo', 'true');
+      
+      // Navigate to the communications-amigo page
+      router.push('/communications-amigo');
+    }catch (error) {
+      console.error('Error navigating to Amigo:', error);
+      toast({
+        title: "Error",
+        description: "Failed to open Communications Amigo. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }
 
   // Render the appropriate step content
   const renderStepContent = () => {
@@ -576,7 +669,7 @@ export default function CommunicationsPage() {
             <div className="flex justify-between items-center flex-wrap gap-2">
               <h2 className="text-2xl font-bold">Select Insights</h2>
               <Button 
-                onClick={handleNextStep} 
+                onClick={handleNextStep}
                 disabled={selectedInsights.length === 0}
                 className="flex-shrink-0"
               >
@@ -610,12 +703,12 @@ export default function CommunicationsPage() {
             <div className="flex justify-between items-center flex-wrap gap-2">
               <h2 className="text-2xl font-bold">Communication Type</h2>
               <div className="space-x-2 flex-shrink-0">
-                <Button variant="outline" onClick={handlePreviousStep} size="sm">
+                <Button variant="outline" onClick={handlePreviousStep}size="sm">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Button>
                 <Button 
-                  onClick={handleNextStep} 
+                  onClick={handleNextStep}
                   disabled={!communicationType}
                 >
                   Next Step
@@ -651,7 +744,7 @@ export default function CommunicationsPage() {
                 <div className="flex-1">
                   <p className="text-sm text-yellow-800 font-medium">Highlighted Key Points</p>
                   <p className="text-xs text-yellow-700 mb-2">
-                    You&apos;ve highlighted key points in {Object.keys(highlightedTextMap).filter(id => highlightedTextMap[id].length > 0).length} insight(s). 
+                    You&apos;ve highlighted key points in {Object.keys(highlightedTextMap).filter(id => highlightedTextMap[id].length > 0).length}insight(s). 
                     These points will be prioritized in the generated communication.
                   </p>
                   
@@ -668,15 +761,15 @@ export default function CommunicationsPage() {
                           <div key={insight.id} className="border-l-2 border-yellow-300 pl-3 py-1">
                             <p className="font-medium text-sm">{insight.title}</p>
                             <div className="mt-1 space-y-1.5">
-                              {highlights.map((highlight, idx) => (
+                              {highlightedTextMap[insight.id]?.map((highlight, idx) => (
                                 <div key={idx} className="bg-yellow-50 p-2 rounded text-sm flex items-start gap-2">
                                   <p className="text-sm break-words flex-1">{highlight}</p>
                                   <Button
                                     variant="ghost"
-                                    size="sm"
-                                    className="h-6 w-6 p-0 text-yellow-700 hover:bg-yellow-100 rounded-full flex-shrink-0"
+                                    size="icon"
+                                    className="h-5 w-5 rounded-full"
                                     onClick={() => {
-                                      const newHighlights = [...(highlightedTextMap[insight.id] || [])].filter(h => h !== highlight);
+                                      const newHighlights = highlightedTextMap[insight.id].filter((_, i) => i !== idx);
                                       handleHighlightsChange(insight.id, newHighlights);
                                     }}
                                   >
@@ -844,7 +937,7 @@ export default function CommunicationsPage() {
                   onProjectCreated={(newProject) => {
                     setProjects(prev => [newProject, ...prev])
                     setSelectedProject(newProject.id)
-                  }} 
+                  }}
                 />
               </div>
             )}
@@ -853,105 +946,106 @@ export default function CommunicationsPage() {
           {selectedProject && (
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Communication Types</h3>
-              <div className="space-y-2">
-                <Button 
-                  variant={step > 0 ? "default" : "outline"} 
-                  className="w-full justify-start"
-                  onClick={() => setStep(1)}
-                >
-                  <MessageSquare className="mr-2 h-4 w-4" />
-                  <span>New Communication</span>
-                </Button>
-                <Button variant="outline" className="w-full justify-start" disabled>
-                  <FileText className="mr-2 h-4 w-4" />
-                  <span>Saved Templates</span>
-                </Button>
-                <Button variant="outline" className="w-full justify-start" disabled>
-                  <Send className="mr-2 h-4 w-4" />
-                  <span>Sent Communications</span>
-                </Button>
-              </div>
               
-              {step > 0 && (
-                <div className="pt-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Current Progress</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <div className={`h-2 w-2 rounded-full ${step >= 1 ? 'bg-primary' : 'bg-muted'}`} />
-                          <p className={`text-xs ${step === 1 ? 'font-medium' : 'text-muted-foreground'}`}>
-                            Select Insights
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className={`h-2 w-2 rounded-full ${step >= 2 ? 'bg-primary' : 'bg-muted'}`} />
-                          <p className={`text-xs ${step === 2 ? 'font-medium' : 'text-muted-foreground'}`}>
-                            Communication Type
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className={`h-2 w-2 rounded-full ${step >= 3 ? 'bg-primary' : 'bg-muted'}`} />
-                          <p className={`text-xs ${step === 3 ? 'font-medium' : 'text-muted-foreground'}`}>
-                            Customize
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className={`h-2 w-2 rounded-full ${step >= 4 ? 'bg-primary' : 'bg-muted'}`} />
-                          <p className={`text-xs ${step === 4 ? 'font-medium' : 'text-muted-foreground'}`}>
-                            Review & Generate
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
+              <Tabs defaultValue="new" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="new">New</TabsTrigger>
+                  <TabsTrigger value="saved">Saved</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="new" className="space-y-2 mt-2">
+                  <Button 
+                    variant={step > 0 ? "default" : "outline"}
+                    className="w-full justify-start"
+                    onClick={() => setStep(1)}
+                  >
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    <span>New Communication</span>
+                  </Button>
+                </TabsContent>
+                
+                <TabsContent value="saved" className="space-y-2 mt-2">
+                  {loadingSaved ? (
+                    <div className="flex items-center justify-center h-20">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : savedCommunications.length > 0 ? (
+                    <div className="space-y-2">
+                      {savedCommunications.map((comm) => (
+                        <Button 
+                          key={comm.id}
+                          variant="outline" 
+                          className="w-full justify-start text-left"
+                          onClick={() => handleViewSavedCommunication(comm)}
+                        >
+                          <FileText className="mr-2 h-4 w-4 flex-shrink-0" />
+                          <div className="truncate">
+                            <span className="block truncate">{comm.title}</span>
+                            <span className="text-xs text-muted-foreground block">
+                              {format(new Date(comm.created_at), 'MMM d, yyyy')}
+                            </span>
+                          </div>
+                        </Button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <p className="text-muted-foreground mb-2">No saved communications</p>
+                      <p className="text-xs text-muted-foreground">
+                        Create a communication and finalize it to save it here.
+                      </p>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             </div>
           )}
         </div>
 
         {/* Right panel - gray background */}
-        <div 
-          id="right-panel"
-          className="w-3/4 bg-gray-50 p-6 overflow-y-auto overflow-x-hidden flex-shrink-0" 
-          style={{ 
-            contain: "content",
-            width: "75%",
-            maxWidth: "75%",
-            position: "relative",
-            overflowX: "clip"
-          }}
-        >
-          {selectedProject ? (
-            renderStepContent()
-          ) : (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center max-w-md">
-                <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground opacity-50 mb-4" />
-                <h3 className="text-xl font-medium mb-2">Communications Assistant</h3>
-                <p className="text-muted-foreground mb-6">
-                  Select a project from the left panel to get started.
-                  Our AI will help you craft effective communications for your change management initiatives.
-                </p>
-                
-                {/* Test button to view an insight */}
-                <Button onClick={() => handleViewInsight({
-                  id: '1',
-                  title: 'Test Insight',
-                  content: 'This is a test insight.\nKey Points:\n• Point 1\n• Point 2\n• Point 3',
-                  focus_area: 'challenges-barriers' as InsightFocusArea,
-                  notes: 'These are some test notes.',
-                  project_id: '1',
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString()
-                })}>
-                  View Test Insight
-                </Button>
+        <div className="flex-1 bg-gray-50 p-6 overflow-y-auto" id="right-panel">
+          {/* If we're viewing a saved communication */}
+          {selectedSavedCommunication ? (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">{selectedSavedCommunication.title}</h2>
+                <div className="space-x-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setSelectedSavedCommunication(null)}
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                  </Button>
+                  <Button 
+                    size="sm"
+                    onClick={() => handleEditWithAmigo(selectedSavedCommunication)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <Wand2 className="mr-2 h-4 w-4" />
+                    Edit with Amigo
+                  </Button>
+                </div>
               </div>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Saved Communication</CardTitle>
+                  <CardDescription>
+                    Created on {format(new Date(selectedSavedCommunication.created_at), 'MMMM d, yyyy')}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-white border rounded-md p-6 whitespace-pre-line">
+                    {selectedSavedCommunication.content}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
+          ) : (
+            // Otherwise show the regular step content
+            renderStepContent()
           )}
         </div>
       </div>
@@ -963,7 +1057,7 @@ export default function CommunicationsPage() {
       */}
       {viewingInsight && (
         <Dialog 
-          open={!!viewingInsight} 
+          open={!!viewingInsight}
           onOpenChange={(open) => {
             if (!open) {
               setViewingInsight(null);
@@ -1100,4 +1194,4 @@ export default function CommunicationsPage() {
       )}
     </div>
   )
-} 
+}
