@@ -27,6 +27,7 @@ import { communicationTypes } from '@/components/communications/communication-ty
 
 export default function CommunicationsPage() {
   const { isLoaded, isSignedIn } = useAuth()
+  const router = useRouter()
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -483,8 +484,11 @@ export default function CommunicationsPage() {
       // Store the data in sessionStorage
       sessionStorage.setItem('communicationAmigoData', JSON.stringify(communicationData));
       
-      // Open the Communications Amigo page in a new tab
-      window.open('/communications-amigo', '_blank');
+      // Add a flag to indicate we're intentionally navigating to Communications Amigo
+      sessionStorage.setItem('navigatingToAmigo', 'true');
+      
+      // Navigate to the root-level communications-amigo page instead of the one under dashboard
+      router.push('/communications-amigo');
     } catch (error) {
       console.error('Error opening Communications Amigo:', error);
       toast({
@@ -529,10 +533,14 @@ export default function CommunicationsPage() {
       const returningFromAmigo = sessionStorage.getItem('returningFromAmigo')
       
       if (returningFromAmigo === 'true') {
+        console.log('Returning from Communications Amigo, checking for updated communication')
+        
         // Get the updated communication
         const updatedCommunication = sessionStorage.getItem('updatedCommunication')
         
         if (updatedCommunication) {
+          console.log('Found updated communication, updating state')
+          
           // Update the generated communication with the new version
           setGeneratedCommunication(updatedCommunication)
           
@@ -546,6 +554,8 @@ export default function CommunicationsPage() {
             title: "Communication Updated",
             description: "Your communication has been updated from Communications Amigo.",
           })
+        } else {
+          console.log('No updated communication found')
         }
         
         // Clear the sessionStorage items

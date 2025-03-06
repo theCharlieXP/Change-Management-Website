@@ -7,23 +7,25 @@ import { Button } from "@/components/ui/button"
 import { Loader2, ArrowLeft, Send, Bot } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { Textarea } from "@/components/ui/textarea"
-// import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
 }
 
+// This is a standalone page without the dashboard layout
 export default function CommunicationsAmigoPage() {
   const router = useRouter()
   const { toast } = useToast()
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const textContainerRef = useRef<HTMLDivElement>(null)
   
   // State for the communication
   const [communication, setCommunication] = useState<string>('')
   const [loading, setLoading] = useState<boolean>(false)
   const [isClient, setIsClient] = useState(false)
   const [dataLoaded, setDataLoaded] = useState(false)
+  const [animating, setAnimating] = useState(false)
   
   // Chat state
   const [messages, setMessages] = useState<Message[]>([])
@@ -112,6 +114,53 @@ export default function CommunicationsAmigoPage() {
     }
   }
 
+  // Function to animate text with a wave effect
+  const animateText = (newText: string) => {
+    if (!textContainerRef.current) return;
+    
+    setAnimating(true);
+    
+    // Split the text into words
+    const words = newText.split(/\s+/);
+    const container = textContainerRef.current;
+    
+    // Clear the container
+    container.innerHTML = '';
+    
+    // Create a wrapper for better control
+    const wrapper = document.createElement('div');
+    wrapper.className = 'text-wrapper';
+    wrapper.style.width = '100%';
+    wrapper.style.overflowX = 'hidden';
+    wrapper.style.wordBreak = 'break-word';
+    container.appendChild(wrapper);
+    
+    // Create spans for each word with staggered animation
+    words.forEach((word, index) => {
+      const span = document.createElement('span');
+      span.textContent = word + ' ';
+      span.style.opacity = '0';
+      span.style.transform = 'translateY(20px)';
+      span.style.display = 'inline-block';
+      span.style.transition = 'all 0.3s ease';
+      span.style.maxWidth = '100%';
+      span.style.overflowWrap = 'break-word';
+      wrapper.appendChild(span);
+      
+      // Stagger the animation
+      setTimeout(() => {
+        span.style.opacity = '1';
+        span.style.transform = 'translateY(0)';
+      }, 30 * index);
+    });
+    
+    // Set a timeout to update the state after animation completes
+    setTimeout(() => {
+      setCommunication(newText);
+      setAnimating(false);
+    }, 30 * words.length + 500);
+  };
+
   // Function to handle sending a message
   const handleSendMessage = async () => {
     if (!input.trim() || isProcessing) return;
@@ -142,8 +191,8 @@ export default function CommunicationsAmigoPage() {
 
       const data = await response.json();
       
-      // Update the communication
-      setCommunication(data.updatedCommunication);
+      // Animate the updated communication with wave effect
+      animateText(data.updatedCommunication);
       
       // Add assistant's response to chat
       setMessages(prev => [...prev, { 
@@ -186,9 +235,9 @@ export default function CommunicationsAmigoPage() {
   }
   
   return (
-    <div className="flex h-screen w-full bg-gray-50 overflow-hidden communications-amigo-page">
-      {/* Left sidebar for chat (30% width) */}
-      <div className="w-[30%] h-screen flex flex-col border-r bg-white">
+    <div className="flex flex-col md:flex-row h-screen w-full max-w-full overflow-hidden bg-gray-50">
+      {/* Left sidebar for chat (full width on mobile, 30% on desktop) */}
+      <div className="w-full md:w-[40%] lg:w-[35%] h-[50vh] md:h-screen flex flex-col border-b md:border-b-0 md:border-r bg-white">
         <div className="flex justify-between items-center p-4 border-b">
           <div className="flex items-center gap-2">
             <Bot className="h-5 w-5" />
@@ -207,7 +256,7 @@ export default function CommunicationsAmigoPage() {
                 className={`flex ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}`}
               >
                 <div
-                  className={`rounded-lg px-4 py-2 max-w-[80%] ${
+                  className={`rounded-lg px-4 py-2 max-w-[90%] ${
                     message.role === 'assistant'
                       ? 'bg-secondary text-secondary-foreground'
                       : 'bg-primary text-primary-foreground'
@@ -227,7 +276,7 @@ export default function CommunicationsAmigoPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Tell me what changes you'd like to make..."
-              className="min-h-[60px]"
+              className="min-h-[60px] resize-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -238,7 +287,7 @@ export default function CommunicationsAmigoPage() {
             <Button 
               onClick={handleSendMessage}
               disabled={!input.trim() || isProcessing}
-              className="px-3"
+              className="px-3 shrink-0"
             >
               {isProcessing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -250,19 +299,22 @@ export default function CommunicationsAmigoPage() {
         </div>
       </div>
       
-      {/* Right content area for the communication (70% width) */}
-      <div className="w-[70%] h-screen overflow-auto p-6">
-        <div className="max-w-full mx-auto">
+      {/* Right content area for the communication (full width on mobile, 70% on desktop) */}
+      <div className="w-full md:w-[60%] lg:w-[65%] h-[50vh] md:h-screen overflow-auto p-3 md:p-6">
+        <div className="max-w-4xl mx-auto">
           <Card className="shadow-lg">
-            <CardHeader>
+            <CardHeader className="p-4 md:p-6">
               <CardTitle>Your Communication</CardTitle>
               <CardDescription>
                 Chat with me on the left to refine your communication. I'll help you make it more effective!
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="bg-white border rounded-md p-6 min-h-[calc(100vh-250px)] whitespace-pre-line">
-                {communication}
+            <CardContent className="p-3 md:p-6">
+              <div 
+                ref={textContainerRef}
+                className="bg-white border rounded-md p-4 md:p-6 min-h-[200px] md:min-h-[calc(100vh-300px)] whitespace-pre-line overflow-x-hidden"
+              >
+                {!animating && communication}
               </div>
             </CardContent>
           </Card>
