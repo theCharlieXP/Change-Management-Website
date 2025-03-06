@@ -124,7 +124,7 @@ TITLE/HEADLINE: ${title || 'Use an appropriate title based on the content'}
 INSIGHTS TO INCLUDE:
 ${insightsContent}
 
-IMPORTANT: For each insight, prioritize and emphasize the highlighted key points in the generated communication.
+IMPORTANT: For each insight, prioritise and emphasize the highlighted key points in the generated communication.
 ${highlightedPoints ? `\nHIGHLIGHTED KEY POINTS:\n${highlightedPoints}` : ''}
 
 TARGET AUDIENCE: ${audienceMap[audience as keyof typeof audienceMap] || 'all employees'}

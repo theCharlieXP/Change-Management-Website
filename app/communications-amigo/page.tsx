@@ -138,6 +138,28 @@ export default function CommunicationsAmigoPage() {
       // Set a flag to indicate that we're returning from Communications Amigo
       sessionStorage.setItem('returningFromAmigo', 'true');
       
+      // Store the project ID to restore it when returning
+      if (projectId) {
+        sessionStorage.setItem('selectedProjectId', projectId);
+      }
+      
+      // Store the communication type
+      if (communicationType) {
+        sessionStorage.setItem('selectedCommunicationType', communicationType);
+      }
+      
+      // Store the communication title
+      if (communicationTitle) {
+        sessionStorage.setItem('communicationTitle', communicationTitle);
+      }
+      
+      // Store the selected insights and customization options if they were passed in
+      const amigoData = sessionStorage.getItem('communicationAmigoData');
+      if (amigoData) {
+        // Keep the original data to preserve all customization options
+        sessionStorage.setItem('preserveCustomizationOptions', 'true');
+      }
+      
       // Navigate back to the Communications page
       router.push('/dashboard/communications');
     } catch (error) {
@@ -309,7 +331,7 @@ export default function CommunicationsAmigoPage() {
               <ArrowLeft className="mr-2 h-4 w-4" /> Back
             </Button>
             <Button variant="default" size="sm" onClick={handleOpenFinalizeDialog} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-              <CheckCircle className="mr-2 h-4 w-4" /> Finalize
+              <CheckCircle className="mr-2 h-4 w-4" /> Finalise
             </Button>
           </div>
         </div>
@@ -404,7 +426,7 @@ export default function CommunicationsAmigoPage() {
       <Dialog open={showFinalizeDialog} onOpenChange={setShowFinalizeDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Finalize Communication</DialogTitle>
+            <DialogTitle>Finalise Communication</DialogTitle>
             <DialogDescription>
               Save your communication to access it later from your communications list.
             </DialogDescription>

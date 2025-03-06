@@ -42,7 +42,8 @@ export default function CommunicationsPage() {
   const router = useRouter()
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [projectsLoading, setProjectsLoading] = useState(true)
   const { toast } = useToast()
   const { userId } = useAuth()
   
@@ -62,6 +63,13 @@ export default function CommunicationsPage() {
   const [tone, setTone] = useState<'formal' | 'casual' | 'motivational'>('formal')
   const [additionalContext, setAdditionalContext] = useState<string>('')
   const [generatedCommunication, setGeneratedCommunication] = useState<string | null>(null)
+  
+  // Add separate loading state for communication generation
+  const [generatingCommunication, setGeneratingCommunication] = useState(false)
+  
+  // Add state for saved communications pagination
+  const [savedCommunicationsPage, setSavedCommunicationsPage] = useState(1)
+  const COMMUNICATIONS_PER_PAGE = 5
   
   // New state variables for enhanced customization
   const [title, setTitle] = useState<string>('')
@@ -184,44 +192,37 @@ export default function CommunicationsPage() {
 
   // Fetch projects when component mounts
   useEffect(() => {
-    let isMounted = true;
+    if (!isSignedIn) return;
     
     const fetchProjects = async () => {
+      setProjectsLoading(true);
       try {
         const response = await fetch('/api/projects');
+        
         if (!response.ok) {
-          throw new Error(`Failed to fetch projects: ${response.status}`);
+          throw new Error('Failed to fetch projects');
         }
         
         const data = await response.json();
-        console.log('Successfully fetched projects:', data);
-        
-        if (isMounted) {
-          setProjects(data);
-          setLoading(false);
-        }
+        setProjects(data);
       } catch (error) {
         console.error('Error fetching projects:', error);
-        if (isMounted) {
-          setLoading(false);
-          toast({
-            title: "Error",
-            description: error instanceof Error ? error.message : "Failed to load projects. Please try refreshing the page.",
-            variant: "destructive"
-          });
-        }
+        toast({
+          title: "Error",
+          description: "Failed to load projects. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setProjectsLoading(false);
       }
     };
-
+    
     fetchProjects();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []); // Empty dependency array since we only want to run this once on mount
+  }, [isSignedIn, toast]);
 
   const handleProjectChange = (value: string) => {
     setSelectedProject(value);
+    resetPagination();
     // Reset workflow
     setStep(1);
     setSelectedInsights([]);
@@ -330,6 +331,7 @@ export default function CommunicationsPage() {
   }
 
   const handlePreviousStep = () => {
+    // Simply decrement the step without resetting any state
     setStep(prev => prev - 1)
   }
 
@@ -361,7 +363,7 @@ export default function CommunicationsPage() {
     // Prepare the prompt
     const basePrompt = communicationTypeDetails.aiPrompt
     
-    // Add insights content with highlighted text prioritized
+    // Add insights content with highlighted text prioritised
     const insightsContent = insightsData.map(insight => {
       const highlights = highlightedTextMap[insight.id] || [];
       let highlightedContent = '';
@@ -443,47 +445,31 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
 
   // Function to navigate to Communications Amigo
   const handleOpenAmigo = () => {
-    if (!generatedCommunication) {
-      toast({
-        title: "Error",
-        description: "Please generate a communication first.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     try {
       // Ensure we're on the client side
       if (typeof window === 'undefined') {
         return;
       }
       
-      // Prepare the URL parameters in a more compact way
-      // Store only essential data to avoid URL length issues
+      // Prepare the data for Amigo
       const communicationData = {
         communication: generatedCommunication,
-        title: title || '',
+        title: title,
         projectId: selectedProject,
         communicationType: communicationType,
-        audience,
-        tone,
-        style,
-        detailLevel,
-        formatting,
-        mandatoryPoints: mandatoryPoints || '',
-        callToAction: callToAction || '',
-        customTerminology: customTerminology || '',
-        additionalContext: additionalContext || '',
-        additionalInstructions: additionalInstructions || '',
-        // Include only essential insight data
-        insightsContent: selectedInsightsData.map(insight => ({
-          id: insight.id,
-          title: insight.title,
-          content: 'content' in insight ? insight.content : '',
-          highlights: highlightedTextMap[insight.id] || []
-        })),
-        // Get the communication type details
-        basePrompt: communicationTypes.find(type => type.id === communicationType)?.aiPrompt || ''
+        // Add all customization options
+        selectedInsights: selectedInsights,
+        audience: audience,
+        tone: tone,
+        style: style,
+        detailLevel: detailLevel,
+        formatting: formatting,
+        mandatoryPoints: mandatoryPoints,
+        callToAction: callToAction,
+        customTerminology: customTerminology,
+        additionalContext: additionalContext,
+        additionalInstructions: additionalInstructions,
+        highlightedTextMap: highlightedTextMap
       };
       
       // Store the data in sessionStorage
@@ -492,17 +478,17 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
       // Add a flag to indicate we're intentionally navigating to Communications Amigo
       sessionStorage.setItem('navigatingToAmigo', 'true');
       
-      // Navigate to the root-level communications-amigo page instead of the one under dashboard
+      // Navigate to the communications-amigo page
       router.push('/communications-amigo');
-    }catch (error) {
-      console.error('Error navigating to Communications Amigo:', error);
+    } catch (error) {
+      console.error('Error navigating to Amigo:', error);
       toast({
         title: "Error",
         description: "Failed to open Communications Amigo. Please try again.",
         variant: "destructive"
       });
     }
-  };
+  }
 
   // Function to populate test data
   const handlePopulateTestData = () => {
@@ -543,6 +529,62 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
         // Get the updated communication
         const updatedCommunication = sessionStorage.getItem('updatedCommunication')
         
+        // Restore the selected project
+        const savedProjectId = sessionStorage.getItem('selectedProjectId')
+        if (savedProjectId) {
+          console.log('Restoring selected project:', savedProjectId)
+          setSelectedProject(savedProjectId)
+        }
+        
+        // Restore the communication type
+        const savedCommunicationType = sessionStorage.getItem('selectedCommunicationType')
+        if (savedCommunicationType) {
+          console.log('Restoring communication type:', savedCommunicationType)
+          setCommunicationType(savedCommunicationType as CommunicationType)
+        }
+        
+        // Restore the communication title
+        const savedTitle = sessionStorage.getItem('communicationTitle')
+        if (savedTitle) {
+          console.log('Restoring communication title:', savedTitle)
+          setTitle(savedTitle)
+        }
+        
+        // Check if we should preserve all customization options
+        const preserveCustomization = sessionStorage.getItem('preserveCustomizationOptions')
+        
+        if (preserveCustomization === 'true') {
+          console.log('Preserving all customization options')
+          
+          // Get the original data that was passed to Amigo
+          const amigoDataString = sessionStorage.getItem('communicationAmigoData')
+          if (amigoDataString) {
+            try {
+              const amigoData = JSON.parse(amigoDataString)
+              
+              // Restore selected insights if they exist in the data
+              if (amigoData.selectedInsights) {
+                setSelectedInsights(amigoData.selectedInsights)
+              }
+              
+              // Restore customization options if they exist
+              if (amigoData.audience) setAudience(amigoData.audience)
+              if (amigoData.tone) setTone(amigoData.tone)
+              if (amigoData.style) setStyle(amigoData.style)
+              if (amigoData.detailLevel) setDetailLevel(amigoData.detailLevel)
+              if (amigoData.formatting) setFormatting(amigoData.formatting)
+              if (amigoData.mandatoryPoints) setMandatoryPoints(amigoData.mandatoryPoints)
+              if (amigoData.callToAction) setCallToAction(amigoData.callToAction)
+              if (amigoData.customTerminology) setCustomTerminology(amigoData.customTerminology)
+              if (amigoData.additionalContext) setAdditionalContext(amigoData.additionalContext)
+              if (amigoData.additionalInstructions) setAdditionalInstructions(amigoData.additionalInstructions)
+              if (amigoData.highlightedTextMap) setHighlightedTextMap(amigoData.highlightedTextMap)
+            } catch (parseError) {
+              console.error('Error parsing Amigo data:', parseError)
+            }
+          }
+        }
+        
         if (updatedCommunication) {
           console.log('Found updated communication, updating state')
           
@@ -559,15 +601,19 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
             title: "Communication Updated",
             description: "Your communication has been updated from Communications Amigo.",
           })
-        }else {
+        } else {
           console.log('No updated communication found')
         }
         
         // Clear the sessionStorage items
         sessionStorage.removeItem('returningFromAmigo')
         sessionStorage.removeItem('updatedCommunication')
+        sessionStorage.removeItem('selectedProjectId')
+        sessionStorage.removeItem('selectedCommunicationType')
+        sessionStorage.removeItem('communicationTitle')
+        sessionStorage.removeItem('preserveCustomizationOptions')
       }
-    }catch (error) {
+    } catch (error) {
       console.error('Error checking for updated communication:', error)
     }
   }, [isClient, toast, step, setStep, setGeneratedCommunication])
@@ -663,7 +709,20 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
         communication: communication.content,
         title: communication.title,
         projectId: selectedProject,
-        communicationType: communication.communication_type
+        communicationType: communication.communication_type,
+        // Include current customization options if available
+        selectedInsights: selectedInsights,
+        audience: audience,
+        tone: tone,
+        style: style,
+        detailLevel: detailLevel,
+        formatting: formatting,
+        mandatoryPoints: mandatoryPoints,
+        callToAction: callToAction,
+        customTerminology: customTerminology,
+        additionalContext: additionalContext,
+        additionalInstructions: additionalInstructions,
+        highlightedTextMap: highlightedTextMap
       };
       
       // Store the data in sessionStorage
@@ -674,7 +733,7 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
       
       // Navigate to the communications-amigo page
       router.push('/communications-amigo');
-    }catch (error) {
+    } catch (error) {
       console.error('Error navigating to Amigo:', error);
       toast({
         title: "Error",
@@ -731,6 +790,23 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
     }
   }
 
+  // Function to get paginated saved communications
+  const getPaginatedSavedCommunications = () => {
+    const startIndex = (savedCommunicationsPage - 1) * COMMUNICATIONS_PER_PAGE;
+    const endIndex = startIndex + COMMUNICATIONS_PER_PAGE;
+    return savedCommunications.slice(startIndex, endIndex);
+  }
+  
+  // Function to handle loading more saved communications
+  const handleLoadMoreCommunications = () => {
+    setSavedCommunicationsPage(prev => prev + 1);
+  }
+  
+  // Function to reset pagination when changing projects
+  const resetPagination = () => {
+    setSavedCommunicationsPage(1);
+  }
+
   // Render the appropriate step content
   const renderStepContent = () => {
     switch (step) {
@@ -753,7 +829,7 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
               {hasHighlightedInsights() && (
                 <span className="ml-1 text-yellow-600 inline-flex items-center">
                   <Highlighter className="h-3.5 w-3.5 mr-1" />
-                  Some insights have highlighted key points that will be prioritized.
+                  Some insights have highlighted key points that will be prioritised.
                 </span>
               )}
             </p>
@@ -862,9 +938,9 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
               </Button>
               <Button 
                 onClick={handleGenerateCommunication}
-                disabled={loading}
+                disabled={generatingCommunication}
               >
-                {loading ? (
+                {generatingCommunication ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...
                   </>
@@ -913,11 +989,11 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
                         <Button variant="outline" onClick={() => setStep(3)}>
                           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Customise
                         </Button>
-                        <Button variant="outline" onClick={handleGenerateCommunication}>
-                          <RefreshCw className="mr-2 h-4 w-4" /> Regenerate
-                        </Button>
-                        <Button variant="secondary" onClick={handleOpenAmigo}>
-                          <Maximize2 className="mr-2 h-4 w-4" /> Edit with Amigo
+                        <Button 
+                          onClick={handleOpenAmigo}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                          <Wand2 className="mr-2 h-4 w-4" /> Edit with Amigo
                         </Button>
                       </div>
                     </div>
@@ -960,7 +1036,7 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
               Choose a project to create communications for
             </p>
             
-            {loading ? (
+            {projectsLoading ? (
               <div className="flex items-center justify-center h-20">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
@@ -1001,7 +1077,7 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
                   </div>
                 ) : savedCommunications.length > 0 ? (
                   <div className="space-y-2">
-                    {savedCommunications.map((comm) => {
+                    {getPaginatedSavedCommunications().map((comm) => {
                       // Find the communication type details
                       const typeDetails = communicationTypes.find(
                         type => type.id === comm.communication_type
@@ -1025,12 +1101,22 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
                         </Button>
                       );
                     })}
+                    
+                    {savedCommunications.length > COMMUNICATIONS_PER_PAGE * savedCommunicationsPage && (
+                      <Button 
+                        variant="ghost" 
+                        className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+                        onClick={handleLoadMoreCommunications}
+                      >
+                        Show More ({savedCommunications.length - COMMUNICATIONS_PER_PAGE * savedCommunicationsPage} remaining)
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-6">
                     <p className="text-muted-foreground mb-2">No saved communications</p>
                     <p className="text-xs text-muted-foreground">
-                      Create a communication and finalize it to save it here.
+                      Create a communication and finalise it to save it here.
                     </p>
                   </div>
                 )}
