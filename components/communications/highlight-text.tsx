@@ -172,8 +172,8 @@ export function HighlightText({
                   {isHighlighting ? "Cancel" : "Highlight Key Points"}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-[300px]">
-                <p>Highlight specific text in this insight that you want to prioritize in your communication.</p>
+              <TooltipContent side="bottom" align="start" className="max-w-[250px] z-50">
+                <p>Highlight specific text in this insight that you want to prioritise in your communication.</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -185,8 +185,8 @@ export function HighlightText({
                   <TooltipTrigger asChild>
                     <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-[300px]">
-                    <p>Highlighted text will be prioritized when generating your communication.</p>
+                  <TooltipContent side="bottom" align="start" className="max-w-[250px] z-50">
+                    <p>Highlighted text will be prioritised when generating your communication.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

@@ -90,4 +90,6 @@ export interface InsightSummary {
   focus_area: InsightFocusArea
   created_at: string
   updated_at: string
+  query?: string
+  industries?: string[]
 } 

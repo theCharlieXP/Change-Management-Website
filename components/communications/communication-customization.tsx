@@ -93,8 +93,6 @@ export function CommunicationCustomization({
 
   return (
     <div className="space-y-4 w-full" style={{ maxWidth: "100%" }}>
-      <h2 className="text-xl font-bold">Customize Your {getCommunicationTypeDisplay()}</h2>
-      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Title/Subject Line */}
         <div className="space-y-1.5">

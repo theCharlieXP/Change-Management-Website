@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Loader2, MessageSquare, FileText, Send, ArrowLeft, ArrowRight, Maximize2, X, Highlighter, RefreshCw, Wand2 } from "lucide-react"
+import { Loader2, MessageSquare, FileText, Send, ArrowLeft, ArrowRight, Maximize2, X, Highlighter, RefreshCw, Wand2, Trash2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from '@clerk/nextjs'
 import type { Project } from '@/types/projects'
 import type { InsightSummary } from '@/types/insights'
 import { CreateProjectDialog } from '@/components/projects/create-project-dialog'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { INSIGHT_FOCUS_AREAS, InsightFocusArea } from '@/types/insights'
@@ -22,6 +22,7 @@ import { HighlightText } from '@/components/communications/highlight-text'
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { format } from 'date-fns'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 
 // Import the communicationTypes array
 import { communicationTypes } from '@/components/communications/communication-type-selection'
@@ -274,7 +275,9 @@ export default function CommunicationsPage() {
           notes: 'Based on interviews with department heads.',
           project_id: projectId,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          query: 'stakeholder concerns change management',
+          industries: ['Healthcare', 'Technology & IT']
         },
         {
           id: `${projectId}-2`,
@@ -284,7 +287,9 @@ export default function CommunicationsPage() {
           notes: 'Developed with the project management team.',
           project_id: projectId,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          query: 'implementation strategy phased rollout',
+          industries: ['Finance & Banking', 'Manufacturing']
         },
         {
           id: `${projectId}-3`,
@@ -294,7 +299,9 @@ export default function CommunicationsPage() {
           notes: 'Based on similar implementations in other departments.',
           project_id: projectId,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          query: 'change management outcomes efficiency',
+          industries: ['Government & Public Sector', 'Education']
         }
       ];
       
@@ -329,13 +336,17 @@ export default function CommunicationsPage() {
   const handleGenerateCommunication = async () => {
     setLoading(true)
     
+    // Move to step 4 immediately to show the loading screen
+    setStep(4)
+    
     // Get the selected insights data
     const insightsData = selectedInsights.map(id => {
       return projectInsights.find(insight => insight.id === id)
     }).filter(Boolean) as InsightSummary[]
     
-    // Get the communication type details
+    // Get the communication type details and label
     const communicationTypeDetails = communicationTypes.find(type => type.id === communicationType)
+    const communicationTypeLabel = communicationTypeDetails?.label || 'Unknown Type'
     
     if (!communicationTypeDetails) {
       toast({
@@ -362,61 +373,66 @@ export default function CommunicationsPage() {
       return `${insight.title}: ${insight.content}${highlightedContent}`;
     }).join('\n\n')
     
-    // Prepare highlighted points for the API
-    const allHighlightedPoints = Object.entries(highlightedTextMap)
-      .filter(([insightId]) => selectedInsights.includes(insightId))
-      .flatMap(([_, highlights]) => highlights)
-      .map(highlight => `• ${highlight}`)
-      .join('\n');
+    // Add customization options
+    const customizationOptions = `
+COMMUNICATION DETAILS:
+- Type: ${communicationTypeLabel}
+- Title/Subject: ${title || 'Not specified'}
+- Target Audience: ${audience === 'all-employees' ? 'All Employees' : audience === 'management' ? 'Management Team' : 'Specific Team/Department'}
+- Tone: ${tone === 'formal' ? 'Formal and Professional' : tone === 'casual' ? 'Friendly and Engaging' : 'Concise and Direct'}
+- Style: ${style === 'narrative' ? 'Narrative (flowing paragraphs)' : style === 'bullet-points' ? 'Bullet Points (concise lists)' : 'Mixed (combination of both)'}
+- Detail Level: ${detailLevel < 33 ? 'Brief' : detailLevel < 66 ? 'Standard' : 'Detailed'}
+- Formatting: ${formatting === 'paragraphs' ? 'Primarily Paragraphs' : formatting === 'bullets' ? 'Primarily Bullet Points' : formatting === 'numbered' ? 'Primarily Numbered Lists' : 'Mixed Format'}
+
+CONTENT REQUIREMENTS:
+${mandatoryPoints ? `- Key Points: ${mandatoryPoints}` : ''}
+${callToAction ? `- Call to Action: ${callToAction}` : ''}
+${additionalContext ? `- Context/Background: ${additionalContext}` : ''}
+${customTerminology ? `- Custom Terminology: ${customTerminology}` : ''}
+${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}` : ''}
+`
     
-    // Add reference documents info
-    const referenceDocumentsInfo = referenceDocuments.length > 0 
-      ? `REFERENCE DOCUMENTS:\n${referenceDocuments.map(file => file.name).join('\n')}\n\nThe content of these documents has been analyzed and should be used for context and terminology.` 
-      : '';
+    // Combine everything into the final prompt
+    const finalPrompt = `${basePrompt}\n\nINSIGHTS TO INCLUDE:\n${insightsContent}\n\n${customizationOptions}`
     
     try {
-      // Call the DeepSeek API endpoint
+      // Use the existing API endpoint
       const response = await fetch('/api/communications/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt: basePrompt,
-          insightsContent,
-          highlightedPoints: allHighlightedPoints,
-          title,
-          audience,
-          tone,
-          style,
-          detailLevel,
-          formatting,
-          mandatoryPoints,
-          callToAction,
-          customTerminology,
-          additionalContext,
-          additionalInstructions,
-          referenceDocuments
+          prompt: finalPrompt,
+          communicationType: communicationType,
+          title: title,
         }),
-      });
-
+      })
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate communication');
+        throw new Error('Failed to generate communication')
       }
-
-      const data = await response.json();
-      setGeneratedCommunication(data.content);
-      setLoading(false);
-      setStep(4); // Move to review step
-    }catch (error) {
-      console.error('Error generating communication:', error);
+      
+      const data = await response.json()
+      setGeneratedCommunication(data.content)
+      
+      // Move directly to the generated communication view
+      setStep(4)
+    } catch (error) {
+      console.error('Error generating communication:', error)
       toast({
         title: "Error",
         description: "Failed to generate communication. Please try again.",
         variant: "destructive"
-      });
-      setLoading(false);
+      })
+      
+      // Set some mock content for testing
+      setGeneratedCommunication(`# ${title || 'Change Management Communication'}\n\nDear Team,\n\nWe are excited to announce the upcoming changes to our project management system. These changes are designed to improve efficiency and collaboration across all departments.\n\n## Key Changes\n\n- New dashboard interface for better visibility\n- Streamlined approval process\n- Enhanced reporting capabilities\n\n## Timeline\n\nThe changes will be rolled out in phases starting next month. Training sessions will be scheduled for all team members.\n\n## Next Steps\n\nPlease review the attached documentation and reach out to your department lead with any questions.\n\nBest regards,\nThe Change Management Team`)
+      
+      // Move directly to the generated communication view
+      setStep(4)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -561,6 +577,10 @@ export default function CommunicationsPage() {
   const [loadingSaved, setLoadingSaved] = useState(false)
   const [selectedSavedCommunication, setSelectedSavedCommunication] = useState<SavedCommunication | null>(null)
   
+  // Add state for delete confirmation
+  const [communicationToDelete, setCommunicationToDelete] = useState<SavedCommunication | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   // Add useEffect to fetch saved communications when a project is selected
   useEffect(() => {
     if (!selectedProject || !isSignedIn) return;
@@ -587,7 +607,11 @@ export default function CommunicationsPage() {
         }
         
         const data = await response.json();
-        setSavedCommunications(data);
+        // Sort communications by updated_at date, most recent first
+        const sortedData = data.sort((a: SavedCommunication, b: SavedCommunication) => 
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        );
+        setSavedCommunications(sortedData);
       } catch (error) {
         console.error('Error fetching saved communications:', error);
         
@@ -660,6 +684,53 @@ export default function CommunicationsPage() {
     }
   }
 
+  // Function to handle deleting a saved communication
+  const handleDeleteCommunication = async (communication: SavedCommunication) => {
+    setCommunicationToDelete(communication);
+  }
+  
+  // Function to confirm deletion
+  const confirmDelete = async () => {
+    if (!communicationToDelete) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      const response = await fetch(`/api/communications/delete?id=${communicationToDelete.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete communication');
+      }
+      
+      // Remove the deleted communication from the state
+      setSavedCommunications(prev => 
+        prev.filter(comm => comm.id !== communicationToDelete.id)
+      );
+      
+      // If the deleted communication was being viewed, clear it
+      if (selectedSavedCommunication?.id === communicationToDelete.id) {
+        setSelectedSavedCommunication(null);
+      }
+      
+      toast({
+        title: "Success",
+        description: "Communication deleted successfully.",
+      });
+    } catch (error) {
+      console.error('Error deleting communication:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete communication. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+      setCommunicationToDelete(null);
+    }
+  }
+
   // Render the appropriate step content
   const renderStepContent = () => {
     switch (step) {
@@ -678,7 +749,7 @@ export default function CommunicationsPage() {
               </Button>
             </div>
             <p className="text-muted-foreground">
-              Choose insights from your project to include in your communication.
+              Select content to include in your communication.
               {hasHighlightedInsights() && (
                 <span className="ml-1 text-yellow-600 inline-flex items-center">
                   <Highlighter className="h-3.5 w-3.5 mr-1" />
@@ -727,10 +798,13 @@ export default function CommunicationsPage() {
         )
       
       case 3:
+        // Get the communication type label for display
+        const selectedTypeLabel = communicationTypes.find(type => type.id === communicationType)?.label || 'Unknown Type'
+        
         return (
           <div className="space-y-6 w-full">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Customize Communication</h2>
+              <h2 className="text-2xl font-bold">Customise Communication ({selectedTypeLabel})</h2>
               <div className="flex space-x-2">
                 <Button variant="outline" onClick={handlePreviousStep}>
                   <ArrowLeft className="mr-2 h-4 w-4" /> Back
@@ -744,45 +818,9 @@ export default function CommunicationsPage() {
                 <div className="flex-1">
                   <p className="text-sm text-yellow-800 font-medium">Highlighted Key Points</p>
                   <p className="text-xs text-yellow-700 mb-2">
-                    You&apos;ve highlighted key points in {Object.keys(highlightedTextMap).filter(id => highlightedTextMap[id].length > 0).length}insight(s). 
-                    These points will be prioritized in the generated communication.
+                    You&apos;ve highlighted key points in {Object.keys(highlightedTextMap).filter(id => highlightedTextMap[id].length > 0).length} insight(s). 
+                    These points will be prioritised in the generated communication.
                   </p>
-                  
-                  <details className="text-sm">
-                    <summary className="cursor-pointer text-yellow-800 hover:text-yellow-900 font-medium">
-                      View all highlighted points
-                    </summary>
-                    <div className="mt-2 space-y-3 max-h-[300px] overflow-y-auto pr-1" style={{ overflowX: 'hidden' }}>
-                      {selectedInsightsData.map(insight => {
-                        const highlights = highlightedTextMap[insight.id] || [];
-                        if (highlights.length === 0) return null;
-                        
-                        return (
-                          <div key={insight.id} className="border-l-2 border-yellow-300 pl-3 py-1">
-                            <p className="font-medium text-sm">{insight.title}</p>
-                            <div className="mt-1 space-y-1.5">
-                              {highlightedTextMap[insight.id]?.map((highlight, idx) => (
-                                <div key={idx} className="bg-yellow-50 p-2 rounded text-sm flex items-start gap-2">
-                                  <p className="text-sm break-words flex-1">{highlight}</p>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-5 w-5 rounded-full"
-                                    onClick={() => {
-                                      const newHighlights = highlightedTextMap[insight.id].filter((_, i) => i !== idx);
-                                      handleHighlightsChange(insight.id, newHighlights);
-                                    }}
-                                  >
-                                    <X className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </details>
                 </div>
               </div>
             )}
@@ -822,8 +860,19 @@ export default function CommunicationsPage() {
               >
                 <Wand2 className="mr-2 h-4 w-4" /> Populate Test Data
               </Button>
-              <Button onClick={handleNextStep}>
-                Review <ArrowRight className="ml-2 h-4 w-4" />
+              <Button 
+                onClick={handleGenerateCommunication}
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...
+                  </>
+                ) : (
+                  <>
+                    Generate Communication <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -832,52 +881,50 @@ export default function CommunicationsPage() {
       case 4:
         return (
           <div className="space-y-6 w-full">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Review Communication</h2>
-              <div className="flex space-x-2">
-                <Button variant="outline" onClick={() => setStep(3)}>
-                  <ArrowLeft className="mr-2 h-4 w-4" /> Back to Customize
-                </Button>
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-20 space-y-6">
+                <Loader2 className="h-16 w-16 animate-spin text-primary" />
+                <div className="text-center">
+                  <h3 className="text-xl font-medium mb-2">Generating Your Communication</h3>
+                  <p className="text-muted-foreground">
+                    Please wait while we craft your communication based on the selected insights and customisation options.
+                  </p>
+                </div>
               </div>
-            </div>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Generated Communication</CardTitle>
-                <CardDescription>
-                  Review your generated communication based on the selected insights and customization options
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="flex justify-center items-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <span className="ml-2">Generating communication...</span>
+            ) : (
+              <>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold">Generated Communication</h2>
+                  <div className="flex space-x-2">
+                    <Button variant="outline" onClick={() => setStep(3)}>
+                      <ArrowLeft className="mr-2 h-4 w-4" /> Back to Customise
+                    </Button>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="bg-white border rounded-md p-6 whitespace-pre-line">
-                      {generatedCommunication}
+                </div>
+                
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="space-y-6">
+                      <div className="bg-white border rounded-md p-6 whitespace-pre-line">
+                        {generatedCommunication}
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2 justify-end">
+                        <Button variant="outline" onClick={() => setStep(3)}>
+                          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Customise
+                        </Button>
+                        <Button variant="outline" onClick={handleGenerateCommunication}>
+                          <RefreshCw className="mr-2 h-4 w-4" /> Regenerate
+                        </Button>
+                        <Button variant="secondary" onClick={handleOpenAmigo}>
+                          <Maximize2 className="mr-2 h-4 w-4" /> Edit with Amigo
+                        </Button>
+                      </div>
                     </div>
-                    
-                    <div className="flex flex-wrap gap-2 justify-end">
-                      <Button variant="outline" onClick={() => setStep(3)}>
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Customize
-                      </Button>
-                      <Button variant="outline" onClick={handleGenerateCommunication}>
-                        <RefreshCw className="mr-2 h-4 w-4" /> Regenerate
-                      </Button>
-                      <Button variant="secondary" onClick={handleOpenAmigo}>
-                        <Maximize2 className="mr-2 h-4 w-4" /> Communications Amigo
-                      </Button>
-                      <Button>
-                        <Send className="mr-2 h-4 w-4" /> Send Communication
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </div>
         )
       
@@ -885,7 +932,7 @@ export default function CommunicationsPage() {
         return (
           <div className="text-center">
             <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground opacity-50 mb-4" />
-            <h3 className="text-xl font-medium mb-2">Communications Assistant</h3>
+            <h3 className="text-xl font-medium mb-2">Communications</h3>
             <p className="text-muted-foreground mb-6">
               Select a project from the left panel to get started.
               Our AI will help you craft effective communications for your change management initiatives.
@@ -898,7 +945,7 @@ export default function CommunicationsPage() {
   return (
     <div className="h-full">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Communications Amigo</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Communications</h1>
         <p className="text-muted-foreground">
           Create and manage communications for your change management projects
         </p>
@@ -945,33 +992,22 @@ export default function CommunicationsPage() {
 
           {selectedProject && (
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Communication Types</h3>
+              <h3 className="text-lg font-medium">Communications</h3>
               
-              <Tabs defaultValue="new" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="new">New</TabsTrigger>
-                  <TabsTrigger value="saved">Saved</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="new" className="space-y-2 mt-2">
-                  <Button 
-                    variant={step > 0 ? "default" : "outline"}
-                    className="w-full justify-start"
-                    onClick={() => setStep(1)}
-                  >
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    <span>New Communication</span>
-                  </Button>
-                </TabsContent>
-                
-                <TabsContent value="saved" className="space-y-2 mt-2">
-                  {loadingSaved ? (
-                    <div className="flex items-center justify-center h-20">
-                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : savedCommunications.length > 0 ? (
-                    <div className="space-y-2">
-                      {savedCommunications.map((comm) => (
+              <div className="space-y-2 mt-2">
+                {loadingSaved ? (
+                  <div className="flex items-center justify-center h-20">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : savedCommunications.length > 0 ? (
+                  <div className="space-y-2">
+                    {savedCommunications.map((comm) => {
+                      // Find the communication type details
+                      const typeDetails = communicationTypes.find(
+                        type => type.id === comm.communication_type
+                      );
+                      
+                      return (
                         <Button 
                           key={comm.id}
                           variant="outline" 
@@ -979,25 +1015,26 @@ export default function CommunicationsPage() {
                           onClick={() => handleViewSavedCommunication(comm)}
                         >
                           <FileText className="mr-2 h-4 w-4 flex-shrink-0" />
-                          <div className="truncate">
-                            <span className="block truncate">{comm.title}</span>
-                            <span className="text-xs text-muted-foreground block">
-                              {format(new Date(comm.created_at), 'MMM d, yyyy')}
-                            </span>
+                          <div className="flex-1 min-w-0">
+                            <span className="block truncate font-medium">{comm.title}</span>
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>{typeDetails?.label || 'Unknown type'}</span>
+                              <span>{format(new Date(comm.updated_at), 'MMM d, yyyy')}</span>
+                            </div>
                           </div>
                         </Button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-6">
-                      <p className="text-muted-foreground mb-2">No saved communications</p>
-                      <p className="text-xs text-muted-foreground">
-                        Create a communication and finalize it to save it here.
-                      </p>
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <p className="text-muted-foreground mb-2">No saved communications</p>
+                    <p className="text-xs text-muted-foreground">
+                      Create a communication and finalize it to save it here.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -1025,6 +1062,15 @@ export default function CommunicationsPage() {
                   >
                     <Wand2 className="mr-2 h-4 w-4" />
                     Edit with Amigo
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    className="text-red-500 hover:text-red-700 border-red-200 hover:bg-red-50"
+                    onClick={() => handleDeleteCommunication(selectedSavedCommunication)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
                   </Button>
                 </div>
               </div>
@@ -1080,21 +1126,6 @@ export default function CommunicationsPage() {
               flexDirection: "column"
             }}
           >
-            <div className="absolute right-4 top-4 z-10">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 rounded-md"
-                onClick={() => {
-                  setViewingInsight(null);
-                  resetLayout();
-                }}
-              >
-                <X className="h-4 w-4" />
-                <span className="sr-only">Close</span>
-              </Button>
-            </div>
-            
             <div className="w-full overflow-hidden flex flex-col max-h-[90vh]">
               <DialogHeader className="pr-6 flex-shrink-0">
                 <div className="flex items-start justify-between gap-4 flex-wrap w-full">
@@ -1192,6 +1223,38 @@ export default function CommunicationsPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!communicationToDelete} onOpenChange={(open: boolean) => !open && setCommunicationToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Communication</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{communicationToDelete?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                e.preventDefault();
+                confirmDelete();
+              }}
+              disabled={isDeleting}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>Delete</>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

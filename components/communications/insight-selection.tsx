@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, Maximize2, Loader2, Highlighter } from 'lucide-react'
+import { Search, Maximize2, Loader2, Highlighter, MessageSquare } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -51,8 +51,12 @@ export function InsightSelection({
 
   if (!insights || insights.length === 0) {
     return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">No insights available for this project</p>
+      <div className="text-center py-12 border rounded-lg bg-gray-50">
+        <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground opacity-50 mb-4" />
+        <h3 className="text-lg font-medium mb-2">Select a project to get started</h3>
+        <p className="text-muted-foreground max-w-md mx-auto">
+          Choose a project from the left panel to view available content for your communication.
+        </p>
       </div>
     )
   }
@@ -129,8 +133,8 @@ export function InsightSelection({
                     )}
                     <Maximize2 className="h-3.5 w-3.5 text-muted-foreground ml-auto flex-shrink-0" />
                   </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2 break-words max-w-full">
-                    {insight.content}
+                  <p className="text-xs text-muted-foreground line-clamp-1 break-words max-w-full">
+                    {insight.content.split('\n')[1] || ""}
                   </p>
                 </div>
               </div>
