@@ -69,19 +69,16 @@ export default function Home() {
             </div>
           </Card>
 
-          <Card className="p-4 sm:p-6 transition-all duration-300 hover:bg-emerald-50 hover:transform hover:-translate-y-1 hover:shadow-lg relative">
-            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-emerald-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
-              COMING SOON
-            </div>
+          <Card className="p-4 sm:p-6 transition-all duration-300 hover:bg-emerald-50 hover:transform hover:-translate-y-1 hover:shadow-lg">
             <div className="flex flex-col items-center text-center">
               <div className="mb-4 sm:mb-6 p-3 bg-emerald-100 rounded-lg">
                 <Rocket className="w-6 h-6 sm:w-8 sm:h-8 text-emerald-600" />
               </div>
               <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-4">
-                Document & Communication Assistance
+                Communication Assistance
               </h3>
               <p className="text-sm sm:text-base text-muted-foreground">
-                Use insights to assist in drafting change management documents and communications—transforming insights into actionable plans.
+                Use insights to assist in drafting change management communications—transforming insights into actionable plans.
               </p>
             </div>
           </Card>
@@ -171,10 +168,7 @@ export default function Home() {
           </ScrollReveal>
 
           <ScrollReveal delay={800}>
-            <Card className="p-3 sm:p-4 h-[90px] sm:h-[100px] transition-all duration-300 hover:bg-emerald-50 hover:transform hover:-translate-y-1 hover:shadow-lg relative">
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-emerald-600 text-white px-3 py-1 rounded-full text-xs sm:text-sm font-semibold">
-                COMING SOON
-              </div>
+            <Card className="p-3 sm:p-4 h-[90px] sm:h-[100px] transition-all duration-300 hover:bg-emerald-50 hover:transform hover:-translate-y-1 hover:shadow-lg">
               <div className="flex items-center gap-3 sm:gap-4 h-full">
                 <div className="shrink-0">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
@@ -184,7 +178,7 @@ export default function Home() {
                 <div className="min-w-0 flex flex-col justify-center">
                   <h3 className="text-base sm:text-lg font-semibold">Document Assistance</h3>
                   <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">
-                    Soon, use saved insights to help draft change management documents and communications.
+                    Use saved insights to help draft change management communications.
                   </p>
                 </div>
               </div>
@@ -198,8 +192,7 @@ export default function Home() {
         <div className="max-w-3xl mx-auto text-center mb-8 sm:mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold mb-3 sm:mb-4">Testimonials</h2>
           <p className="text-base sm:text-lg text-muted-foreground px-2">
-            No real testimonials yet! These are 100% made up while I wait for actual users to say nice things about me.
-            Feel free to be the first to leave a genuine review. Or don't. I'm not desperate. (Okay, maybe a little.)
+            This is where testimonials will go, so if you have nice things to say about Change Amigo please reach out.
           </p>
         </div>
 
@@ -215,7 +208,7 @@ export default function Home() {
         <div className="max-w-3xl mx-auto text-center mb-8 sm:mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold mb-3 sm:mb-4">Get in Touch</h2>
           <p className="text-base sm:text-lg text-muted-foreground px-2">
-            We'd love to hear your thoughts! Share your feedback, suggestions, or questions with us.
+            Share your feedback, suggestions, or questions below.
           </p>
         </div>
         <FeedbackForm />

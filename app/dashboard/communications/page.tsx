@@ -457,31 +457,15 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
         title: title,
         projectId: selectedProject,
         communicationType: communicationType,
-        // Add all customization options
-        selectedInsights: selectedInsights,
-        audience: audience,
-        tone: tone,
-        style: style,
-        detailLevel: detailLevel,
-        formatting: formatting,
-        mandatoryPoints: mandatoryPoints,
-        callToAction: callToAction,
-        customTerminology: customTerminology,
-        additionalContext: additionalContext,
-        additionalInstructions: additionalInstructions,
-        highlightedTextMap: highlightedTextMap
       };
       
       // Store the data in sessionStorage
       sessionStorage.setItem('communicationAmigoData', JSON.stringify(communicationData));
       
-      // Add a flag to indicate we're intentionally navigating to Communications Amigo
-      sessionStorage.setItem('navigatingToAmigo', 'true');
-      
-      // Navigate to the communications-amigo page
+      // Navigate to the Communications Amigo page
       router.push('/communications-amigo');
     } catch (error) {
-      console.error('Error navigating to Amigo:', error);
+      console.error('Error navigating to Communications Amigo:', error);
       toast({
         title: "Error",
         description: "Failed to open Communications Amigo. Please try again.",
@@ -524,86 +508,10 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
       const returningFromAmigo = sessionStorage.getItem('returningFromAmigo')
       
       if (returningFromAmigo === 'true') {
-        console.log('Returning from Communications Amigo, checking for updated communication')
+        console.log('Returning from Communications Amigo')
         
-        // Get the updated communication
-        const updatedCommunication = sessionStorage.getItem('updatedCommunication')
-        
-        // Restore the selected project
-        const savedProjectId = sessionStorage.getItem('selectedProjectId')
-        if (savedProjectId) {
-          console.log('Restoring selected project:', savedProjectId)
-          setSelectedProject(savedProjectId)
-        }
-        
-        // Restore the communication type
-        const savedCommunicationType = sessionStorage.getItem('selectedCommunicationType')
-        if (savedCommunicationType) {
-          console.log('Restoring communication type:', savedCommunicationType)
-          setCommunicationType(savedCommunicationType as CommunicationType)
-        }
-        
-        // Restore the communication title
-        const savedTitle = sessionStorage.getItem('communicationTitle')
-        if (savedTitle) {
-          console.log('Restoring communication title:', savedTitle)
-          setTitle(savedTitle)
-        }
-        
-        // Check if we should preserve all customization options
-        const preserveCustomization = sessionStorage.getItem('preserveCustomizationOptions')
-        
-        if (preserveCustomization === 'true') {
-          console.log('Preserving all customization options')
-          
-          // Get the original data that was passed to Amigo
-          const amigoDataString = sessionStorage.getItem('communicationAmigoData')
-          if (amigoDataString) {
-            try {
-              const amigoData = JSON.parse(amigoDataString)
-              
-              // Restore selected insights if they exist in the data
-              if (amigoData.selectedInsights) {
-                setSelectedInsights(amigoData.selectedInsights)
-              }
-              
-              // Restore customization options if they exist
-              if (amigoData.audience) setAudience(amigoData.audience)
-              if (amigoData.tone) setTone(amigoData.tone)
-              if (amigoData.style) setStyle(amigoData.style)
-              if (amigoData.detailLevel) setDetailLevel(amigoData.detailLevel)
-              if (amigoData.formatting) setFormatting(amigoData.formatting)
-              if (amigoData.mandatoryPoints) setMandatoryPoints(amigoData.mandatoryPoints)
-              if (amigoData.callToAction) setCallToAction(amigoData.callToAction)
-              if (amigoData.customTerminology) setCustomTerminology(amigoData.customTerminology)
-              if (amigoData.additionalContext) setAdditionalContext(amigoData.additionalContext)
-              if (amigoData.additionalInstructions) setAdditionalInstructions(amigoData.additionalInstructions)
-              if (amigoData.highlightedTextMap) setHighlightedTextMap(amigoData.highlightedTextMap)
-            } catch (parseError) {
-              console.error('Error parsing Amigo data:', parseError)
-            }
-          }
-        }
-        
-        if (updatedCommunication) {
-          console.log('Found updated communication, updating state')
-          
-          // Update the generated communication with the new version
-          setGeneratedCommunication(updatedCommunication)
-          
-          // If we're not already on the review step, go to it
-          if (step !== 4) {
-            setStep(4)
-          }
-          
-          // Show a toast notification
-          toast({
-            title: "Communication Updated",
-            description: "Your communication has been updated from Communications Amigo.",
-          })
-        } else {
-          console.log('No updated communication found')
-        }
+        // Reset the process to step 1
+        resetLayout()
         
         // Clear the sessionStorage items
         sessionStorage.removeItem('returningFromAmigo')
@@ -612,9 +520,16 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
         sessionStorage.removeItem('selectedCommunicationType')
         sessionStorage.removeItem('communicationTitle')
         sessionStorage.removeItem('preserveCustomizationOptions')
+        sessionStorage.removeItem('communicationAmigoData')
+        
+        // Show a toast notification
+        toast({
+          title: "Process Reset",
+          description: "You can start creating a new communication.",
+        })
       }
     } catch (error) {
-      console.error('Error checking for updated communication:', error)
+      console.error('Error handling return from Amigo:', error)
     }
   }, [isClient, toast, step, setStep, setGeneratedCommunication])
 
@@ -699,42 +614,21 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
         return;
       }
       
-      // Get the communication type details
-      const communicationTypeDetails = communicationTypes.find(
-        type => type.id === communication.communication_type
-      );
-      
       // Prepare the data for Amigo
       const communicationData = {
         communication: communication.content,
         title: communication.title,
         projectId: selectedProject,
         communicationType: communication.communication_type,
-        // Include current customization options if available
-        selectedInsights: selectedInsights,
-        audience: audience,
-        tone: tone,
-        style: style,
-        detailLevel: detailLevel,
-        formatting: formatting,
-        mandatoryPoints: mandatoryPoints,
-        callToAction: callToAction,
-        customTerminology: customTerminology,
-        additionalContext: additionalContext,
-        additionalInstructions: additionalInstructions,
-        highlightedTextMap: highlightedTextMap
       };
       
       // Store the data in sessionStorage
       sessionStorage.setItem('communicationAmigoData', JSON.stringify(communicationData));
       
-      // Add a flag to indicate we're intentionally navigating to Communications Amigo
-      sessionStorage.setItem('navigatingToAmigo', 'true');
-      
-      // Navigate to the communications-amigo page
+      // Navigate to the Communications Amigo page
       router.push('/communications-amigo');
     } catch (error) {
-      console.error('Error navigating to Amigo:', error);
+      console.error('Error navigating to Communications Amigo:', error);
       toast({
         title: "Error",
         description: "Failed to open Communications Amigo. Please try again.",
@@ -972,8 +866,8 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold">Generated Communication</h2>
                   <div className="flex space-x-2">
-                    <Button variant="outline" onClick={() => setStep(3)}>
-                      <ArrowLeft className="mr-2 h-4 w-4" /> Back to Customise
+                    <Button variant="outline" onClick={resetLayout}>
+                      <RefreshCw className="mr-2 h-4 w-4" /> Start Over
                     </Button>
                   </div>
                 </div>
@@ -986,8 +880,8 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
                       </div>
                       
                       <div className="flex flex-wrap gap-2 justify-end">
-                        <Button variant="outline" onClick={() => setStep(3)}>
-                          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Customise
+                        <Button variant="outline" onClick={resetLayout}>
+                          <RefreshCw className="mr-2 h-4 w-4" /> Start Over
                         </Button>
                         <Button 
                           onClick={handleOpenAmigo}
@@ -1076,7 +970,7 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : savedCommunications.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     {getPaginatedSavedCommunications().map((comm) => {
                       // Find the communication type details
                       const typeDetails = communicationTypes.find(
@@ -1084,21 +978,22 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
                       );
                       
                       return (
-                        <Button 
+                        <div 
                           key={comm.id}
-                          variant="outline" 
-                          className="w-full justify-start text-left"
+                          className="w-full border rounded-md hover:border-primary hover:shadow-sm transition-all cursor-pointer overflow-hidden group relative"
                           onClick={() => handleViewSavedCommunication(comm)}
                         >
-                          <FileText className="mr-2 h-4 w-4 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <span className="block truncate font-medium">{comm.title}</span>
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                              <span>{typeDetails?.label || 'Unknown type'}</span>
+                          <div className="py-2 px-3">
+                            <h3 className="font-medium text-xs line-clamp-1 group-hover:line-clamp-none group-hover:whitespace-normal" title={comm.title}>{comm.title}</h3>
+                            <div className="flex justify-between items-center text-[10px] text-muted-foreground mt-1">
+                              <span className="bg-muted px-1.5 py-0.5 rounded-sm">{typeDetails?.label || 'Unknown type'}</span>
                               <span>{format(new Date(comm.updated_at), 'MMM d, yyyy')}</span>
                             </div>
                           </div>
-                        </Button>
+                          <div className="absolute inset-0 bg-background opacity-0 group-hover:opacity-95 transition-opacity z-10 pointer-events-none overflow-y-auto p-3">
+                            <p className="text-xs font-medium">{comm.title}</p>
+                          </div>
+                        </div>
                       );
                     })}
                     

@@ -5,29 +5,29 @@ import { User } from "lucide-react"
 
 const testimonials = [
   {
-    name: "Imaginary Fan",
-    role: "Definitely Real Person",
-    content: "Wow, this is revolutionary! I've never seen anything like it. My life is forever changed."
+    name: "Your Name",
+    role: "Your Job Title",
+    content: "The nice thing you have to say about Change Amigo"
   },
   {
-    name: "Fictional Enthusiast",
-    role: "Professional Opinion-Haver",
-    content: "Whoever made this is an absolute genius. Nobel Prize worthy, if you ask me."
+    name: "Your Name",
+    role: "Your Job Title",
+    content: "The nice thing you have to say about Change Amigo"
   },
   {
-    name: "Future Customer",
-    role: "Change Management Wizard",
-    content: "I'd give this 6 stars if I could. It's like having a change management expert in my pocket!"
+    name: "Your Name",
+    role: "Your Job Title",
+    content: "The nice thing you have to say about Change Amigo"
   },
   {
-    name: "Potential Client",
-    role: "Very Important Executive",
-    content: "My productivity increased by 500% after using this tool. Or it would, if I had actually used it yet."
+    name: "Your Name",
+    role: "Your Job Title",
+    content: "The nice thing you have to say about Change Amigo"
   },
   {
-    name: "Eager Reviewer",
-    role: "First-Time Testimonial Writer",
-    content: "I was told there would be cookies if I wrote a nice review. Still waiting on those cookies..."
+    name: "Your Name",
+    role: "Your Job Title",
+    content: "The nice thing you have to say about Change Amigo"
   }
 ]
 

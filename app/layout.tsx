@@ -32,7 +32,6 @@ export default function RootLayout({
         <Providers>
           <ProfileCreator />
           {children}
-          <Toaster />
         </Providers>
       </body>
     </html>

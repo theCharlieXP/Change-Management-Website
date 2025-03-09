@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader2, ArrowLeft, Send, Handshake, Save, CheckCircle } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -30,7 +29,6 @@ const HandshakeIcon = ({ className }: { className?: string }) => {
 
 export default function CommunicationsAmigoPage() {
   const router = useRouter()
-  const { toast } = useToast()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
   // State for the communication
@@ -109,61 +107,31 @@ export default function CommunicationsAmigoPage() {
         setDataLoaded(true);
       } else {
         // If we were intentionally navigating here but have no data, show an error
-        toast({
-          title: "Error",
-          description: "Failed to load communication data. Please try again.",
-          variant: "destructive"
-        });
         router.push('/dashboard/communications');
       }
     } catch (error) {
       console.error('Error loading data from sessionStorage:', error);
-      toast({
-        title: "Error",
-        description: "An error occurred while loading data. Please try again.",
-        variant: "destructive"
-      });
       router.push('/dashboard/communications');
     }
-  }, [isClient, router, toast]);
+  }, [isClient, router]);
   
   // Function to go back to the communications page
   const handleBack = () => {
     try {
       if (typeof window === 'undefined') return;
       
-      // Store the updated communication
-      sessionStorage.setItem('updatedCommunication', communication);
-      
-      // Set a flag to indicate that we're returning from Communications Amigo
-      sessionStorage.setItem('returningFromAmigo', 'true');
-      
-      // Store the project ID to restore it when returning
-      if (projectId) {
-        sessionStorage.setItem('selectedProjectId', projectId);
+      // Store the updated communication if needed
+      if (communication.trim()) {
+        sessionStorage.setItem('updatedCommunication', communication);
       }
       
-      // Store the communication type
-      if (communicationType) {
-        sessionStorage.setItem('selectedCommunicationType', communicationType);
-      }
+      // Clear any flags that might cause returning to customization
+      sessionStorage.removeItem('returningFromAmigo');
       
-      // Store the communication title
-      if (communicationTitle) {
-        sessionStorage.setItem('communicationTitle', communicationTitle);
-      }
-      
-      // Store the selected insights and customization options if they were passed in
-      const amigoData = sessionStorage.getItem('communicationAmigoData');
-      if (amigoData) {
-        // Keep the original data to preserve all customization options
-        sessionStorage.setItem('preserveCustomizationOptions', 'true');
-      }
-      
-      // Navigate back to the Communications page
+      // Navigate to the communications page
       router.push('/dashboard/communications');
     } catch (error) {
-      console.error('Error navigating back:', error);
+      console.error('Error handling back navigation:', error);
       router.push('/dashboard/communications');
     }
   }
@@ -176,11 +144,6 @@ export default function CommunicationsAmigoPage() {
   // Function to save the communication and finalize
   const handleFinalize = async () => {
     if (!communication.trim()) {
-      toast({
-        title: "Error",
-        description: "Cannot save an empty communication.",
-        variant: "destructive"
-      });
       return;
     }
     
@@ -208,11 +171,6 @@ export default function CommunicationsAmigoPage() {
 
       const data = await response.json();
       
-      toast({
-        title: "Success",
-        description: "Your communication has been saved successfully.",
-      });
-      
       // Close the dialog
       setShowFinalizeDialog(false);
       
@@ -220,11 +178,6 @@ export default function CommunicationsAmigoPage() {
       handleBack();
     } catch (error) {
       console.error('Error saving communication:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save the communication. Please try again.",
-        variant: "destructive"
-      });
     } finally {
       setIsSaving(false);
     }
@@ -279,11 +232,6 @@ export default function CommunicationsAmigoPage() {
       }]);
     } catch (error) {
       console.error('Error updating communication:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update the communication. Please try again.",
-        variant: "destructive"
-      });
       
       // Add error message to chat
       setMessages(prev => [...prev, { 
@@ -411,10 +359,10 @@ export default function CommunicationsAmigoPage() {
                         <p className="text-sm text-muted-foreground">Updating communication...</p>
                       </div>
                     </div>
-                    <div className="communication-text-shimmer">{communication}</div>
+                    <div className="communication-text">{communication}</div>
                   </>
                 ) : (
-                  communication
+                  <div className="communication-text">{communication}</div>
                 )}
               </div>
             </CardContent>
