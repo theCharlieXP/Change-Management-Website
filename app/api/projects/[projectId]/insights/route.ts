@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
 
 // Add environment variable validation
@@ -27,7 +27,8 @@ export async function POST(
   { params }: { params: { projectId: string } }
 ) {
   try {
-    const { userId } = auth()
+    const authData = await auth();
+const { userId  } = authData
     if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -94,7 +95,8 @@ export async function GET(
 ) {
   try {
     // Get user ID from Clerk
-    const { userId } = auth()
+    const authData = await auth();
+const { userId  } = authData
     
     // Log auth state
     console.log('Auth state in get project insights API:', {
@@ -215,7 +217,8 @@ export async function DELETE(
   { params }: { params: { projectId: string } }
 ) {
   try {
-    const { userId } = auth();
+    const authData = await auth();
+const { userId  } = authData;
     if (!userId) {
       return new NextResponse(
         JSON.stringify({ error: 'Unauthorized' }),

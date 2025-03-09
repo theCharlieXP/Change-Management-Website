@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server';
 import { incrementFeatureUsage, getFeatureUsage } from '@/lib/subscription';
 
 export async function POST(req: NextRequest) {
-  const { userId } = auth();
+  const authData = await auth();
+const { userId  } = authData;
 
   if (!userId) {
     return NextResponse.json(

@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -9,7 +9,8 @@ export async function GET() {
     console.log('Profile API route accessed');
     
     // Get auth info from Clerk
-    const { userId } = auth();
+    const authData = await auth();
+const { userId  } = authData;
     const headersList = headers();
     const headerUserId = headersList.get('x-user-id');
     const authHeader = headersList.get('authorization');

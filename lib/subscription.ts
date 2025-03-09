@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 // Constants
@@ -27,7 +27,8 @@ export interface UsageInfo {
  * Get the current user's subscription status
  */
 export async function getUserSubscription(): Promise<SubscriptionStatus> {
-  const { userId } = auth();
+  const authData = await auth();
+  const userId = authData.userId;
   
   if (!userId) {
     return {
@@ -169,7 +170,8 @@ export async function incrementFeatureUsage(featureId: string): Promise<{
     isPremium: boolean;
   }
 }> {
-  const { userId } = auth();
+  const authData = await auth();
+  const userId = authData.userId;
   
   if (!userId) {
     return {

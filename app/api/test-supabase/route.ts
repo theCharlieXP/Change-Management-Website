@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 
 export async function GET(req: Request) {
@@ -7,7 +7,8 @@ export async function GET(req: Request) {
     console.log('[TEST_SUPABASE] Starting test');
     
     // Check authentication
-    const { userId } = auth();
+    const authData = await auth();
+const { userId  } = authData;
     console.log('[TEST_SUPABASE] User ID:', userId);
     
     if (!userId) {

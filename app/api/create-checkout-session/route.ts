@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { auth } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
@@ -38,7 +38,8 @@ const createSupabaseClient = () => {
 };
 
 export async function POST(req: NextRequest) {
-  const { userId } = auth();
+  const authData = await auth();
+const { userId  } = authData;
 
   if (!userId) {
     console.error('Unauthorized access attempt to create-checkout-session');

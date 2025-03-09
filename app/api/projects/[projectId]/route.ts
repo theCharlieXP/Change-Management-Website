@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
 
 // Create a Supabase client with the service role key
@@ -19,7 +19,8 @@ export async function GET(
   { params }: { params: { projectId: string } }
 ) {
   try {
-    const { userId } = auth()
+    const authData = await auth();
+const { userId  } = authData
     if (!userId) {
       return new NextResponse(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -62,7 +63,8 @@ export async function PATCH(
   { params }: { params: { projectId: string } }
 ) {
   try {
-    const { userId } = auth()
+    const authData = await auth();
+const { userId  } = authData
     if (!userId) {
       return new NextResponse(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -105,7 +107,8 @@ export async function DELETE(
   { params }: { params: { projectId: string } }
 ) {
   try {
-    const { userId } = auth()
+    const authData = await auth();
+const { userId  } = authData
     if (!userId) {
       return new NextResponse(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -140,7 +143,8 @@ export async function POST(
   { params }: { params: { projectId: string } }
 ) {
   try {
-    const { userId } = auth()
+    const authData = await auth();
+const { userId  } = authData
     if (!userId) {
       return new NextResponse(
         JSON.stringify({ error: 'Unauthorized' }),

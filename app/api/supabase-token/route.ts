@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
 import { SignJWT } from 'jose'
 
 // Get the JWT secret from environment variable
@@ -18,7 +18,8 @@ function base64ToUint8Array(base64String: string) {
 
 export async function GET() {
   try {
-    const { userId } = auth()
+    const authData = await auth();
+const { userId  } = authData
     if (!userId) {
       return new NextResponse(
         JSON.stringify({ error: 'Unauthorized' }),

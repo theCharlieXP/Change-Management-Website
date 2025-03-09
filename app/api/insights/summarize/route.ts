@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
 import { summarizeWithDeepseek } from '@/lib/ai-utils'
 import { INSIGHT_FOCUS_AREAS } from '@/types/insights'
 import type { InsightFocusArea } from '@/types/insights'
@@ -7,7 +7,8 @@ import type { InsightFocusArea } from '@/types/insights'
 export async function POST(request: Request) {
   try {
     // Check authentication
-    const { userId } = auth()
+    const authData = await auth();
+const { userId  } = authData
     if (!userId) {
       return new NextResponse(
         JSON.stringify({ error: 'Unauthorized' }),

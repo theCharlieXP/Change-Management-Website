@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
 import { supabase } from '@/lib/supabase'
 import { createClient } from '@supabase/supabase-js'
 
@@ -8,7 +8,8 @@ export async function DELETE(req: Request) {
     console.log('[DELETE_COMMUNICATION] Starting request');
     
     // Check authentication
-    const { userId } = auth();
+    const authData = await auth();
+const { userId  } = authData;
     console.log('[DELETE_COMMUNICATION] User ID:', userId);
     
     if (!userId) {

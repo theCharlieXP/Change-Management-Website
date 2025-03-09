@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
 import { headers } from 'next/headers'
 
@@ -57,7 +57,8 @@ async function testDatabaseConnection() {
 export async function GET() {
   try {
     // Get the user ID from Clerk
-    const { userId } = auth()
+    const authData = await auth();
+const { userId  } = authData
     const headersList = headers()
     const headerUserId = headersList.get('x-user-id')
     
@@ -174,7 +175,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { userId } = auth()
+    const authData = await auth();
+const { userId  } = authData
     if (!userId) {
       return new NextResponse(
         JSON.stringify({ error: 'Unauthorized' }),

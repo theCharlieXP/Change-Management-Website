@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { rateLimit, getRateLimitConfig } from '@/lib/rate-limit';
+import { handleApiError, createError, ErrorType } from '@/lib/error-handler';
 
 // Log all available environment variables (without values)
 console.log('Available environment variables:', Object.keys(process.env));
@@ -21,13 +23,28 @@ const RESEND_TO_EMAIL = 'charlie.hay.99@gmail.com';
 
 export async function POST(request: Request) {
   try {
+    // Get client IP for rate limiting
+    const ip = request.headers.get('x-forwarded-for') || 
+               request.headers.get('x-real-ip') || 
+               'unknown-ip';
+    
+    // Apply rate limiting
+    const rateLimitResult = await rateLimit(
+      ip.toString(),
+      getRateLimitConfig('contact')
+    );
+    
+    // If rate limit exceeded, return 429 Too Many Requests
+    if (!rateLimitResult.success) {
+      throw createError('Too many requests', ErrorType.RATE_LIMIT, {
+        limit: rateLimitResult.limit,
+        reset: rateLimitResult.reset.toISOString()
+      });
+    }
+
     // Check environment variables at request time
     if (!process.env.RESEND_API_KEY) {
-      console.error('RESEND_API_KEY is missing');
-      return NextResponse.json(
-        { error: 'Server configuration error - Missing API Key' },
-        { status: 500 }
-      );
+      throw createError('Server configuration error - Missing API Key', ErrorType.SERVER);
     }
 
     // Parse and validate the request body
@@ -35,22 +52,24 @@ export async function POST(request: Request) {
     try {
       body = await request.json();
     } catch (e) {
-      console.error('JSON parse error:', e);
-      return NextResponse.json(
-        { error: 'Invalid JSON' },
-        { status: 400 }
-      );
+      throw createError('Invalid JSON', ErrorType.VALIDATION);
     }
 
     const { name, email, message } = body;
 
     // Validate fields
     if (!name || !email || !message) {
-      console.error('Missing fields:', { name: !!name, email: !!email, message: !!message });
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      throw createError('Missing required fields', ErrorType.VALIDATION, { 
+        name: !!name, 
+        email: !!email, 
+        message: !!message 
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw createError('Invalid email format', ErrorType.VALIDATION);
     }
 
     // Send email
@@ -63,59 +82,52 @@ export async function POST(request: Request) {
         reply_to: email
       };
 
-      console.log('Preparing to send email with the following configuration:', {
-        fromAddress: emailData.from,
-        toAddress: emailData.to,
-        subject: emailData.subject,
-        replyTo: emailData.reply_to,
-        apiKeyPresent: !!process.env.RESEND_API_KEY,
-        apiKeyLength: process.env.RESEND_API_KEY?.length,
-        apiKeyPrefix: process.env.RESEND_API_KEY?.substring(0, 3)
-      });
-
       const result = await resend.emails.send(emailData);
 
-      console.log('Resend API response:', {
-        success: true,
-        response: result,
-        fullResponse: JSON.stringify(result, null, 2)
-      });
-
+      // Add rate limit headers to successful response
       return NextResponse.json(
         { 
           success: true,
           data: result,
           sentTo: RESEND_TO_EMAIL,
-          mode: 'testing'
+          mode: process.env.NODE_ENV === 'production' ? 'production' : 'testing'
         },
-        { status: 200 }
+        { 
+          status: 200,
+          headers: {
+            'X-RateLimit-Limit': rateLimitResult.limit.toString(),
+            'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+            'X-RateLimit-Reset': rateLimitResult.reset.toISOString()
+          }
+        }
       );
     } catch (e) {
-      console.error('Resend API detailed error:', {
-        error: e,
-        message: e instanceof Error ? e.message : 'Unknown error',
-        stack: e instanceof Error ? e.stack : undefined,
-        name: e instanceof Error ? e.name : undefined,
-        attemptedRecipient: RESEND_TO_EMAIL
-      });
-
-      return NextResponse.json(
+      throw createError(
+        'Failed to send email', 
+        ErrorType.EXTERNAL_SERVICE, 
         { 
-          error: 'Failed to send email',
           details: e instanceof Error ? e.message : 'Unknown error',
           recipient: RESEND_TO_EMAIL
-        },
-        { status: 500 }
+        }
       );
     }
   } catch (e) {
-    console.error('Server error:', e);
-    return NextResponse.json(
-      { 
-        error: 'Server error',
-        details: e instanceof Error ? e.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    // Use centralized error handling
+    const { statusCode, response } = handleApiError(e, '/api/send');
+    
+    // Add rate limit headers if this is a rate limit error
+    const headers: Record<string, string> = {};
+    if ((e as any).type === ErrorType.RATE_LIMIT && (e as any).context) {
+      const context = (e as any).context;
+      if (context.limit) headers['X-RateLimit-Limit'] = context.limit.toString();
+      if (context.reset) {
+        headers['X-RateLimit-Reset'] = context.reset;
+        const resetDate = new Date(context.reset);
+        const secondsToReset = Math.ceil((resetDate.getTime() - Date.now()) / 1000);
+        headers['Retry-After'] = secondsToReset.toString();
+      }
+    }
+    
+    return NextResponse.json(response, { status: statusCode, headers });
   }
 } 

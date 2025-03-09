@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { CreditCard, AlertCircle } from 'lucide-react';
-import { INSIGHT_SEARCH_FEATURE } from '@/lib/subscription';
+import { INSIGHT_SEARCH_FEATURE } from '@/lib/subscription-client';
 
 const FREE_TIER_LIMIT = 20;
 

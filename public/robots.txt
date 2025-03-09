@@ -1,0 +1,15 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Disallow admin and sensitive routes
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /sign-in/
+Disallow: /sign-up/
+Disallow: /success/
+Disallow: /cancel/
+Disallow: /upgrade/
+
+# Sitemap location
+Sitemap: https://your-domain.com/sitemap.xml 

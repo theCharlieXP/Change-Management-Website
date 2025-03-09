@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { resetFeatureUsage, INSIGHT_SEARCH_FEATURE } from '@/lib/subscription';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { rateLimit, getRateLimitConfig } from '@/lib/rate-limit';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -73,6 +74,40 @@ async function updateUserSubscription(
 }
 
 export async function POST(req: NextRequest) {
+  // Apply rate limiting for webhook calls
+  const ip = req.headers.get('x-forwarded-for') || 
+             req.headers.get('x-real-ip') || 
+             'unknown-ip';
+  
+  // Use a more permissive rate limit for Stripe webhooks
+  const rateLimitConfig = {
+    interval: 60 * 1000, // 1 minute
+    limit: 100, // 100 requests per minute - Stripe can send multiple webhooks in bursts
+  };
+  
+  const rateLimitResult = await rateLimit(ip.toString(), rateLimitConfig);
+  
+  // If rate limit exceeded, return 429 Too Many Requests
+  if (!rateLimitResult.success) {
+    console.error(`Rate limit exceeded for Stripe webhook from IP: ${ip}`);
+    return NextResponse.json(
+      { 
+        error: 'Too many requests',
+        limit: rateLimitResult.limit,
+        reset: rateLimitResult.reset.toISOString()
+      },
+      { 
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': rateLimitResult.limit.toString(),
+          'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+          'X-RateLimit-Reset': rateLimitResult.reset.toISOString(),
+          'Retry-After': Math.ceil((rateLimitResult.reset.getTime() - Date.now()) / 1000).toString()
+        }
+      }
+    );
+  }
+
   // Validate that webhook secret is configured
   if (!webhookSecret) {
     console.error('Stripe webhook secret is not set. Please set the STRIPE_WEBHOOK_SECRET environment variable.');

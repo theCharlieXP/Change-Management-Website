@@ -1,9 +1,10 @@
-import { auth } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
 
 export async function fetchWithAuth(url: string, options: RequestInit = {}) {
   try {
     // Get the session token
-    const { getToken } = auth()
+    const authData = await auth();
+const { getToken  } = authData
     const token = await getToken()
 
     if (!token) {

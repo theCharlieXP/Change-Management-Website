@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server';
 import { getFeatureUsage } from '@/lib/subscription';
 
 export async function POST(req: NextRequest) {
   try {
     // Get the user ID from the auth session
-    const { userId } = auth();
+    const authData = await auth();
+const { userId  } = authData;
     
     if (!userId) {
       return NextResponse.json(

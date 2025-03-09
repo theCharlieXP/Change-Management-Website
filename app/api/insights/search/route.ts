@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { InsightFocusArea } from '@/types/insights'
-import { auth } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
 
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY
 
@@ -414,7 +414,8 @@ Your analysis should:
 export async function GET(request: Request) {
   try {
     console.log('Starting search request...')
-    const { userId } = auth()
+    const authData = await auth();
+const { userId  } = authData
     
     // Check authentication
     if (!userId) {
