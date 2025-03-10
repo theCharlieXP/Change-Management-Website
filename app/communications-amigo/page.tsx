@@ -342,7 +342,7 @@ export default function CommunicationsAmigoPage() {
             <CardHeader>
               <CardTitle>Your Communication</CardTitle>
               <CardDescription>
-                Chat with me on the left to refine your communication. I'll help you make it more effective!
+                Chat with me on the left to refine your communication. I&apos;ll help you make it more effective!
               </CardDescription>
             </CardHeader>
             <CardContent>

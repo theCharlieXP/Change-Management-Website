@@ -60,7 +60,7 @@ export default function InsightSearchExample() {
                   <div>
                     <h3 className="font-medium text-amber-800">Usage Limit Reached</h3>
                     <p className="text-amber-700 text-sm mt-1">
-                      You've used all {usageLimit} of your free searches. Upgrade to Pro for unlimited searches.
+                      You&apos;ve used all {usageLimit} of your free searches. Upgrade to Pro for unlimited searches.
                     </p>
                     <Button
                       onClick={handleUpgrade}

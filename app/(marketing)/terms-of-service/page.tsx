@@ -126,7 +126,7 @@ export default function TermsOfService() {
 
         <h2 className="text-2xl font-semibold mt-8 mb-4">8. Disclaimer of Warranties</h2>
         <p>
-          The Service is provided "as is" and "as available" without warranties of any kind, either express or 
+          The Service is provided &quot;as is&quot; and &quot;as available&quot; without warranties of any kind, either express or 
           implied, including, but not limited to, implied warranties of merchantability, fitness for a particular 
           purpose, or non-infringement.
         </p>
@@ -147,7 +147,7 @@ export default function TermsOfService() {
         <h2 className="text-2xl font-semibold mt-8 mb-4">10. Changes to Terms</h2>
         <p>
           We reserve the right to modify or replace these Terms at any time. We will provide notice of any material 
-          changes by posting the new Terms on this page and updating the "Last Updated" date.
+          changes by posting the new Terms on this page and updating the &quot;Last Updated&quot; date.
         </p>
 
         <h2 className="text-2xl font-semibold mt-8 mb-4">11. Governing Law</h2>
