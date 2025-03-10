@@ -15,7 +15,7 @@ export default function PrivacyPolicyPage() {
         
         <h2>Introduction</h2>
         <p>
-          This Privacy Policy explains how Change Management ("we", "our", or "us") collects, uses, and shares your personal information when you use our website and services. We respect your privacy and are committed to protecting your personal data.
+          This Privacy Policy explains how Change Management (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) collects, uses, and shares your personal information when you use our website and services. We respect your privacy and are committed to protecting your personal data.
         </p>
         
         <h2>Information We Collect</h2>
@@ -91,14 +91,14 @@ export default function PrivacyPolicyPage() {
           Your information may be transferred to and processed in countries other than the country in which you reside. These countries may have data protection laws that are different from the laws of your country.
         </p>
         
-        <h2>Children's Privacy</h2>
+        <h2>Children&apos;s Privacy</h2>
         <p>
           Our services are not intended for children under 16 years of age, and we do not knowingly collect personal data from children.
         </p>
         
         <h2>Changes to This Privacy Policy</h2>
         <p>
-          We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date.
+          We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the &quot;Last updated&quot; date.
         </p>
         
         <h2>Contact Us</h2>

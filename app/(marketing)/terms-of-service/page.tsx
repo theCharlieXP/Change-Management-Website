@@ -19,7 +19,7 @@ export default function TermsOfService() {
 
         <h2 className="text-2xl font-semibold mt-8 mb-4">1. Acceptance of Terms</h2>
         <p>
-          By accessing or using Change Amigo ("Service"), you agree to be bound by these Terms of Service ("Terms"). 
+          By accessing or using Change Amigo (&quot;Service&quot;), you agree to be bound by these Terms of Service (&quot;Terms&quot;). 
           If you disagree with any part of the terms, you may not access the Service.
         </p>
 
