@@ -91,7 +91,7 @@ export default function Success() {
                 {verificationError}
               </p>
               <p className="text-gray-600 mt-4">
-                Don't worry, we've still upgraded your account. Our team will review the issue.
+                Don&apos;t worry, we&apos;ve still upgraded your account. Our team will review the issue.
               </p>
             </div>
           ) : (

@@ -298,7 +298,7 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete, onRe
             
             {tasks.length === 0 && (
               <div className="py-8 text-center text-muted-foreground">
-                No tasks yet. Click "Add Task" to create one.
+                No tasks yet. Click &quot;Add Task&quot; to create one.
               </div>
             )}
           </div>

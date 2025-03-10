@@ -165,7 +165,7 @@ export default function InsightSearchUsageTracker({ children }) {
               Usage Limit Reached
             </DialogTitle>
             <DialogDescription>
-              You've used all {FREE_TIER_LIMIT} free Insight Searches available on the basic plan.
+              You&apos;ve used all {FREE_TIER_LIMIT} free Insight Searches available on the basic plan.
             </DialogDescription>
           </DialogHeader>
           

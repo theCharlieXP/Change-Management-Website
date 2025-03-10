@@ -295,7 +295,7 @@ export function CommunicationCustomization({
       <div className="bg-muted/30 p-3 rounded-md flex items-start gap-2 text-xs">
         <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
         <p className="text-muted-foreground">
-          For best results, provide clear details in the fields above. Uploaded documents will be analysed by the AI to better understand your organisation's context and terminology.
+          For best results, provide clear details in the fields above. Uploaded documents will be analysed by the AI to better understand your organisation&apos;s context and terminology.
         </p>
       </div>
     </div>

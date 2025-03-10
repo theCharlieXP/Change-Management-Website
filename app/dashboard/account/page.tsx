@@ -202,9 +202,9 @@ export default function AccountPage() {
                   {!isPremium && (
                     <div className="mt-2 flex items-start text-sm">
                       {isLimitReached ? (
-                        <div className="flex items-center text-red-500">
+                        <div className="flex items-center text-amber-600 text-sm">
                           <AlertCircle className="h-4 w-4 mr-1" />
-                          <span>You've reached your Basic plan limit</span>
+                          <span>You&apos;ve reached your Basic plan limit</span>
                         </div>
                       ) : (
                         <div className="text-muted-foreground">

@@ -306,7 +306,7 @@ export default function CommunicationsAmigoPage() {
             <CardHeader className="p-4 md:p-6">
               <CardTitle>Your Communication</CardTitle>
               <CardDescription>
-                Chat with me on the left to refine your communication. I'll help you make it more effective!
+                Chat with me on the left to refine your communication. I&apos;ll help you make it more effective!
               </CardDescription>
             </CardHeader>
             <CardContent className="p-3 md:p-6">

@@ -1211,7 +1211,7 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Communication</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{communicationToDelete?.title}"? This action cannot be undone.
+              Are you sure you want to delete &quot;{communicationToDelete?.title}&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
