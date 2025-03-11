@@ -41,7 +41,7 @@ export function InsightModal({ insight, isOpen, onClose, isProjectsLoading, isSu
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" hideCloseButton>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <div className="absolute right-4 top-4">
             <Button
               variant="ghost"

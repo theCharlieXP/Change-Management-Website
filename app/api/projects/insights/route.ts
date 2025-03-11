@@ -32,6 +32,7 @@ const VALID_FOCUS_AREAS: Record<InsightFocusArea, true> = {
   'best-practices-methodologies': true,
   'lessons-learned-insights': true,
   'implementation-tactics': true,
+  'change-readiness': true,
   'communication-engagement': true,
   'metrics-performance': true,
   'risk-management': true,

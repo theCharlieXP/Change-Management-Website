@@ -21,7 +21,7 @@ export function InsightDialog({ insight, isOpen, onClose, onSave }: InsightDialo
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
             <span>{insight.category}</span>
             <span>•</span>
-            <span>{new Date(insight.created_at).toLocaleDateString()}</span>
+            <span>{insight.created_at ? new Date(insight.created_at as string).toLocaleDateString() : 'No date'}</span>
           </div>
           <DialogTitle className="text-xl">{insight.title}</DialogTitle>
           <DialogDescription className="text-base">
@@ -40,11 +40,14 @@ export function InsightDialog({ insight, isOpen, onClose, onSave }: InsightDialo
         <Separator className="my-4" />
 
         <div className="space-y-4">
-          {insight.content.map((paragraph, index) => (
-            <p key={index} className="text-base leading-relaxed">
-              {paragraph}
-            </p>
-          ))}
+          {Array.isArray(insight.content) 
+            ? insight.content.map((paragraph: string, index: number) => (
+                <p key={index} className="text-base leading-relaxed">
+                  {paragraph}
+                </p>
+              ))
+            : <p className="text-base leading-relaxed">{insight.content}</p>
+          }
         </div>
 
         {insight.tags && insight.tags.length > 0 && (

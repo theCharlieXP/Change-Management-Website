@@ -30,10 +30,14 @@ export function TaskEditModal({ task, open, onClose, onUpdate }: TaskEditModalPr
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description || '')
   const [status, setStatus] = useState<TaskStatus>(task.status)
-  const [dueDate, setDueDate] = useState<Date | undefined>(
-    task.due_date ? new Date(task.due_date) : undefined
+  const [dueDate, setDueDate] = useState<Date | null>(
+    task.due_date ? new Date(task.due_date) : null
   )
   const [loading, setLoading] = useState(false)
+
+  const handleDateChange = (date: Date | null) => {
+    setDueDate(date);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -115,7 +119,7 @@ export function TaskEditModal({ task, open, onClose, onUpdate }: TaskEditModalPr
               <label className="text-sm font-medium">Due Date</label>
               <CustomDatePicker
                 selectedDate={dueDate}
-                onChange={setDueDate}
+                onChange={handleDateChange}
                 disabled={loading}
               />
             </div>
