@@ -61,13 +61,11 @@ export function ProjectTasks({ tasks, projectId, onAdd, onUpdate, onDelete, onRe
 
     try {
       await onAdd({
-        project_id: projectId,
         title,
         description,
         status,
         due_date: dueDate && isValid(dueDate) ? dueDate.toISOString() : null,
-        position: tasks.length,
-        user_id: ''
+        project_id: projectId
       })
 
       // Reset form

@@ -35,22 +35,22 @@ const { userId  } = authData;
 
     console.log(`Incrementing usage for feature ${feature} for user ${userId}`);
     
-    const result = await incrementFeatureUsage(userId, feature);
+    const result = await incrementFeatureUsage(feature);
     
-    if (result.error) {
-      console.error(`Error incrementing usage for user ${userId}:`, result.error);
+    if (!result.success) {
+      console.error(`Error incrementing usage for user ${userId}:`, result.usage);
       return NextResponse.json(
-        { error: result.error },
+        { error: "Failed to increment usage" },
         { status: 500 }
       );
     }
     
-    console.log(`Successfully incremented usage for user ${userId}. Current usage: ${result.currentUsage}, limit: ${result.limit}`);
+    console.log(`Successfully incremented usage for user ${userId}. Current usage: ${result.usage.count}, limit: ${result.usage.limit}`);
     
     return NextResponse.json({
       success: true,
-      currentUsage: result.currentUsage,
-      limit: result.limit,
+      currentUsage: result.usage.count,
+      limit: result.usage.limit,
       canUseFeature: result.canUseFeature,
     });
   } catch (error: any) {
