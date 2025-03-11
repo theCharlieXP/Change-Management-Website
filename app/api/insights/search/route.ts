@@ -48,8 +48,43 @@ const INSIGHT_FOCUS_AREAS: Record<InsightFocusArea, { label: string, description
   },
   'change-sustainability': {
     label: 'Change Sustainability',
-    description: 'Ensuring long-term change, embedding change into organizational processes',
-    keywords: ['sustainability', 'long-term', 'embedding', 'sustaining', 'maintaining', 'reinforcing']
+    description: 'Ensuring changes are maintained and embedded in the organization',
+    keywords: ['sustainability', 'maintenance', 'embedding', 'reinforcement', 'continuity', 'persistence']
+  },
+  'communication-engagement': {
+    label: 'Communication & Engagement',
+    description: 'Effective communication and engagement strategies for change initiatives',
+    keywords: ['communication', 'engagement', 'messaging', 'involvement', 'participation', 'dialogue']
+  },
+  'metrics-performance': {
+    label: 'Metrics & Performance',
+    description: 'Measuring and evaluating the performance of change initiatives',
+    keywords: ['metrics', 'performance', 'measurement', 'evaluation', 'KPI', 'indicators', 'assessment']
+  },
+  'risk-management': {
+    label: 'Risk Management',
+    description: 'Managing risks associated with change initiatives',
+    keywords: ['risk', 'management', 'mitigation', 'contingency', 'planning', 'assessment', 'analysis']
+  },
+  'technology-tools': {
+    label: 'Technology & Tools',
+    description: 'Utilizing technology and tools for change initiatives',
+    keywords: ['technology', 'tools', 'software', 'systems', 'digital', 'automation', 'platforms']
+  },
+  'cultural-transformation': {
+    label: 'Cultural Transformation',
+    description: 'Transforming organizational culture for change',
+    keywords: ['culture', 'transformation', 'values', 'behaviors', 'norms', 'mindset', 'attitudes']
+  },
+  'change-leadership': {
+    label: 'Change Leadership',
+    description: 'Leading and inspiring change initiatives',
+    keywords: ['leadership', 'inspiration', 'vision', 'direction', 'guidance', 'influence', 'motivation']
+  },
+  'employee-training': {
+    label: 'Employee Training',
+    description: 'Training and development of employees for change initiatives',
+    keywords: ['training', 'development', 'learning', 'skills', 'education', 'capability', 'competency']
   }
 }
 

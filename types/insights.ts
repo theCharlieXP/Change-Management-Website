@@ -8,6 +8,13 @@ export type InsightFocusArea =
   | 'implementation-tactics'
   | 'change-readiness'
   | 'change-sustainability'
+  | 'communication-engagement'
+  | 'metrics-performance'
+  | 'risk-management'
+  | 'technology-tools'
+  | 'cultural-transformation'
+  | 'change-leadership'
+  | 'employee-training'
 
 export const INSIGHT_FOCUS_AREAS: Record<InsightFocusArea, { 
   label: string
@@ -58,6 +65,41 @@ export const INSIGHT_FOCUS_AREAS: Record<InsightFocusArea, {
     label: 'Change Sustainability',
     color: 'bg-teal-100 text-teal-800',
     description: 'Ensuring changes are maintained and embedded in the organization'
+  },
+  'communication-engagement': {
+    label: 'Communication & Engagement',
+    color: 'bg-teal-100 text-teal-800',
+    description: 'Effective communication and engagement strategies for change initiatives'
+  },
+  'metrics-performance': {
+    label: 'Metrics & Performance',
+    color: 'bg-teal-100 text-teal-800',
+    description: 'Measuring and evaluating the performance of change initiatives'
+  },
+  'risk-management': {
+    label: 'Risk Management',
+    color: 'bg-teal-100 text-teal-800',
+    description: 'Managing risks associated with change initiatives'
+  },
+  'technology-tools': {
+    label: 'Technology & Tools',
+    color: 'bg-teal-100 text-teal-800',
+    description: 'Utilizing technology and tools for change initiatives'
+  },
+  'cultural-transformation': {
+    label: 'Cultural Transformation',
+    color: 'bg-teal-100 text-teal-800',
+    description: 'Transforming organizational culture for change'
+  },
+  'change-leadership': {
+    label: 'Change Leadership',
+    color: 'bg-teal-100 text-teal-800',
+    description: 'Leading and inspiring change initiatives'
+  },
+  'employee-training': {
+    label: 'Employee Training',
+    color: 'bg-teal-100 text-teal-800',
+    description: 'Training and development of employees'
   }
 }
 
