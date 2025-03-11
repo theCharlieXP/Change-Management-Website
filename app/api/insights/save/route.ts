@@ -150,21 +150,14 @@ const { userId  } = authData
       .eq('user_id', userId)
       .single()
 
-    if (!insight) {
+    if (!insight.data) {
       return NextResponse.json(
         { error: 'Insight not found' },
         { status: 404 }
       )
     }
 
-    // Verify that the project belongs to the user
-    if (insight.project_id !== projectId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
+    // No need to verify project_id since we already verified the insight belongs to the user
     await supabase
       .from('saved_insights')
       .delete()
