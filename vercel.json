@@ -1,5 +1,67 @@
 {
   "buildCommand": "prisma generate && next build",
-  "installCommand": "npm install",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "regions": ["iad1"],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    }
+  ],
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": {
+      "required": true
+    },
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": {
+      "required": true
+    },
+    "SUPABASE_SERVICE_ROLE_KEY": {
+      "required": true
+    },
+    "SUPABASE_JWT_SECRET": {
+      "required": true
+    },
+    "STRIPE_SECRET_KEY": {
+      "required": true
+    },
+    "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": {
+      "required": true
+    },
+    "RESEND_API_KEY": {
+      "required": true
+    },
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": {
+      "required": true
+    },
+    "CLERK_SECRET_KEY": {
+      "required": true
+    },
+    "DATABASE_URL": {
+      "required": true
+    },
+    "NEXT_PUBLIC_BASE_URL": {
+      "required": true
+    },
+    "CLERK_WEBHOOK_SECRET": {
+      "required": false
+    },
+    "TAVILY_API_KEY": {
+      "required": false
+    },
+    "DEEPSEEK_API_KEY": {
+      "required": false
+    },
+    "CONTACT_FORM_EMAIL": {
+      "required": false
+    },
+    "STRIPE_WEBHOOK_SECRET": {
+      "required": false
+    }
+  }
 } 

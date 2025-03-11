@@ -1,17 +1,36 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Project, ProjectStatus, ProjectTask } from '@/types/projects'
+import './supabase/config-check' // Import the configuration check
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+// Create a dummy client if configuration is missing
+const createDummyClient = () => {
+  return {
+    auth: {
+      getSession: async () => ({ data: { session: null }, error: new Error('Supabase not configured') }),
+      getUser: async () => ({ data: { user: null }, error: new Error('Supabase not configured') })
+    },
+    from: () => ({
+      select: () => ({ data: null, error: new Error('Supabase not configured') }),
+      insert: () => ({ data: null, error: new Error('Supabase not configured') }),
+      update: () => ({ data: null, error: new Error('Supabase not configured') }),
+      delete: () => ({ data: null, error: new Error('Supabase not configured') })
+    })
+  } as any
+}
 
 // Create a single supabase client for interacting with your database
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false
-  }
-})
+export const supabase = supabaseUrl && supabaseAnonKey 
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      }
+    })
+  : createDummyClient()
 
 // Helper function to check if Supabase is properly configured
 export function isSupabaseConfigured(): boolean {

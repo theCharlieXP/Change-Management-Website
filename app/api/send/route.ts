@@ -6,7 +6,7 @@ import { handleApiError, createError, ErrorType } from '@/lib/error-handler';
 // Log all available environment variables (without values)
 console.log('Available environment variables:', Object.keys(process.env));
 
-// Log environment variable status (not the actual values)
+// Log environment variables status (not the actual values)
 console.log('Environment variables status:', {
   hasResendKey: !!process.env.RESEND_API_KEY,
   hasContactEmail: !!process.env.CONTACT_FORM_EMAIL,
@@ -14,12 +14,22 @@ console.log('Environment variables status:', {
   contactEmail: process.env.CONTACT_FORM_EMAIL
 });
 
-// Initialize Resend with API key
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Initialize Resend with API key or use a mock in development
+const resendApiKey = process.env.RESEND_API_KEY;
+const resend = resendApiKey 
+  ? new Resend(resendApiKey)
+  : {
+      emails: {
+        send: async () => {
+          console.warn('RESEND_API_KEY is not set, using mock email service');
+          return { id: 'mock-email-id', message: 'Mock email sent' };
+        }
+      }
+    };
 
 // Configuration for email sending
 const RESEND_FROM_EMAIL = 'onboarding@resend.dev';
-const RESEND_TO_EMAIL = 'charlie.hay.99@gmail.com';
+const RESEND_TO_EMAIL = process.env.CONTACT_FORM_EMAIL || 'charlie.hay.99@gmail.com';
 
 export async function POST(request: Request) {
   try {

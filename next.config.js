@@ -5,6 +5,8 @@ const nextConfig = {
     CONTACT_FORM_EMAIL: process.env.CONTACT_FORM_EMAIL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   },
   serverRuntimeConfig: {
     RESEND_API_KEY: process.env.RESEND_API_KEY,
@@ -51,6 +53,22 @@ const nextConfig = {
       },
     ];
   },
+  // Configure dynamic API routes to be handled properly
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, max-age=0',
+          },
+        ],
+      },
+    ]
+  },
+  // Disable static exports for API routes
+  output: 'standalone',
 }
 
 module.exports = nextConfig 
