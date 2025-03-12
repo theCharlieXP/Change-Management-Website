@@ -40,7 +40,7 @@ export default clerkMiddleware(async (auth, req) => {
     // Add Content Security Policy
     response.headers.set(
       'Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://clerk.change-management.com https://*.clerk.accounts.dev; connect-src 'self' https://api.stripe.com https://clerk.change-management.com https://*.clerk.accounts.dev https://*.supabase.co; img-src 'self' data: https://clerk.change-management.com https://*.clerk.accounts.dev; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src https://js.stripe.com https://clerk.change-management.com https://*.clerk.accounts.dev;"
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com; connect-src 'self' https://api.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://*.supabase.co; img-src 'self' data: https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com;"
     );
     
     return response;
@@ -70,7 +70,7 @@ export default clerkMiddleware(async (auth, req) => {
   // Add Content Security Policy
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://clerk.change-management.com https://*.clerk.accounts.dev; connect-src 'self' https://api.stripe.com https://clerk.change-management.com https://*.clerk.accounts.dev https://*.supabase.co; img-src 'self' data: https://clerk.change-management.com https://*.clerk.accounts.dev; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src https://js.stripe.com https://clerk.change-management.com https://*.clerk.accounts.dev;"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com; connect-src 'self' https://api.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://*.supabase.co; img-src 'self' data: https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com;"
   );
   
   return response;
