@@ -15,7 +15,7 @@ export default function Home() {
       <section className="min-h-screen px-4 sm:px-6 pt-2 pb-12">
         <div className="max-w-5xl mx-auto text-center mb-8">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 mx-auto">
-            <span className="inline-block">Welcome to Change Amigo</span>
+            <span className="inline-block"></span>
             <div className="mt-2">A Friendly Change Management Partner</div>
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground mb-6 px-2 mx-auto">

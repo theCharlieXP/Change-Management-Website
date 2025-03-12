@@ -12,6 +12,8 @@ export default function SignInPage() {
           elements: {
             rootBox: "mx-auto",
             card: "bg-white shadow-xl",
+            headerTitle: "Sign in to Change Amigo",
+            headerSubtitle: ""
           }
         }}
       />

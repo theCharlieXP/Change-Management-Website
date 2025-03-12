@@ -50,8 +50,8 @@ export default function CookieConsent() {
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold mb-2 text-gray-900">Cookie Settings</h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      We use cookies to enhance your browsing experience, serve personalised content, and analyse our traffic. 
-                      Please choose which cookies you&apos;re comfortable with.
+                      We use cookies to enhance your browsing experience, serve personalised content, and analyse our website traffic. 
+                      Please select which cookies you are comfortable with.
                     </p>
                     <div className="text-xs text-gray-500">
                       <Link href="/privacy-policy" className="text-emerald-600 hover:text-emerald-700 underline">
@@ -73,7 +73,7 @@ export default function CookieConsent() {
                       <div>
                         <h4 className="font-medium text-gray-900 group-hover:text-emerald-700">Essential Only</h4>
                         <p className="text-xs text-gray-500 mt-1">
-                          Only cookies necessary for the website to function properly.
+                          Only cookies that are necessary for the website to function properly.
                         </p>
                       </div>
                     </div>
@@ -90,7 +90,7 @@ export default function CookieConsent() {
                       <div>
                         <h4 className="font-medium text-gray-900 group-hover:text-emerald-700">Accept All</h4>
                         <p className="text-xs text-gray-500 mt-1">
-                          Allow all cookies, including analytics and personalization.
+                          Allow all cookies, including those for analytics and personalisation.
                         </p>
                       </div>
                     </div>

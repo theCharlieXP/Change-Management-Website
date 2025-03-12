@@ -93,21 +93,21 @@ const ProjectsPage: React.FC = () => {
           <p className="text-muted-foreground mb-4">No projects yet. Click the &quot;Create Project&quot; button above to get started.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {projects.map((project) => (
             <Link 
               key={project.id} 
               href={`/dashboard/projects/${project.id}`}
               className="block transition-transform hover:scale-[1.02]"
             >
-              <Card className="h-[160px]">
+              <Card className="h-[140px] sm:h-[160px]">
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-4">
-                    <CardTitle className="text-base font-medium flex-1">{project.title}</CardTitle>
+                    <CardTitle className="text-sm sm:text-base font-medium flex-1 line-clamp-2">{project.title}</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
                     <div className="space-y-1">
                       <div>Created {format(new Date(project.created_at), 'MMM d, yyyy')}</div>
                       <div>Last edited {format(new Date(project.updated_at), 'MMM d, yyyy')}</div>

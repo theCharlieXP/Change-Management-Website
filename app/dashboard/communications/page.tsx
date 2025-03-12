@@ -921,9 +921,9 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
         </p>
       </div>
 
-      <div className="flex h-[calc(100vh-12rem)] overflow-hidden rounded-lg border w-full">
+      <div className="flex flex-col md:flex-row h-[calc(100vh-12rem)] overflow-hidden rounded-lg border w-full">
         {/* Left panel - white background */}
-        <div className="w-1/4 bg-white p-6 border-r overflow-y-auto flex-shrink-0">
+        <div className="w-full md:w-1/4 bg-white p-4 md:p-6 border-b md:border-b-0 md:border-r overflow-y-auto flex-shrink-0">
           <div className="mb-6">
             <h2 className="text-xl font-semibold mb-2">Select a Project</h2>
             <p className="text-sm text-muted-foreground mb-4">
@@ -1021,7 +1021,7 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
         </div>
 
         {/* Right panel - gray background */}
-        <div className="flex-1 bg-gray-50 p-6 overflow-y-auto" id="right-panel">
+        <div className="w-full md:w-3/4 bg-gray-50 p-4 md:p-6 overflow-y-auto">
           {/* If we're viewing a saved communication */}
           {selectedSavedCommunication ? (
             <div className="space-y-4">
