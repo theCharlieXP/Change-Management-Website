@@ -48,9 +48,9 @@ export default function CookieConsent() {
                     <Cookie className="h-6 w-6 text-emerald-600" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold mb-2 text-gray-900">Cookie Preferences</h3>
+                    <h3 className="text-lg font-semibold mb-2 text-gray-900">Cookie Settings</h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      We use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic. 
+                      We use cookies to enhance your browsing experience, serve personalised content, and analyse our traffic. 
                       Please choose which cookies you&apos;re comfortable with.
                     </p>
                     <div className="text-xs text-gray-500">
