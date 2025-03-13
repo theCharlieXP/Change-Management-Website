@@ -154,7 +154,7 @@ async function searchTavily(
     query: searchQuery,
     search_depth: "basic",
     include_answer: true,
-    max_results: 15,
+    max_results: 10,
     search_type: "keyword",
     // Include more domains since the user is already providing specific queries
     include_domains: [
@@ -166,8 +166,8 @@ async function searchTavily(
       'youtube.com', 'facebook.com', 'twitter.com',
       'instagram.com', 'linkedin.com'
     ],
-    // Increase search timeout since the user is providing specific queries
-    search_timeout: 45 // seconds - increased for more thorough search with specific queries
+    // Reduce search timeout to avoid server-side timeouts
+    search_timeout: 30 // seconds - reduced from 45s to 30s
   }
 
   try {
@@ -175,7 +175,7 @@ async function searchTavily(
     
     // Create an AbortController to handle timeouts
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 55000); // Increased from 50s to 55s timeout for the Tavily API request
+    const timeoutId = setTimeout(() => controller.abort(), 40000); // Reduced from 55s to 40s timeout for the Tavily API request
     
     const response = await fetch('https://api.tavily.com/search', {
       method: 'POST',
@@ -491,7 +491,7 @@ export async function GET(request: Request): Promise<Response> {
     const timeoutPromise = new Promise<Response>((_, reject) => {
       setTimeout(() => {
         reject(new Error('Request processing timed out'));
-      }, 65000); // Increased from 55s to 65s timeout for the entire request
+      }, 50000); // Reduced from 65s to 50s timeout for the entire request
     });
 
     // Create the main processing promise
@@ -537,7 +537,7 @@ export async function GET(request: Request): Promise<Response> {
       }
       
       // Process the results to create insights - process more results since the user is providing specific queries
-      const resultsToProcess = searchResults.slice(0, 15)
+      const resultsToProcess = searchResults.slice(0, 10) // Reduced from 15 to 10
       
       // Process insights in parallel for better performance
       // Split processing into smaller batches to avoid overwhelming the system
@@ -547,7 +547,7 @@ export async function GET(request: Request): Promise<Response> {
             // Skip title generation for faster processing
             const title = result.title
             
-            // Create the insight
+            // Create the insight with minimal processing
             return {
               id: crypto.randomUUID(),
               title: title,
@@ -585,7 +585,7 @@ export async function GET(request: Request): Promise<Response> {
           setTimeout(() => {
             // If processing takes too long, return a fallback with basic insights
             console.log('Insight processing timed out, using fallback')
-            resolve(resultsToProcess.slice(0, 8).map(result => {
+            resolve(resultsToProcess.slice(0, 5).map(result => { // Reduced from 8 to 5
               // Use a simple string conversion approach to avoid type issues
               const contentStr = typeof result.content === 'string' 
                 ? result.content 
@@ -627,7 +627,7 @@ export async function GET(request: Request): Promise<Response> {
       } catch (error) {
         console.error('Error in parallel processing:', error)
         // Fallback to basic processing if parallel fails
-        processedInsights = resultsToProcess.slice(0, 8).map(result => {
+        processedInsights = resultsToProcess.slice(0, 5).map(result => { // Reduced from 8 to 5
           // Use a simple string conversion approach to avoid type issues
           const contentStr = typeof result.content === 'string' 
             ? result.content 
@@ -658,22 +658,18 @@ export async function GET(request: Request): Promise<Response> {
       if (validInsights.length > 0) {
         try {
           // Select a representative sample of insights for summarization
-          // Take first 3, middle 2, and last 3 for a better representation
+          // Take first 2 and last 2 for a better representation
           const insightsForSummary = []
           
-          if (validInsights.length <= 8) {
-            // If we have 8 or fewer insights, use all of them
+          if (validInsights.length <= 4) {
+            // If we have 4 or fewer insights, use all of them
             insightsForSummary.push(...validInsights)
           } else {
-            // Take first 3
-            insightsForSummary.push(...validInsights.slice(0, 3))
+            // Take first 2
+            insightsForSummary.push(...validInsights.slice(0, 2))
             
-            // Take middle 2
-            const middleIndex = Math.floor(validInsights.length / 2)
-            insightsForSummary.push(...validInsights.slice(middleIndex - 1, middleIndex + 1))
-            
-            // Take last 3
-            insightsForSummary.push(...validInsights.slice(-3))
+            // Take last 2
+            insightsForSummary.push(...validInsights.slice(-2))
           }
           
           // Combine content from selected insights for faster summarization
@@ -683,8 +679,8 @@ export async function GET(request: Request): Promise<Response> {
               const contentStr = typeof insight.content === 'string' 
                 ? insight.content 
                 : JSON.stringify(insight.content);
-              // Take first 300 chars to keep it manageable
-              return contentStr.substring(0, 300);
+              // Take first 200 chars to keep it manageable
+              return contentStr.substring(0, 200);
             })
             .join('\n\n')
           
@@ -702,7 +698,7 @@ export async function GET(request: Request): Promise<Response> {
             setTimeout(() => {
               // If summarization takes too long, return a basic summary
               resolve(`${INSIGHT_FOCUS_AREAS[focusArea].label} Insights\n\nContext\nSearch Query: ${query || 'None'}\nFocus Area: ${INSIGHT_FOCUS_AREAS[focusArea].label}\n${industries.length ? `Industries: ${industries.join(', ')}` : ''}\n\nKey Findings\n• Found ${validInsights.length} relevant sources related to ${INSIGHT_FOCUS_AREAS[focusArea].label}.\n• Sources include ${validInsights.slice(0, 3).map(i => i.source).join(', ')}.\n• Review the individual insights for detailed information.`)
-            }, 20000) // 20 second timeout for summarization (increased from 15s)
+            }, 15000) // 15 second timeout for summarization (reduced from 20s)
           })
           
           // Race between normal summarization and timeout

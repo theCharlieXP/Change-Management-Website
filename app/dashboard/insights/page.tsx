@@ -194,7 +194,7 @@ export default function InsightsPage() {
       
       // Create an AbortController to handle client-side timeouts
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 70000); // Increased to 70s timeout to match server-side changes
+      const timeoutId = setTimeout(() => controller.abort(), 55000); // Reduced from 70s to 55s to match server-side changes
       
       try {
         const response = await fetch(`/api/insights/search?${params.toString()}`, {
