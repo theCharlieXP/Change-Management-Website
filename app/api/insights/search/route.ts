@@ -119,19 +119,27 @@ async function searchTavily(
   const queryParts = []
   const focusAreaInfo = INSIGHT_FOCUS_AREAS[focusArea]
   
-  // Start with the main query
+  // Start with the main query - make it the primary focus
   if (query) {
     queryParts.push(query)
+  } else {
+    // If no specific query, use the focus area keywords to help
+    queryParts.push(focusAreaInfo.keywords.slice(0, 3).join(' '))
   }
   
-  // Add focus area as a single term
-  queryParts.push(focusAreaInfo.label)
+  // Add focus area as a single term - but only if there's a specific query
+  if (query) {
+    queryParts.push(focusAreaInfo.label)
+  }
   
   // Add industries if specified (but keep it simple)
   if (industries?.length) {
     // Only add the first industry to avoid over-filtering
     queryParts.push(industries[0])
   }
+
+  // Add "change management" as a context term to improve relevance
+  queryParts.push("change management")
 
   // Combine with simple spaces - no special weighting or complex combinations
   const searchQuery = queryParts.join(' ')
@@ -144,6 +152,7 @@ async function searchTavily(
     max_results: 15,
     search_type: "keyword",
     include_domains: [
+      // Focus on the most reliable sources first
       'hbr.org', 'mckinsey.com', 'bcg.com',
       'deloitte.com', 'pwc.com', 'accenture.com',
       'gartner.com'
@@ -151,7 +160,9 @@ async function searchTavily(
     exclude_domains: [
       'youtube.com', 'facebook.com', 'twitter.com',
       'instagram.com', 'linkedin.com'
-    ]
+    ],
+    // Add a search timeout parameter to help Tavily optimize
+    search_timeout: 40 // seconds
   }
 
   try {
@@ -208,7 +219,6 @@ async function searchTavily(
         // Only filter out empty content
         return result.content && result.content.length > 0
       })
-      .slice(0, 15) // Take top 15 results from Tavily's ranking to match our max_results setting
 
     console.log('Search results processed:', {
       originalCount: data.results.length,
@@ -476,7 +486,7 @@ export async function GET(request: Request): Promise<Response> {
     const timeoutPromise = new Promise<Response>((_, reject) => {
       setTimeout(() => {
         reject(new Error('Request processing timed out'));
-      }, 55000); // Increased from 28s to 55s timeout for the entire request
+      }, 55000); // Keep the 55s timeout
     });
 
     // Create the main processing promise
@@ -521,22 +531,18 @@ export async function GET(request: Request): Promise<Response> {
         )
       }
       
-      // Process the results to create insights
+      // Process the results to create insights - limit to 10 for faster processing
       const insights: Insight[] = []
+      const resultsToProcess = searchResults.slice(0, 10)
       
-      for (const result of searchResults) {
+      // Process insights in parallel for better performance
+      const insightPromises = resultsToProcess.map(async (result) => {
         try {
-          // Generate a better title if possible
-          let title = result.title
-          try {
-            title = await generateTitle(result.content, result.title)
-          } catch (error) {
-            console.error('Error generating title:', error)
-            // Fall back to original title
-          }
+          // Skip title generation for faster processing
+          const title = result.title
           
           // Create the insight
-          const insight: Insight = {
+          return {
             id: crypto.randomUUID(),
             title: title,
             content: result.content,
@@ -549,21 +555,26 @@ export async function GET(request: Request): Promise<Response> {
             tags: industries,
             readTime: '3 min',
             category: INSIGHT_FOCUS_AREAS[focusArea].label
-          }
-          
-          insights.push(insight)
+          } as Insight
         } catch (error) {
           console.error('Error processing search result:', error)
-          // Continue with other results
+          return null
         }
-      }
+      })
+      
+      // Wait for all insight processing to complete
+      const processedInsights = await Promise.all(insightPromises)
+      
+      // Filter out any null results from failed processing
+      const validInsights = processedInsights.filter(insight => insight !== null) as Insight[]
       
       // Generate a summary if we have insights
       let summary = null
-      if (insights.length > 0) {
+      if (validInsights.length > 0) {
         try {
-          // Combine all content for summarization
-          const combinedContent = insights
+          // Combine content from first 5 insights only for faster summarization
+          const combinedContent = validInsights
+            .slice(0, 5)
             .map(insight => insight.content)
             .join('\n\n')
           
@@ -582,7 +593,7 @@ export async function GET(request: Request): Promise<Response> {
       }
       
       return NextResponse.json({
-        results: insights,
+        results: validInsights,
         summary
       })
     })();

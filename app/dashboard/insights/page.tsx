@@ -212,7 +212,7 @@ export default function InsightsPage() {
 
         // Handle specific HTTP status codes
         if (response.status === 504) {
-          throw new Error('The search request timed out. Please try a more specific query or different focus area, or reduce the number of selected industries.');
+          throw new Error('The search request timed out. Please try a more specific query, fewer industries, or a different focus area.');
         }
 
         if (!response.ok) {
@@ -472,14 +472,15 @@ export default function InsightsPage() {
                       {error.includes('timed out') ? (
                         <div className="space-y-2">
                           <p>{error}</p>
-                          <p className="text-xs">
+                          <p className="text-xs font-medium mt-2">
                             Tips to resolve this issue:
                           </p>
                           <ul className="text-xs list-disc pl-4 space-y-1">
-                            <li>Make your search query more specific</li>
-                            <li>Select fewer industries (1-2 maximum)</li>
-                            <li>Try a different focus area</li>
-                            <li>Break your search into smaller, more focused queries</li>
+                            <li>Make your search query more specific (e.g., "employee resistance strategies" instead of just "resistance")</li>
+                            <li>Select only 1 industry instead of multiple</li>
+                            <li>Try a different focus area that might have more targeted results</li>
+                            <li>If you didn't enter a search query, add one to help focus the search</li>
+                            <li>Wait a few minutes and try again - the search service might be experiencing high load</li>
                           </ul>
                         </div>
                       ) : (
