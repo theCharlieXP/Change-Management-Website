@@ -16,7 +16,7 @@
   ],
   "functions": {
     "app/api/insights/search/route.ts": {
-      "maxDuration": 120
+      "maxDuration": 60
     }
   }
 } 
