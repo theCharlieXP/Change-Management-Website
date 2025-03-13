@@ -12,30 +12,30 @@ export function ScrollReveal({ children, delay = 0 }: ScrollRevealProps) {
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setTimeout(() => {
-              entry.target.classList.remove('opacity-0')
-              entry.target.classList.add('animate-fade-in-up')
-            }, delay)
-            observer.unobserve(entry.target)
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => {
+            entry.target.classList.remove('opacity-0')
+            entry.target.classList.add('animate-fade-in')
+          }, delay)
+          if (elementRef.current) {
+            observer.unobserve(elementRef.current)
           }
-        })
+        }
       },
-      {
-        threshold: 0.1,
-        rootMargin: '50px',
-      }
+      { threshold: 0.1 }
     )
 
     if (elementRef.current) {
       observer.observe(elementRef.current)
     }
 
+    // Save a reference to the current element for cleanup
+    const currentElement = elementRef.current
+
     return () => {
-      if (elementRef.current) {
-        observer.unobserve(elementRef.current)
+      if (currentElement) {
+        observer.unobserve(currentElement)
       }
     }
   }, [delay])

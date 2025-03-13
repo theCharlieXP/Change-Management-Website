@@ -151,7 +151,7 @@ export default function ProjectPage() {
     }
 
     fetchSummaries()
-  }, [params.projectId, toast])
+  }, [params.projectId])
 
   const handleStatusChange = async (newStatus: ProjectStatus) => {
     try {

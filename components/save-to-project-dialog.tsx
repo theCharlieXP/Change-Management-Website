@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -46,7 +46,7 @@ export function SaveToProjectDialog({
   isLoading: initialLoading,
   isSummary = false
 }: SaveToProjectDialogProps) {
-  const { userId, isLoaded, isSignedIn } = useAuth()
+  const { isLoaded, isSignedIn, userId } = useAuth()
   const [selectedProjectId, setSelectedProjectId] = useState<string>("")
   const [isSaving, setIsSaving] = useState(false)
   const [projects, setProjects] = useState<ProjectData[]>([])
@@ -60,65 +60,46 @@ export function SaveToProjectDialog({
     }
   }, [open])
 
-  // Fetch projects when dialog opens and auth is ready
+  const fetchProjects = useCallback(async () => {
+    try {
+      setIsLoadingProjects(true)
+      setError(null)
+      console.log('Fetching projects for user:', userId)
+      
+      if (!userId) {
+        console.error('No user ID available')
+        setError('User not authenticated')
+        setIsLoadingProjects(false)
+        return
+      }
+
+      const response = await fetch(`/api/projects?userId=${userId}`)
+      
+      if (!response.ok) {
+        throw new Error(`Error fetching projects: ${response.statusText}`)
+      }
+      
+      const data = await response.json()
+      setProjects(data)
+    } catch (err) {
+      console.error('Error fetching projects:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load projects')
+    } finally {
+      setIsLoadingProjects(false)
+    }
+  }, [userId])
+
   useEffect(() => {
     if (!open) return
-    if (!isLoaded) {
-      console.log('Auth not loaded yet, waiting...')
-      return
-    }
-    if (!isSignedIn) {
-      console.log('User not signed in')
-      setError('Please sign in to save insights')
-      setIsLoadingProjects(false)
+    
+    if (!isLoaded || !isSignedIn) {
+      setError('Please sign in to save to a project')
       return
     }
     if (userId) {
       fetchProjects()
     }
-  }, [open, isLoaded, isSignedIn, userId])
-
-  const fetchProjects = async () => {
-    try {
-      setIsLoadingProjects(true)
-      setError(null)
-      console.log('Fetching projects for user:', userId)
-
-      const response = await fetch('/api/projects')
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        console.error('Project fetch failed:', { 
-          status: response.status, 
-          statusText: response.statusText,
-          errorData 
-        })
-        throw new Error(errorData.details || 'Failed to fetch projects')
-      }
-
-      const data = await response.json()
-      console.log('Successfully fetched projects:', {
-        count: data.length,
-        firstProject: data[0] ? {
-          id: data[0].id,
-          name: data[0].name,
-          keys: Object.keys(data[0])
-        } : null
-      })
-      
-      setProjects(data)
-    } catch (error) {
-      console.error('Error in fetchProjects:', error)
-      setError(error instanceof Error ? error.message : 'Failed to load projects')
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to load projects. Please try refreshing the page.",
-        variant: "destructive"
-      })
-    } finally {
-      setIsLoadingProjects(false)
-    }
-  }
+  }, [open, isLoaded, isSignedIn, userId, fetchProjects])
 
   const handleSave = async () => {
     if (!selectedProjectId) {

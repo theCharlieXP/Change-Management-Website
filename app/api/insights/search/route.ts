@@ -456,7 +456,7 @@ Your analysis should:
   }
 }
 
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url)
   const query = searchParams.get('query') || ''
   const focusArea = searchParams.get('focusArea') as InsightFocusArea
@@ -475,14 +475,14 @@ export async function GET(request: Request) {
   
   try {
     // Set a timeout for the entire request processing
-    const timeoutPromise = new Promise((_, reject) => {
+    const timeoutPromise = new Promise<Response>((_, reject) => {
       setTimeout(() => {
         reject(new Error('Request processing timed out'));
       }, 28000); // 28 seconds timeout
     });
 
     // Create the main processing promise
-    const processingPromise = (async () => {
+    const processingPromise = (async (): Promise<Response> => {
       // Search for relevant content
       let searchResults: SearchResult[] = []
       
