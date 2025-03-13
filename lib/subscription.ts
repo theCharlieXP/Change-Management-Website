@@ -3,7 +3,10 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 // Constants
 export const FREE_TIER_LIMIT = 20;
+export const PRO_TIER_INSIGHT_LIMIT = 100; // Daily limit for pro users
 export const INSIGHT_SEARCH_FEATURE = 'insight_search';
+export const DEEP_SEEK_FEATURE = 'deep_seek';
+export const DEEP_SEEK_LIMIT = 100; // Daily limit for both basic and pro users
 
 // Types
 export type SubscriptionPlan = 'basic' | 'pro';
@@ -77,6 +80,21 @@ export async function isProUser(): Promise<boolean> {
 }
 
 /**
+ * Check if usage should be reset (if last_reset is from a previous day)
+ */
+function shouldResetUsage(lastResetDate: string | null): boolean {
+  if (!lastResetDate) return true;
+  
+  const lastReset = new Date(lastResetDate);
+  const now = new Date();
+  
+  // Check if the dates are different (day has changed)
+  return lastReset.getUTCDate() !== now.getUTCDate() || 
+         lastReset.getUTCMonth() !== now.getUTCMonth() || 
+         lastReset.getUTCFullYear() !== now.getUTCFullYear();
+}
+
+/**
  * Get usage information for a specific feature
  */
 export async function getFeatureUsage(userId: string, featureId: string): Promise<{
@@ -117,21 +135,19 @@ export async function getFeatureUsage(userId: string, featureId: string): Promis
                   new Date(profile.stripe_current_period_end) > new Date() : 
                   true);
   
-  if (isPro) {
-    return {
-      count: 0,
-      limit: Infinity,
-      remaining: Infinity,
-      isLimitReached: false,
-      canUseFeature: true,
-      isPremium: true
-    };
+  // Determine the limit based on feature and plan
+  let limit = FREE_TIER_LIMIT;
+  
+  if (featureId === INSIGHT_SEARCH_FEATURE) {
+    limit = isPro ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT;
+  } else if (featureId === DEEP_SEEK_FEATURE) {
+    limit = DEEP_SEEK_LIMIT; // Same limit for both plans
   }
-
+  
   // Get usage for the feature
   const { data: usage, error: usageError } = await supabase
     .from('usage_tracker')
-    .select('count')
+    .select('count, last_reset')
     .eq('user_id', userId)
     .eq('feature_id', featureId)
     .single();
@@ -140,17 +156,35 @@ export async function getFeatureUsage(userId: string, featureId: string): Promis
     console.error('Error fetching usage:', usageError);
   }
 
+  // Check if we need to reset the usage (new day)
+  if (usage && shouldResetUsage(usage.last_reset)) {
+    // Reset the usage count since it's a new day
+    await supabase.rpc('reset_usage', {
+      p_user_id: userId,
+      p_feature_id: featureId
+    });
+    
+    return {
+      count: 0,
+      limit,
+      remaining: limit,
+      isLimitReached: false,
+      canUseFeature: true,
+      isPremium: isPro
+    };
+  }
+
   const count = usage?.count || 0;
-  const remaining = Math.max(0, FREE_TIER_LIMIT - count);
-  const isLimitReached = count >= FREE_TIER_LIMIT;
+  const remaining = Math.max(0, limit - count);
+  const isLimitReached = count >= limit;
 
   return {
     count,
-    limit: FREE_TIER_LIMIT,
+    limit,
     remaining,
     isLimitReached,
     canUseFeature: !isLimitReached,
-    isPremium: false
+    isPremium: isPro
   };
 }
 
@@ -189,35 +223,6 @@ export async function incrementFeatureUsage(featureId: string): Promise<{
 
   // Get current usage
   const currentUsage = await getFeatureUsage(userId, featureId);
-  
-  // Check if user is premium or has reached their limit
-  if (currentUsage.isPremium) {
-    // Pro users always have access, but we still track usage
-    const supabase = createClientComponentClient();
-    
-    const { error } = await supabase.rpc('increment_usage', {
-      p_user_id: userId,
-      p_feature_id: featureId
-    });
-    
-    if (error) {
-      console.error('Error incrementing usage:', error);
-      return {
-        success: false,
-        canUseFeature: true, // Still allow pro users even if tracking fails
-        usage: currentUsage
-      };
-    }
-    
-    return {
-      success: true,
-      canUseFeature: true,
-      usage: {
-        ...currentUsage,
-        count: currentUsage.count + 1
-      }
-    };
-  }
   
   // Check if user has reached their limit
   if (currentUsage.isLimitReached) {
@@ -259,8 +264,10 @@ export async function incrementFeatureUsage(featureId: string): Promise<{
  * Reset usage for a specific feature
  */
 export async function resetFeatureUsage(userId: string, featureId: string): Promise<void> {
-  if (!userId) return;
-  
+  if (!userId) {
+    return;
+  }
+
   const supabase = createClientComponentClient();
   
   const { error } = await supabase.rpc('reset_usage', {
@@ -274,8 +281,7 @@ export async function resetFeatureUsage(userId: string, featureId: string): Prom
 }
 
 /**
- * Update or create a user subscription
- * This function is kept for backward compatibility but now uses Supabase
+ * Update a user's subscription information
  */
 export async function updateUserSubscription(
   userId: string,
@@ -288,6 +294,10 @@ export async function updateUserSubscription(
     plan: SubscriptionPlan;
   }
 ): Promise<void> {
+  if (!userId) {
+    return;
+  }
+
   const supabase = createClientComponentClient();
   
   const { error } = await supabase
@@ -296,15 +306,14 @@ export async function updateUserSubscription(
       stripe_customer_id: data.stripeCustomerId,
       stripe_subscription_id: data.stripeSubscriptionId,
       stripe_price_id: data.stripePriceId,
-      stripe_current_period_end: data.stripeCurrentPeriodEnd?.toISOString(),
+      stripe_current_period_end: data.stripeCurrentPeriodEnd,
       subscription_status: data.status,
-      tier: data.plan,
-      updated_at: new Date().toISOString()
+      tier: data.plan
     })
     .eq('user_id', userId);
-    
+  
   if (error) {
-    console.error('Error updating profile:', error);
-    throw error;
+    console.error('Error updating subscription:', error);
+    throw new Error('Failed to update subscription');
   }
 } 

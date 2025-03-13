@@ -1,35 +1,31 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
-import { CreditCard, AlertCircle } from 'lucide-react';
-import { INSIGHT_SEARCH_FEATURE, FREE_TIER_LIMIT, PRO_TIER_INSIGHT_LIMIT } from '@/lib/subscription-client';
+import { AlertCircle } from 'lucide-react';
+import { DEEP_SEEK_FEATURE, DEEP_SEEK_LIMIT } from '@/lib/subscription-client';
 
-export default function InsightSearchUsageTracker({ children }) {
+export default function DeepSeekUsageTracker({ children }) {
   const router = useRouter();
   const [usageCount, setUsageCount] = useState(0);
-  const [usageLimit, setUsageLimit] = useState(FREE_TIER_LIMIT);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [usageLimit, setUsageLimit] = useState(DEEP_SEEK_LIMIT);
+  const [showWarningModal, setShowWarningModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isPremium, setIsPremium] = useState(false);
+  const [isNearLimit, setIsNearLimit] = useState(false);
 
   useEffect(() => {
     // Load initial usage from localStorage for immediate UI feedback
-    const storedUsageCount = localStorage.getItem('insightSearchUsageCount');
+    const storedUsageCount = localStorage.getItem('deepSeekUsageCount');
     if (storedUsageCount) {
       setUsageCount(parseInt(storedUsageCount, 10));
-    }
-    
-    // Check if user is premium
-    const storedIsPremium = localStorage.getItem('isPremiumUser') === 'true';
-    if (storedIsPremium) {
-      setIsPremium(true);
-      setUsageLimit(PRO_TIER_INSIGHT_LIMIT);
+      
+      // Check if near limit (90% or more)
+      const count = parseInt(storedUsageCount, 10);
+      setIsNearLimit(count >= DEEP_SEEK_LIMIT * 0.9);
     }
     
     // Fetch actual usage from server
@@ -44,7 +40,7 @@ export default function InsightSearchUsageTracker({ children }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          featureId: INSIGHT_SEARCH_FEATURE 
+          featureId: DEEP_SEEK_FEATURE 
         }),
       });
       
@@ -59,14 +55,11 @@ export default function InsightSearchUsageTracker({ children }) {
         setUsageCount(data.usage.count || 0);
         
         // Update localStorage for UI consistency
-        localStorage.setItem('insightSearchUsageCount', data.usage.count.toString());
+        localStorage.setItem('deepSeekUsageCount', data.usage.count.toString());
         
-        // If user has premium, update the limit
-        if (data.usage.isPremium) {
-          setIsPremium(true);
-          setUsageLimit(PRO_TIER_INSIGHT_LIMIT);
-          localStorage.setItem('isPremiumUser', 'true');
-        }
+        // Check if near limit (90% or more)
+        const count = data.usage.count || 0;
+        setIsNearLimit(count >= DEEP_SEEK_LIMIT * 0.9);
       }
     } catch (error) {
       console.error('Error fetching usage:', error);
@@ -78,12 +71,16 @@ export default function InsightSearchUsageTracker({ children }) {
     // First update local state for immediate feedback
     const newCount = usageCount + 1;
     setUsageCount(newCount);
-    localStorage.setItem('insightSearchUsageCount', newCount.toString());
+    localStorage.setItem('deepSeekUsageCount', newCount.toString());
+    
+    // Check if user is approaching limit (90% or more)
+    if (newCount >= DEEP_SEEK_LIMIT * 0.9 && newCount < DEEP_SEEK_LIMIT) {
+      setIsNearLimit(true);
+    }
     
     // Check if user has reached limit
-    const currentLimit = isPremium ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT;
-    if (newCount >= currentLimit) {
-      setShowUpgradeModal(true);
+    if (newCount >= DEEP_SEEK_LIMIT) {
+      setShowWarningModal(true);
       return false;
     }
     
@@ -98,7 +95,7 @@ export default function InsightSearchUsageTracker({ children }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          featureId: INSIGHT_SEARCH_FEATURE 
+          featureId: DEEP_SEEK_FEATURE 
         }),
       });
       
@@ -112,11 +109,11 @@ export default function InsightSearchUsageTracker({ children }) {
       if (data.success) {
         // Update with server data
         setUsageCount(data.usage.count);
-        localStorage.setItem('insightSearchUsageCount', data.usage.count.toString());
+        localStorage.setItem('deepSeekUsageCount', data.usage.count.toString());
         
         // Check if user can use the feature
         if (!data.canUseFeature) {
-          setShowUpgradeModal(true);
+          setShowWarningModal(true);
           return false;
         }
         
@@ -128,20 +125,14 @@ export default function InsightSearchUsageTracker({ children }) {
       console.error('Error incrementing usage:', error);
       setError(error.message);
       // We keep the local increment even if the API fails
-      const currentLimit = isPremium ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT;
-      return newCount < currentLimit;
+      return newCount < DEEP_SEEK_LIMIT;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleUpgradeClick = () => {
-    router.push('/dashboard/account');
-    setShowUpgradeModal(false);
-  };
-
   const handleCloseModal = () => {
-    setShowUpgradeModal(false);
+    setShowWarningModal(false);
   };
 
   return (
@@ -150,72 +141,50 @@ export default function InsightSearchUsageTracker({ children }) {
       {children({ 
         incrementUsage, 
         usageCount, 
-        usageLimit: isPremium ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT, 
-        isPremium,
-        remainingSearches: Math.max(0, (isPremium ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT) - usageCount),
-        isLimitReached: isPremium ? 
-          usageCount >= PRO_TIER_INSIGHT_LIMIT : 
-          usageCount >= FREE_TIER_LIMIT
+        usageLimit: DEEP_SEEK_LIMIT, 
+        remainingUses: Math.max(0, DEEP_SEEK_LIMIT - usageCount),
+        isLimitReached: usageCount >= DEEP_SEEK_LIMIT,
+        isNearLimit: isNearLimit
       })}
       
-      {/* Upgrade Modal */}
-      <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
+      {/* Warning Modal */}
+      <Dialog open={showWarningModal} onOpenChange={setShowWarningModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-amber-500" />
-              {isPremium ? 'Daily Usage Limit Reached' : 'Usage Limit Reached'}
+              Daily Usage Limit Reached
             </DialogTitle>
             <DialogDescription>
-              {isPremium 
-                ? `You've used all ${PRO_TIER_INSIGHT_LIMIT} Insight Searches available for today on your Pro plan.`
-                : `You've used all ${FREE_TIER_LIMIT} free Insight Searches available on the basic plan.`
-              }
+              You&apos;ve used all {DEEP_SEEK_LIMIT} Deep Seek operations available for today.
             </DialogDescription>
           </DialogHeader>
           
           <div className="flex flex-col space-y-4 py-4">
             <div className="bg-amber-50 p-4 rounded-md">
-              {isPremium ? (
-                <p className="text-sm text-amber-800">
-                  Your daily limit will reset at midnight UTC. This limit helps ensure fair usage of our AI resources.
-                </p>
-              ) : (
-                <p className="text-sm text-amber-800">
-                  Upgrade to our Pro plan for {PRO_TIER_INSIGHT_LIMIT} daily Insight Searches and additional features.
-                </p>
-              )}
+              <p className="text-sm text-amber-800">
+                The Deep Seek feature is limited to {DEEP_SEEK_LIMIT} uses per day to ensure fair usage of our AI resources.
+                Your usage limit will reset at midnight UTC.
+              </p>
             </div>
             
             <div className="space-y-2">
-              <p className="text-sm font-medium">Your usage:</p>
+              <p className="text-sm font-medium">Your usage today:</p>
               <Progress value={100} className="h-2" />
               <p className="text-xs text-gray-500 flex justify-between">
                 <span>{usageCount} used</span>
-                <span>{isPremium ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT} limit</span>
+                <span>{DEEP_SEEK_LIMIT} limit</span>
               </p>
             </div>
           </div>
           
-          <DialogFooter className="flex-col sm:flex-row sm:justify-between gap-2">
+          <DialogFooter>
             <Button
               type="button"
-              variant="outline"
               onClick={handleCloseModal}
             >
-              {isPremium ? 'I Understand' : 'Maybe Later'}
+              I Understand
             </Button>
-            
-            {!isPremium && (
-              <Button
-                type="button"
-                className="gap-2"
-                onClick={handleUpgradeClick}
-              >
-                <CreditCard className="h-4 w-4" />
-                Upgrade Now
-              </Button>
-            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

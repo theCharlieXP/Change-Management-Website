@@ -2,7 +2,10 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 // Constants
 export const FREE_TIER_LIMIT = 20;
+export const PRO_TIER_INSIGHT_LIMIT = 100; // Daily limit for pro users
 export const INSIGHT_SEARCH_FEATURE = 'insight_search';
+export const DEEP_SEEK_FEATURE = 'deep_seek';
+export const DEEP_SEEK_LIMIT = 100; // Daily limit for both basic and pro users
 
 // Types
 export type SubscriptionPlan = 'basic' | 'pro';
@@ -63,17 +66,15 @@ export async function getFeatureUsage(userId: string, featureId: string): Promis
                   new Date(profile.stripe_current_period_end) > new Date() : 
                   true);
   
-  if (isPro) {
-    return {
-      count: 0,
-      limit: Infinity,
-      remaining: Infinity,
-      isLimitReached: false,
-      canUseFeature: true,
-      isPremium: true
-    };
+  // Determine the limit based on feature and plan
+  let limit = FREE_TIER_LIMIT;
+  
+  if (featureId === INSIGHT_SEARCH_FEATURE) {
+    limit = isPro ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT;
+  } else if (featureId === DEEP_SEEK_FEATURE) {
+    limit = DEEP_SEEK_LIMIT; // Same limit for both plans
   }
-
+  
   // Get usage for the feature
   const { data: usage, error: usageError } = await supabase
     .from('usage_tracker')
@@ -87,16 +88,16 @@ export async function getFeatureUsage(userId: string, featureId: string): Promis
   }
 
   const count = usage?.count || 0;
-  const remaining = Math.max(0, FREE_TIER_LIMIT - count);
-  const isLimitReached = count >= FREE_TIER_LIMIT;
+  const remaining = Math.max(0, limit - count);
+  const isLimitReached = count >= limit;
 
   return {
     count,
-    limit: FREE_TIER_LIMIT,
+    limit,
     remaining,
     isLimitReached,
     canUseFeature: !isLimitReached,
-    isPremium: false
+    isPremium: isPro
   };
 }
 

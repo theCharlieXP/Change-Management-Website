@@ -26,6 +26,7 @@ import { useAuth } from '@clerk/nextjs'
 import { Textarea } from "@/components/ui/textarea"
 import { SaveToProjectDialog } from '@/components/save-to-project-dialog'
 import InsightSearchUsageTracker from '@/app/components/InsightSearchUsageTracker'
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 
 type TimeframeValue = 
   | 'last_day'
@@ -190,67 +191,88 @@ export default function InsightsPage() {
 
       // Step 2: Search and analysis
       setLoadingStage("Searching through trusted sources...")
-      const response = await fetch(`/api/insights/search?${params.toString()}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      })
-
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setLoadingStage("Analysing findings and identifying patterns...")
-
-      console.log('Search response status:', response.status)
-
-      const data = await response.json()
       
-      if (!response.ok) {
-        console.error('Search error response:', data)
-        throw new Error(data.error || data.details || `HTTP error! status: ${response.status}`)
-      }
-
-      if ('error' in data) {
-        console.error('Search error in response data:', data)
-        throw new Error(data.error)
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setLoadingStage("Synthesising insights and creating summary...")
-
-      // Extract results and summary from the response
-      const { results, summary } = data
+      // Create an AbortController to handle client-side timeouts
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second client-side timeout
       
-      // Update state with results and summary
-      setInsights(results || [])
-      setSummary(summary || null)
+      try {
+        const response = await fetch(`/api/insights/search?${params.toString()}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          signal: controller.signal
+        }).finally(() => {
+          clearTimeout(timeoutId);
+        });
 
-      // Show success message if we got results
-      if (results.length > 0) {
-        toast({
-          title: "Search Complete",
-          description: `Found ${results.length} relevant sources`,
-        })
-      } else {
-        toast({
-          title: "No Results",
-          description: "Try adjusting your search criteria or selecting different filters",
-          variant: "destructive"
-        })
+        console.log('Search response status:', response.status);
+
+        // Handle specific HTTP status codes
+        if (response.status === 504) {
+          throw new Error('The search request timed out. Please try a more specific query or different focus area.');
+        }
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || errorData.details || `HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if ('error' in data) {
+          console.error('Search error in response data:', data);
+          throw new Error(data.error);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setLoadingStage("Analysing findings and identifying patterns...");
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setLoadingStage("Synthesising insights and creating summary...");
+
+        // Extract results and summary from the response
+        const { results, summary } = data;
+        
+        // Update state with results and summary
+        setInsights(results || []);
+        setSummary(summary || null);
+
+        // Show success message if we got results
+        if (results.length > 0) {
+          toast({
+            title: "Search Complete",
+            description: `Found ${results.length} relevant sources`,
+          });
+        } else {
+          toast({
+            title: "No Results",
+            description: "Try adjusting your search criteria or selecting different filters",
+            variant: "destructive"
+          });
+        }
+      } catch (fetchError) {
+        // Handle AbortError (timeout) specifically
+        if (fetchError.name === 'AbortError') {
+          throw new Error('The search request timed out. Please try a more specific query or different focus area.');
+        }
+        throw fetchError;
       }
     } catch (err) {
-      console.error('Search error:', err)
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred'
-      setError(errorMessage)
+      console.error('Search error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
       
       toast({
         title: "Error",
         description: errorMessage,
         variant: "destructive"
-      })
+      });
     } finally {
-      setLoading(false)
-      setLoadingStage(null)
+      setLoading(false);
+      setLoadingStage(null);
     }
   }
 
@@ -358,13 +380,192 @@ export default function InsightsPage() {
         isLimitReached: boolean;
       }) => (
         <div className="space-y-6">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold tracking-tight">Project Insights</h1>
-            <p className="text-muted-foreground">
-              Search and explore insights for your change management projects
-            </p>
+          <div className="flex flex-col md:flex-row justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Insights</h1>
+              <p className="text-muted-foreground">
+                Discover valuable change management insights from trusted sources
+              </p>
+            </div>
           </div>
-            
+
+          <div className="grid gap-6 md:grid-cols-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium">Search Criteria</h3>
+                <p className="text-sm text-muted-foreground">
+                  Define your search to find relevant insights
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="focus-area" className="text-sm font-medium">
+                    Insight Focus Area <span className="text-red-500">*</span>
+                  </label>
+                  <Select
+                    value={focusArea}
+                    onValueChange={(value) => setFocusArea(value as InsightFocusArea)}
+                  >
+                    <SelectTrigger id="focus-area">
+                      <SelectValue placeholder="Select focus area" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(INSIGHT_FOCUS_AREAS).map(([key, { label }]) => (
+                        <SelectItem key={key} value={key}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="query" className="text-sm font-medium">
+                    Search Query
+                  </label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="query"
+                      placeholder="Enter keywords..."
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={handleKeyPress}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="industries" className="text-sm font-medium">
+                    Industries (Optional)
+                  </label>
+                  <MultiSelect
+                    options={INDUSTRIES.map(industry => ({
+                      label: industry,
+                      value: industry
+                    }))}
+                    selected={selectedIndustries}
+                    onChange={setSelectedIndustries}
+                    placeholder="Select industries..."
+                  />
+                </div>
+
+                <Button 
+                  onClick={fetchInsights} 
+                  disabled={loading || !focusArea}
+                  className="w-full"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Searching...
+                    </>
+                  ) : (
+                    "Search for Insights"
+                  )}
+                </Button>
+
+                {error && (
+                  <div className="bg-red-50 border border-red-200 rounded-md p-3 text-sm text-red-800">
+                    <div className="font-medium flex items-center gap-1.5">
+                      <AlertCircle className="h-4 w-4" />
+                      Error
+                    </div>
+                    <div className="mt-1">
+                      {error.includes('timed out') ? (
+                        <div className="space-y-2">
+                          <p>{error}</p>
+                          <p className="text-xs">
+                            Tips to resolve this issue:
+                          </p>
+                          <ul className="text-xs list-disc pl-4 space-y-1">
+                            <li>Use more specific search terms</li>
+                            <li>Select a different focus area</li>
+                            <li>Try fewer industries</li>
+                            <li>Wait a few minutes and try again</li>
+                          </ul>
+                        </div>
+                      ) : (
+                        error
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <Button 
+                  variant="outline" 
+                  onClick={resetFilters}
+                  className="w-full"
+                  disabled={loading}
+                >
+                  Reset Filters
+                </Button>
+              </div>
+            </div>
+
+            <div className="md:col-span-3 space-y-4">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center h-64 border rounded-lg bg-white p-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Searching for Insights</h3>
+                  <p className="text-sm text-muted-foreground text-center mb-4">
+                    {loadingStage || "Processing your request..."}
+                  </p>
+                  <div className="w-full max-w-md">
+                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-primary animate-pulse" style={{ width: '100%' }}></div>
+                    </div>
+                  </div>
+                </div>
+              ) : insights.length > 0 ? (
+                <div className="space-y-6">
+                  {summary && (
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg">Key Insights Summary</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="whitespace-pre-line text-sm">
+                          {summary}
+                        </div>
+                        <div className="mt-4 flex justify-end">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={handleSaveSummary}
+                          >
+                            <BookmarkPlus className="h-4 w-4 mr-2" />
+                            Save Summary
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {insights.map((insight) => (
+                      <InsightCard
+                        key={insight.id}
+                        insight={insight}
+                        onClick={() => openModal(insight.id)}
+                        onSaveClick={() => handleSaveClick(insight)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-64 border rounded-lg bg-white p-8">
+                  <h3 className="text-lg font-medium mb-2">No Insights Found</h3>
+                  <p className="text-sm text-muted-foreground text-center max-w-md">
+                    {error ? 
+                      "Please try adjusting your search criteria or try again later." : 
+                      "Select a focus area and search to discover valuable insights for your change management initiatives."}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Usage limit indicator */}
           {!isPremiumUser() && (
             <div className="text-sm text-muted-foreground mb-2">
@@ -378,186 +579,6 @@ export default function InsightsPage() {
               )}
             </div>
           )}
-            
-          {/* Search Bar and Button */}
-          <div className="flex space-x-4">
-            <div className="flex-1">
-              <Input 
-                placeholder="Search insights..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="w-full bg-white border-input"
-                disabled={loading || isLimitReached}
-              />
-            </div>
-            <Button 
-              onClick={() => {
-                // Check if user can perform the search
-                const canSearch = incrementUsage();
-                if (canSearch) {
-                  fetchInsights();
-                }
-              }}
-              disabled={loading || !focusArea || isLimitReached}
-              className="w-32 bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Searching...
-                </>
-              ) : (
-                'Search'
-              )}
-            </Button>
-          </div>
-
-          {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Insight Focus Area <span className="text-red-500">*</span>
-              </label>
-              <Select
-                value={focusArea}
-                onValueChange={(value: InsightFocusArea) => setFocusArea(value)}
-                disabled={loading}
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Select Focus Area" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(INSIGHT_FOCUS_AREAS).map(([key, { label }]) => (
-                    <SelectItem key={key} value={key}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Industry Multi-select */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Industry
-              </label>
-              <MultiSelect
-                options={INDUSTRIES}
-                selected={selectedIndustries}
-                onChange={setSelectedIndustries}
-                placeholder="Select Industries"
-                disabled={loading}
-                className="h-9"
-              />
-            </div>
-          </div>
-
-          {/* Reset Filters Button */}
-          <div className="flex justify-end">
-            <Button 
-              variant="outline" 
-              onClick={resetFilters}
-              disabled={loading}
-              type="button"
-            >
-              Reset Filters
-            </Button>
-          </div>
-
-          {/* Single Loading Stage Indicator */}
-          {loading && loadingStage && (
-            <div className="mt-8 flex flex-col items-center justify-center space-y-4">
-              <div className="flex items-center space-x-3">
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <span className="text-sm font-medium text-primary">{loadingStage}</span>
-              </div>
-              <div className="text-xs text-muted-foreground text-center max-w-md">
-                Please wait whilst we analyse multiple sources to provide you with comprehensive insights.
-              </div>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {error && (
-            <div className="mt-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
-
-          {/* Results */}
-          <div className="mt-8">
-            {/* Summary Section */}
-            {summary && (
-              <div className="mb-8 bg-white p-6 rounded-lg border shadow-sm">
-                <h2 className="text-xl font-semibold mb-8">
-                  {summary.split('\n\n')[0].replace(/["']/g, '')}
-                </h2>
-                <div className="space-y-10">
-                  {summary.split('\n\n').slice(1).map((section, index) => {
-                    if (section.startsWith('References:')) {
-                      return null // We'll handle references separately
-                    }
-                    const [heading, ...points] = section.split('\n')
-                    return (
-                      <div key={index} className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-900">{heading.trim()}</h3>
-                        <ul className="space-y-3">
-                          {points.map((point, pointIndex) => (
-                            <li key={pointIndex} className="text-base text-gray-700 flex items-start leading-relaxed">
-                              <span className="mr-3 text-gray-400">•</span>
-                              <span>{point.replace(/^[•-\s]+/, '').trim()}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )
-                  })}
-                  
-                  {/* Notes Section */}
-                  <div className="mt-10 space-y-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Notes</h3>
-                    <Textarea
-                      placeholder="Add your notes about this summary here..."
-                      value={summaryNotes}
-                      onChange={(e) => setSummaryNotes(e.target.value)}
-                      className="min-h-[100px] w-full text-base"
-                    />
-                    <div className="flex justify-end">
-                      <Button
-                        onClick={handleSaveSummary}
-                        className="flex items-center gap-2"
-                      >
-                        <BookmarkPlus className="h-4 w-4" />
-                        Save to Project
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* References Section */}
-                  <div className="mt-10">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Source Links</h3>
-                    <div className="grid gap-3">
-                      {insights.map((insight, index) => (
-                        <a
-                          key={insight.id}
-                          href={insight.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                        >
-                          <span className="text-base font-medium text-gray-700 mr-4 flex-1">
-                            {index + 1}. {insight.title}
-                          </span>
-                          <ExternalLink className="h-4 w-4 text-gray-400" />
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* Add Save Dialog */}
           {showSaveDialog && insightToSave && (

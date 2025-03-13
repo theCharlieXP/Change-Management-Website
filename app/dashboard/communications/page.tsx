@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { format } from 'date-fns'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import DeepSeekUsageTracker from '@/app/components/DeepSeekUsageTracker'
 
 // Import the communicationTypes array
 import { communicationTypes } from '@/components/communications/communication-type-selection'
@@ -35,6 +36,16 @@ interface SavedCommunication {
   communication_type: string | null
   created_at: string
   updated_at: string
+}
+
+// Add this type definition for the DeepSeekTracker
+interface DeepSeekTracker {
+  incrementUsage: () => Promise<boolean>;
+  usageCount: number;
+  usageLimit: number;
+  remainingUses: number;
+  isLimitReached: boolean;
+  isNearLimit: boolean;
 }
 
 export default function CommunicationsPage() {
@@ -335,7 +346,32 @@ export default function CommunicationsPage() {
     setStep(prev => prev - 1)
   }
 
+  // Update the state definition with the new interface
+  const [deepSeekTracker, setDeepSeekTracker] = useState<DeepSeekTracker | null>(null);
+
   const handleGenerateCommunication = async () => {
+    // Check if we can use Deep Seek
+    if (deepSeekTracker) {
+      const canUseDeepSeek = await deepSeekTracker.incrementUsage();
+      if (!canUseDeepSeek) {
+        toast({
+          title: "Usage Limit Reached",
+          description: "You've reached your daily limit for Deep Seek operations.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // If approaching limit, show warning
+      if (deepSeekTracker.isNearLimit) {
+        toast({
+          title: "Approaching Usage Limit",
+          description: `You have ${deepSeekTracker.remainingUses} Deep Seek operations remaining today.`,
+          variant: "default",
+        });
+      }
+    }
+
     setLoading(true)
     
     // Move to step 4 immediately to show the loading screen
@@ -607,7 +643,29 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
   }
   
   // Function to edit a saved communication with Amigo
-  const handleEditWithAmigo = (communication: SavedCommunication) => {
+  const handleEditWithAmigo = async (communication: SavedCommunication) => {
+    // Check if we can use Deep Seek
+    if (deepSeekTracker) {
+      const canUseDeepSeek = await deepSeekTracker.incrementUsage();
+      if (!canUseDeepSeek) {
+        toast({
+          title: "Usage Limit Reached",
+          description: "You've reached your daily limit for Deep Seek operations.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // If approaching limit, show warning
+      if (deepSeekTracker.isNearLimit) {
+        toast({
+          title: "Approaching Usage Limit",
+          description: `You have ${deepSeekTracker.remainingUses} Deep Seek operations remaining today.`,
+          variant: "default",
+        });
+      }
+    }
+
     try {
       // Ensure we're on the client side
       if (typeof window === 'undefined') {
@@ -727,13 +785,14 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
                 </span>
               )}
             </p>
-            <InsightSelection 
+            <InsightSelection
               insights={projectInsights}
               selectedInsights={selectedInsights}
               onInsightSelect={handleInsightSelect}
-              onViewInsight={(insight) => handleViewInsight(insight)}
+              onViewInsight={handleViewInsight}
               loading={loading}
               highlightedTextMap={highlightedTextMap}
+              selectedProject={selectedProject}
             />
           </div>
         )
@@ -913,329 +972,340 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
   }
 
   return (
-    <div className="h-full">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Communications</h1>
-        <p className="text-muted-foreground">
-          Create and manage communications for your change management projects
-        </p>
-      </div>
-
-      <div className="flex flex-col md:flex-row h-[calc(100vh-12rem)] overflow-hidden rounded-lg border w-full">
-        {/* Left panel - white background */}
-        <div className="w-full md:w-1/4 bg-white p-4 md:p-6 border-b md:border-b-0 md:border-r overflow-y-auto flex-shrink-0">
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold mb-2">Select a Project</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Choose a project to create communications for
-            </p>
-            
-            {projectsLoading ? (
-              <div className="flex items-center justify-center h-20">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : projects.length > 0 ? (
-              <Select onValueChange={handleProjectChange} value={selectedProject || undefined}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a project" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <div className="text-center py-6">
-                <p className="text-muted-foreground mb-4">No projects available</p>
-                <CreateProjectDialog 
-                  onProjectCreated={(newProject) => {
-                    setProjects(prev => [newProject, ...prev])
-                    setSelectedProject(newProject.id)
-                  }}
-                />
-              </div>
-            )}
-          </div>
-
-          {selectedProject && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Communications</h3>
-              
-              <div className="space-y-2 mt-2">
-                {loadingSaved ? (
-                  <div className="flex items-center justify-center h-20">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : savedCommunications.length > 0 ? (
-                  <div className="space-y-1">
-                    {getPaginatedSavedCommunications().map((comm) => {
-                      // Find the communication type details
-                      const typeDetails = communicationTypes.find(
-                        type => type.id === comm.communication_type
-                      );
-                      
-                      return (
-                        <div 
-                          key={comm.id}
-                          className="w-full border rounded-md hover:border-primary hover:shadow-sm transition-all cursor-pointer overflow-hidden group relative"
-                          onClick={() => handleViewSavedCommunication(comm)}
-                        >
-                          <div className="py-2 px-3">
-                            <h3 className="font-medium text-xs line-clamp-1 group-hover:line-clamp-none group-hover:whitespace-normal" title={comm.title}>{comm.title}</h3>
-                            <div className="flex justify-between items-center text-[10px] text-muted-foreground mt-1">
-                              <span className="bg-muted px-1.5 py-0.5 rounded-sm">{typeDetails?.label || 'Unknown type'}</span>
-                              <span>{format(new Date(comm.updated_at), 'MMM d, yyyy')}</span>
-                            </div>
-                          </div>
-                          <div className="absolute inset-0 bg-background opacity-0 group-hover:opacity-95 transition-opacity z-10 pointer-events-none overflow-y-auto p-3">
-                            <p className="text-xs font-medium">{comm.title}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    
-                    {savedCommunications.length > COMMUNICATIONS_PER_PAGE * savedCommunicationsPage && (
-                      <Button 
-                        variant="ghost" 
-                        className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
-                        onClick={handleLoadMoreCommunications}
-                      >
-                        Show More ({savedCommunications.length - COMMUNICATIONS_PER_PAGE * savedCommunicationsPage} remaining)
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-6">
-                    <p className="text-muted-foreground mb-2">No saved communications</p>
-                    <p className="text-xs text-muted-foreground">
-                      Create a communication and finalise it to save it here.
-                    </p>
-                  </div>
-                )}
-              </div>
+    <DeepSeekUsageTracker>
+      {(tracker: DeepSeekTracker) => {
+        // Store the tracker in state for use in other functions
+        if (!deepSeekTracker) {
+          setDeepSeekTracker(tracker);
+        }
+        
+        return (
+          <div className="h-full">
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold tracking-tight">Communications</h1>
+              <p className="text-muted-foreground">
+                Create and manage communications for your change management projects
+              </p>
             </div>
-          )}
-        </div>
 
-        {/* Right panel - gray background */}
-        <div className="w-full md:w-3/4 bg-gray-50 p-4 md:p-6 overflow-y-auto">
-          {/* If we're viewing a saved communication */}
-          {selectedSavedCommunication ? (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold">{selectedSavedCommunication.title}</h2>
-                <div className="space-x-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setSelectedSavedCommunication(null)}
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back
-                  </Button>
-                  <Button 
-                    size="sm"
-                    onClick={() => handleEditWithAmigo(selectedSavedCommunication)}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    <Wand2 className="mr-2 h-4 w-4" />
-                    Edit with Amigo
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    className="text-red-500 hover:text-red-700 border-red-200 hover:bg-red-50"
-                    onClick={() => handleDeleteCommunication(selectedSavedCommunication)}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </Button>
-                </div>
-              </div>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Saved Communication</CardTitle>
-                  <CardDescription>
-                    Created on {format(new Date(selectedSavedCommunication.created_at), 'MMMM d, yyyy')}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="bg-white border rounded-md p-6 whitespace-pre-line">
-                    {selectedSavedCommunication.content}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            // Otherwise show the regular step content
-            renderStepContent()
-          )}
-        </div>
-      </div>
-
-      {/* 
-        The Dialog component from shadcn/ui already uses a portal by default,
-        which renders the dialog outside the DOM hierarchy of the parent component.
-        This prevents layout shifts when the dialog opens/closes.
-      */}
-      {viewingInsight && (
-        <Dialog 
-          open={!!viewingInsight}
-          onOpenChange={(open) => {
-            if (!open) {
-              setViewingInsight(null);
-              resetLayout();
-            }
-          }}
-        >
-          <DialogContent 
-            className="max-w-4xl overflow-hidden dialog-content" 
-            style={{ 
-              width: "min(calc(100vw - 40px), 56rem)",
-              maxWidth: "min(calc(100vw - 40px), 56rem)",
-              maxHeight: "90vh",
-              position: "fixed",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              zIndex: 100,
-              display: "flex",
-              flexDirection: "column"
-            }}
-          >
-            <div className="w-full overflow-hidden flex flex-col max-h-[90vh]">
-              <DialogHeader className="pr-6 flex-shrink-0">
-                <div className="flex items-start justify-between gap-4 flex-wrap w-full">
-                  <DialogTitle className="break-words mr-4 max-w-full">{viewingInsight.title}</DialogTitle>
-                  {viewingInsight.focus_area && (
-                    <Badge className={cn("shrink-0", viewingInsight.focus_area && INSIGHT_FOCUS_AREAS[viewingInsight.focus_area as InsightFocusArea]?.color)}>
-                      {viewingInsight.focus_area && INSIGHT_FOCUS_AREAS[viewingInsight.focus_area as InsightFocusArea]?.label}
-                    </Badge>
+            <div className="flex flex-col md:flex-row h-[calc(100vh-12rem)] overflow-hidden rounded-lg border w-full">
+              {/* Left panel - white background */}
+              <div className="w-full md:w-1/4 bg-white p-4 md:p-6 border-b md:border-b-0 md:border-r overflow-y-auto flex-shrink-0">
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold mb-2">Select a Project</h2>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Choose a project to create communications for
+                  </p>
+                  
+                  {projectsLoading ? (
+                    <div className="flex items-center justify-center h-20">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : projects.length > 0 ? (
+                    <Select onValueChange={handleProjectChange} value={selectedProject || undefined}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a project" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {projects.map((project) => (
+                          <SelectItem key={project.id} value={project.id}>
+                            {project.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="text-center py-6">
+                      <p className="text-muted-foreground mb-4">No projects available</p>
+                      <CreateProjectDialog 
+                        onProjectCreated={(newProject) => {
+                          setProjects(prev => [newProject, ...prev])
+                          setSelectedProject(newProject.id)
+                        }}
+                      />
+                    </div>
                   )}
                 </div>
-              </DialogHeader>
 
-              <div className="grid gap-4 mt-2 w-full overflow-y-auto pr-1 pb-4 flex-grow" style={{ overflowX: 'hidden' }}>
-                {/* Content */}
-                <div className="space-y-4 w-full">
-                  <h4 className="text-sm font-medium text-foreground border-b pb-1">Summary</h4>
-                  <div className="w-full">
-                    <HighlightText 
-                      text={viewingInsight.content}
-                      insightId={viewingInsight.id}
-                      onHighlightsChange={handleHighlightsChange}
-                      existingHighlights={highlightedTextMap[viewingInsight.id] || []}
-                      preserveFormatting={true}
-                    />
-                  </div>
-                </div>
-                
-                {/* Notes */}
-                {viewingInsight.notes && (
-                  <div className="space-y-2 w-full">
-                    <h4 className="text-sm font-medium text-foreground border-b pb-1">Notes</h4>
-                    <div className="w-full">
-                      <HighlightText 
-                        text={viewingInsight.notes}
-                        insightId={`${viewingInsight.id}-notes`}
-                        onHighlightsChange={(_, highlights) => {
-                          // When notes are highlighted, add them to the main insight's highlights
-                          const currentHighlights = highlightedTextMap[viewingInsight.id] || [];
-                          handleHighlightsChange(viewingInsight.id, [...currentHighlights, ...highlights]);
-                        }}
-                        existingHighlights={[]}
-                        preserveFormatting={true}
-                      />
+                {selectedProject && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Communications</h3>
+                    
+                    <div className="space-y-2 mt-2">
+                      {loadingSaved ? (
+                        <div className="flex items-center justify-center h-20">
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : savedCommunications.length > 0 ? (
+                        <div className="space-y-1">
+                          {getPaginatedSavedCommunications().map((comm) => {
+                            // Find the communication type details
+                            const typeDetails = communicationTypes.find(
+                              type => type.id === comm.communication_type
+                            );
+                            
+                            return (
+                              <div 
+                                key={comm.id}
+                                className="w-full border rounded-md hover:border-primary hover:shadow-sm transition-all cursor-pointer overflow-hidden group relative"
+                                onClick={() => handleViewSavedCommunication(comm)}
+                              >
+                                <div className="py-2 px-3">
+                                  <h3 className="font-medium text-xs line-clamp-1 group-hover:line-clamp-none group-hover:whitespace-normal" title={comm.title}>{comm.title}</h3>
+                                  <div className="flex justify-between items-center text-[10px] text-muted-foreground mt-1">
+                                    <span className="bg-muted px-1.5 py-0.5 rounded-sm">{typeDetails?.label || 'Unknown type'}</span>
+                                    <span>{format(new Date(comm.updated_at), 'MMM d, yyyy')}</span>
+                                  </div>
+                                </div>
+                                <div className="absolute inset-0 bg-background opacity-0 group-hover:opacity-95 transition-opacity z-10 pointer-events-none overflow-y-auto p-3">
+                                  <p className="text-xs font-medium">{comm.title}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          
+                          {savedCommunications.length > COMMUNICATIONS_PER_PAGE * savedCommunicationsPage && (
+                            <Button 
+                              variant="ghost" 
+                              className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+                              onClick={handleLoadMoreCommunications}
+                            >
+                              Show More ({savedCommunications.length - COMMUNICATIONS_PER_PAGE * savedCommunicationsPage} remaining)
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-center py-6">
+                          <p className="text-muted-foreground mb-2">No saved communications</p>
+                          <p className="text-xs text-muted-foreground">
+                            Create a communication and finalise it to save it here.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
-              
-              <DialogFooter className="mt-4 pt-3 border-t flex-shrink-0">
-                <div className="flex flex-wrap justify-between w-full gap-2">
-                  <div>
-                    {!selectedInsights.includes(viewingInsight.id) ? (
-                      <Button 
-                        onClick={() => {
-                          handleInsightSelect(viewingInsight.id);
-                          toast({
-                            title: "Insight added",
-                            description: "This insight has been added to your communication.",
-                          });
-                        }}
-                        size="sm"
-                      >
-                        Add to Communication
-                      </Button>
-                    ) : (
-                      <Button 
-                        variant="outline"
-                        onClick={() => {
-                          handleInsightSelect(viewingInsight.id);
-                          toast({
-                            title: "Insight removed",
-                            description: "This insight has been removed from your communication.",
-                          });
-                        }}
-                        size="sm"
-                      >
-                        Remove from Communication
-                      </Button>
-                    )}
-                  </div>
-                  
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      setViewingInsight(null);
-                      resetLayout();
-                    }}
-                  >
-                    Close
-                  </Button>
-                </div>
-              </DialogFooter>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
 
-      {/* Delete confirmation dialog */}
-      <AlertDialog open={!!communicationToDelete} onOpenChange={(open: boolean) => !open && setCommunicationToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Communication</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &quot;{communicationToDelete?.title}&quot;? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                e.preventDefault();
-                confirmDelete();
-              }}
-              disabled={isDeleting}
-              className="bg-red-500 hover:bg-red-600 text-white"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>Delete</>
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+              {/* Right panel - gray background */}
+              <div className="w-full md:w-3/4 bg-gray-50 p-4 md:p-6 overflow-y-auto">
+                {/* If we're viewing a saved communication */}
+                {selectedSavedCommunication ? (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h2 className="text-2xl font-bold">{selectedSavedCommunication.title}</h2>
+                      <div className="space-x-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setSelectedSavedCommunication(null)}
+                        >
+                          <ArrowLeft className="mr-2 h-4 w-4" />
+                          Back
+                        </Button>
+                        <Button 
+                          size="sm"
+                          onClick={() => handleEditWithAmigo(selectedSavedCommunication)}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                          <Wand2 className="mr-2 h-4 w-4" />
+                          Edit with Amigo
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          className="text-red-500 hover:text-red-700 border-red-200 hover:bg-red-50"
+                          onClick={() => handleDeleteCommunication(selectedSavedCommunication)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Saved Communication</CardTitle>
+                        <CardDescription>
+                          Created on {format(new Date(selectedSavedCommunication.created_at), 'MMMM d, yyyy')}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="bg-white border rounded-md p-6 whitespace-pre-line">
+                          {selectedSavedCommunication.content}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                ) : (
+                  // Otherwise show the regular step content
+                  renderStepContent()
+                )}
+              </div>
+            </div>
+
+            {/* 
+              The Dialog component from shadcn/ui already uses a portal by default,
+              which renders the dialog outside the DOM hierarchy of the parent component.
+              This prevents layout shifts when the dialog opens/closes.
+            */}
+            {viewingInsight && (
+              <Dialog 
+                open={!!viewingInsight}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setViewingInsight(null);
+                    resetLayout();
+                  }
+                }}
+              >
+                <DialogContent 
+                  className="max-w-4xl overflow-hidden dialog-content" 
+                  style={{ 
+                    width: "min(calc(100vw - 40px), 56rem)",
+                    maxWidth: "min(calc(100vw - 40px), 56rem)",
+                    maxHeight: "90vh",
+                    position: "fixed",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    zIndex: 100,
+                    display: "flex",
+                    flexDirection: "column"
+                  }}
+                >
+                  <div className="w-full overflow-hidden flex flex-col max-h-[90vh]">
+                    <DialogHeader className="pr-6 flex-shrink-0">
+                      <div className="flex items-start justify-between gap-4 flex-wrap w-full">
+                        <DialogTitle className="break-words mr-4 max-w-full">{viewingInsight.title}</DialogTitle>
+                        {viewingInsight.focus_area && (
+                          <Badge className={cn("shrink-0", viewingInsight.focus_area && INSIGHT_FOCUS_AREAS[viewingInsight.focus_area as InsightFocusArea]?.color)}>
+                            {viewingInsight.focus_area && INSIGHT_FOCUS_AREAS[viewingInsight.focus_area as InsightFocusArea]?.label}
+                          </Badge>
+                        )}
+                      </div>
+                    </DialogHeader>
+
+                    <div className="grid gap-4 mt-2 w-full overflow-y-auto pr-1 pb-4 flex-grow" style={{ overflowX: 'hidden' }}>
+                      {/* Content */}
+                      <div className="space-y-4 w-full">
+                        <h4 className="text-sm font-medium text-foreground border-b pb-1">Summary</h4>
+                        <div className="w-full">
+                          <HighlightText 
+                            text={viewingInsight.content}
+                            insightId={viewingInsight.id}
+                            onHighlightsChange={handleHighlightsChange}
+                            existingHighlights={highlightedTextMap[viewingInsight.id] || []}
+                            preserveFormatting={true}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Notes */}
+                      {viewingInsight.notes && (
+                        <div className="space-y-2 w-full">
+                          <h4 className="text-sm font-medium text-foreground border-b pb-1">Notes</h4>
+                          <div className="w-full">
+                            <HighlightText 
+                              text={viewingInsight.notes}
+                              insightId={`${viewingInsight.id}-notes`}
+                              onHighlightsChange={(_, highlights) => {
+                                // When notes are highlighted, add them to the main insight's highlights
+                                const currentHighlights = highlightedTextMap[viewingInsight.id] || [];
+                                handleHighlightsChange(viewingInsight.id, [...currentHighlights, ...highlights]);
+                              }}
+                              existingHighlights={[]}
+                              preserveFormatting={true}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <DialogFooter className="mt-4 pt-3 border-t flex-shrink-0">
+                      <div className="flex flex-wrap justify-between w-full gap-2">
+                        <div>
+                          {!selectedInsights.includes(viewingInsight.id) ? (
+                            <Button 
+                              onClick={() => {
+                                handleInsightSelect(viewingInsight.id);
+                                toast({
+                                  title: "Insight added",
+                                  description: "This insight has been added to your communication.",
+                                });
+                              }}
+                              size="sm"
+                            >
+                              Add to Communication
+                            </Button>
+                          ) : (
+                            <Button 
+                              variant="outline"
+                              onClick={() => {
+                                handleInsightSelect(viewingInsight.id);
+                                toast({
+                                  title: "Insight removed",
+                                  description: "This insight has been removed from your communication.",
+                                });
+                              }}
+                              size="sm"
+                            >
+                              Remove from Communication
+                            </Button>
+                          )}
+                        </div>
+                        
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setViewingInsight(null);
+                            resetLayout();
+                          }}
+                        >
+                          Close
+                        </Button>
+                      </div>
+                    </DialogFooter>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+
+            {/* Delete confirmation dialog */}
+            <AlertDialog open={!!communicationToDelete} onOpenChange={(open: boolean) => !open && setCommunicationToDelete(null)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Communication</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete &quot;{communicationToDelete?.title}&quot;? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                      e.preventDefault();
+                      confirmDelete();
+                    }}
+                    disabled={isDeleting}
+                    className="bg-red-500 hover:bg-red-600 text-white"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>Delete</>
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        );
+      }}
+    </DeepSeekUsageTracker>
   )
 }

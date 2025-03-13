@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { InsightFocusArea } from '@/types/insights'
+import { InsightFocusArea, Insight } from '@/types/insights'
 import { auth } from '@clerk/nextjs/server'
 
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY
@@ -141,14 +141,13 @@ async function searchTavily(
     query: searchQuery,
     search_depth: "advanced",
     include_answer: true,
-    max_results: 20, // Reduced from 40 to get more focused results
+    max_results: 10, // Reduced from 20 to get faster results and avoid timeouts
     search_type: "keyword", // Changed from semantic to keyword for broader matches
     include_domains: [
       // Prioritize most relevant sources but keep the list shorter
       'hbr.org', 'mckinsey.com', 'bcg.com',
       'deloitte.com', 'pwc.com', 'accenture.com',
-      'gartner.com', 'forrester.com',
-      'researchgate.net', 'academia.edu'
+      'gartner.com', 'forrester.com'
     ],
     exclude_domains: [
       'youtube.com', 'facebook.com', 'twitter.com',
@@ -160,6 +159,10 @@ async function searchTavily(
   try {
     console.log('Making Tavily API request with params:', JSON.stringify(searchParams, null, 2))
     
+    // Create an AbortController to handle timeouts
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+    
     const response = await fetch('https://api.tavily.com/search', {
       method: 'POST',
       headers: {
@@ -167,8 +170,11 @@ async function searchTavily(
         'Authorization': `Bearer ${TAVILY_API_KEY}`
       },
       body: JSON.stringify(searchParams),
-      cache: 'no-store'
-    })
+      cache: 'no-store',
+      signal: controller.signal
+    }).finally(() => {
+      clearTimeout(timeoutId);
+    });
 
     console.log('Tavily API response status:', response.status)
 
@@ -204,7 +210,7 @@ async function searchTavily(
         // Only filter out empty content
         return result.content && result.content.length > 0
       })
-      .slice(0, 10) // Take top 10 results from Tavily's ranking
+      .slice(0, 8) // Take top 8 results from Tavily's ranking to reduce processing time
 
     console.log('Search results processed:', {
       originalCount: data.results.length,
@@ -213,8 +219,12 @@ async function searchTavily(
     })
 
     return scoredResults
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error in Tavily search:', error)
+    // Check if it's an AbortError (timeout)
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Search request timed out. Please try again with a more specific query.')
+    }
     throw error
   }
 }
@@ -447,188 +457,159 @@ Your analysis should:
 }
 
 export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const query = searchParams.get('query') || ''
+  const focusArea = searchParams.get('focusArea') as InsightFocusArea
+  const industriesParam = searchParams.get('industries')
+  const industries = industriesParam ? industriesParam.split(',') : []
+  
+  // Validate required parameters
+  if (!focusArea || !Object.keys(INSIGHT_FOCUS_AREAS).includes(focusArea)) {
+    return NextResponse.json(
+      { error: 'Invalid or missing focus area' },
+      { status: 400 }
+    )
+  }
+
+  console.log('Search request received:', { query, focusArea, industries })
+  
   try {
-    console.log('Starting search request...')
-    const authData = await auth();
-const { userId  } = authData
-    
-    // Check authentication
-    if (!userId) {
-      console.log('No user ID found')
-      return new NextResponse(
-        JSON.stringify({ 
-          error: 'Unauthorized',
-          details: 'Authentication required'
-        }),
-        { status: 401 }
-      )
-    }
+    // Set a timeout for the entire request processing
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Request processing timed out'));
+      }, 28000); // 28 seconds timeout
+    });
 
-    // Validate API keys
-    const missingKeys = []
-    if (!TAVILY_API_KEY) missingKeys.push('TAVILY_API_KEY')
-    if (!process.env.DEEPSEEK_API_KEY) missingKeys.push('DEEPSEEK_API_KEY')
-    
-    if (missingKeys.length > 0) {
-      console.error('Missing API keys:', missingKeys)
-      return new NextResponse(
-        JSON.stringify({ 
-          error: 'Configuration Error',
-          details: `Missing required API keys: ${missingKeys.join(', ')}`
-        }),
-        { status: 503 }
-      )
-    }
-
-    // Parse and validate search parameters
-    const { searchParams } = new URL(request.url)
-    const query = searchParams.get('query') || ''
-    const focusArea = searchParams.get('focusArea') as InsightFocusArea
-    const industries = searchParams.get('industries')?.split(',').filter(Boolean)
-
-    console.log('Search parameters received:', {
-      query,
-      focusArea,
-      industries,
-      url: request.url
-    })
-
-    if (!focusArea || !INSIGHT_FOCUS_AREAS[focusArea]) {
-      console.log('Invalid focus area:', { 
-        provided: focusArea, 
-        validAreas: Object.keys(INSIGHT_FOCUS_AREAS)
-      })
-      return new NextResponse(
-        JSON.stringify({ 
-          error: 'Invalid Parameters',
-          details: 'Invalid focus area',
-          validAreas: Object.keys(INSIGHT_FOCUS_AREAS)
-        }),
-        { status: 400 }
-      )
-    }
-
-    // Perform search
-    console.log('Starting Tavily search...')
-    let searchResults
-    try {
-      searchResults = await searchTavily(query, focusArea, industries)
-    } catch (searchError) {
-      console.error('Tavily search failed:', searchError)
-      return new NextResponse(
-        JSON.stringify({ 
-          error: 'Search Failed',
-          details: searchError instanceof Error ? searchError.message : 'Search service error',
-          query,
-          focusArea
-        }),
-        { status: 500 }
-      )
-    }
-
-    console.log('Tavily search completed:', {
-      resultCount: searchResults.length,
-      hasResults: searchResults.length > 0
-    })
-
-    if (!searchResults.length) {
-      console.log('No results found for query:', {
-        query,
-        focusArea,
-        industries
-      })
-      return new NextResponse(
-        JSON.stringify({ 
-          results: [],
-          message: 'No results found. Try broadening your search or using different terms.',
-          searchParams: {
-            query,
-            focusArea,
-            industries
+    // Create the main processing promise
+    const processingPromise = (async () => {
+      // Search for relevant content
+      let searchResults: SearchResult[] = []
+      
+      try {
+        searchResults = await searchTavily(query, focusArea, industries)
+      } catch (error: unknown) {
+        console.error('Error in search:', error)
+        // If Tavily search fails, return a specific error
+        if (error instanceof Error) {
+          if (error.message.includes('timed out')) {
+            return NextResponse.json(
+              { 
+                error: 'Search timed out. Please try a more specific query or different focus area.',
+                details: error.message
+              },
+              { status: 504 }
+            )
           }
-        }),
-        { status: 200 }
-      )
-    }
-
-    // Process results
-    console.log('Processing search results...')
-    const processedResults = await Promise.all(
-      searchResults.map(async (result, index) => {
-        try {
-          console.log(`Processing result ${index + 1}/${searchResults.length}`)
-          const content = result.content || result.description || ''
-          if (!content) {
-            console.log(`Skipping result ${index + 1} - no content`)
-            return null
-          }
-
-          console.log(`Generating title for result ${index + 1}`)
-          const title = await generateTitle(content, result.title)
           
-          return {
-            id: `result-${index}`,
-            title,
-            content,
-            url: result.url,
-            focus_area: focusArea,
-            source: result.source,
-            published_date: result.published_date
-          }
-        } catch (error) {
-          console.error(`Error processing result ${index + 1}:`, error)
-          return null
+          return NextResponse.json(
+            { 
+              error: 'Search service error',
+              details: error.message
+            },
+            { status: 500 }
+          )
         }
+      }
+      
+      if (searchResults.length === 0) {
+        return NextResponse.json(
+          { 
+            results: [],
+            summary: null,
+            message: 'No results found. Try adjusting your search criteria.'
+          },
+          { status: 200 }
+        )
+      }
+      
+      // Process the results to create insights
+      const insights: Insight[] = []
+      
+      for (const result of searchResults) {
+        try {
+          // Generate a better title if possible
+          let title = result.title
+          try {
+            title = await generateTitle(result.content, result.title)
+          } catch (error) {
+            console.error('Error generating title:', error)
+            // Fall back to original title
+          }
+          
+          // Create the insight
+          const insight: Insight = {
+            id: crypto.randomUUID(),
+            title: title,
+            content: result.content,
+            focus_area: focusArea,
+            source: result.source || new URL(result.url).hostname.replace('www.', ''),
+            url: result.url,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            summary: '',
+            tags: industries,
+            readTime: '3 min',
+            category: INSIGHT_FOCUS_AREAS[focusArea].label
+          }
+          
+          insights.push(insight)
+        } catch (error) {
+          console.error('Error processing search result:', error)
+          // Continue with other results
+        }
+      }
+      
+      // Generate a summary if we have insights
+      let summary = null
+      if (insights.length > 0) {
+        try {
+          // Combine all content for summarization
+          const combinedContent = insights
+            .map(insight => insight.content)
+            .join('\n\n')
+          
+          // Generate summary
+          summary = await summarizeWithDeepseek(
+            combinedContent,
+            focusArea,
+            query,
+            false,
+            { query, focusArea, industries }
+          )
+        } catch (error) {
+          console.error('Error generating summary:', error)
+          // Continue without summary
+        }
+      }
+      
+      return NextResponse.json({
+        results: insights,
+        summary
       })
-    ).then(results => results.filter((r): r is NonNullable<typeof r> => r !== null))
+    })();
 
-    // Generate immediate summary from all results
-    console.log('Generating summary from all results...')
-    const combinedContent = processedResults
-      .map(result => `Title: ${result.title}\n\nContent: ${result.content}`)
-      .join('\n\n---\n\n')
+    // Race between the processing and the timeout
+    return await Promise.race([processingPromise, timeoutPromise]);
+  } catch (error: unknown) {
+    console.error('Error processing search request:', error)
     
-    // Determine if we should use the creative mode based on result count
-    const useCreativeMode = processedResults.length <= 3 // Threshold for limited results
-    
-    // Prepare search context
-    const searchContext = {
-      query,
-      focusArea,
-      industries: industries || [],
+    // Handle timeout specifically
+    if (error instanceof Error && error.message.includes('timed out')) {
+      return NextResponse.json(
+        { 
+          error: 'Request timed out. Please try a more specific query or different focus area.',
+          details: error.message
+        },
+        { status: 504 }
+      )
     }
     
-    const summary = await summarizeWithDeepseek(
-      combinedContent, 
-      focusArea, 
-      query,
-      useCreativeMode,
-      searchContext // Pass the search context
-    )
-
-    // Add References section to the summary
-    const references = processedResults
-      .map((result, index) => `${index + 1}. ${result.title} - ${result.url}`)
-      .join('\n')
-    
-    const summaryWithReferences = `${summary}\n\nReferences:\n${references}`
-
-    return new NextResponse(
-      JSON.stringify({
-        results: processedResults,
-        summary: summaryWithReferences
-      }),
-      { status: 200 }
-    )
-
-  } catch (error) {
-    console.error('Search error:', error)
-    return new NextResponse(
-      JSON.stringify({ 
-        error: 'Search Error',
-        details: error instanceof Error ? error.message : 'An unexpected error occurred',
-        stack: error instanceof Error ? error.stack : undefined
-      }),
+    return NextResponse.json(
+      { 
+        error: 'An error occurred while processing your request',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }

@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { Handshake } from "lucide-react"
 
 const Sidebar = dynamic(() => import('@/components/dashboard/sidebar'), {
   ssr: false,
@@ -30,8 +31,19 @@ interface DashboardShellProps {
 export function DashboardShell({ children }: DashboardShellProps) {
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Mobile Navigation */}
-      <div className="md:hidden">
+      {/* Mobile Navigation Header */}
+      <div className="md:hidden border-b">
+        <div className="flex items-center justify-between px-4 h-14">
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Handshake className="w-5 h-5 text-emerald-600" />
+            </div>
+            <span className="text-lg font-semibold text-emerald-600">
+              Change Amigo
+            </span>
+          </div>
+          <UserNav />
+        </div>
         <MobileNav />
       </div>
       
@@ -41,10 +53,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
       </div>
       
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b bg-white px-4 md:px-6 flex items-center justify-between">
-          <div className="md:hidden">
-            {/* Empty div to maintain spacing */}
-          </div>
+        {/* Desktop Header */}
+        <header className="hidden md:flex h-16 border-b bg-white px-4 md:px-6 items-center justify-end">
           <UserNav />
         </header>
         <main className="flex-1 p-4 md:p-6 bg-gray-50 overflow-x-hidden">

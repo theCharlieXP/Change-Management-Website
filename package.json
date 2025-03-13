@@ -10,7 +10,10 @@
     "security-audit": "node scripts/security-audit.js",
     "backup-db": "node scripts/backup-database.js",
     "check-vulnerabilities": "npm audit",
-    "pre-deploy": "npm run lint && npm run security-audit && npm run build"
+    "pre-deploy": "npm run lint && npm run security-audit && npm run build",
+    "setup-usage-tracking": "chmod +x scripts/setup-usage-tracking.sh && scripts/setup-usage-tracking.sh || node scripts/run-usage-migrations.js",
+    "setup-usage-tracking:node": "node scripts/run-usage-migrations.js",
+    "setup-usage-tracking:manual": "echo 'Please run the SQL in prisma/migrations/all_usage_migrations.sql manually in your Supabase dashboard'"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.22.11",

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, Maximize2, Loader2, Highlighter, MessageSquare } from 'lucide-react'
+import { Search, Maximize2, Loader2, Highlighter, MessageSquare, AlertCircle } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,6 +15,7 @@ interface InsightSelectionProps {
   onViewInsight: (insight: InsightSummary) => void
   loading?: boolean
   highlightedTextMap?: Record<string, string[]>
+  selectedProject: string | null
 }
 
 export function InsightSelection({ 
@@ -23,7 +24,8 @@ export function InsightSelection({
   onInsightSelect,
   onViewInsight,
   loading = false,
-  highlightedTextMap = {}
+  highlightedTextMap = {},
+  selectedProject
 }: InsightSelectionProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [focusAreaFilter, setFocusAreaFilter] = useState<string | null>(null)
@@ -49,13 +51,27 @@ export function InsightSelection({
     )
   }
 
-  if (!insights || insights.length === 0) {
+  // No project selected yet
+  if (!selectedProject) {
     return (
       <div className="text-center py-12 border rounded-lg bg-gray-50">
         <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground opacity-50 mb-4" />
         <h3 className="text-lg font-medium mb-2">Select a project to get started</h3>
         <p className="text-muted-foreground max-w-md mx-auto">
           Choose a project from the left panel to view available content for your communication.
+        </p>
+      </div>
+    )
+  }
+
+  // Project selected but no insights available
+  if (selectedProject && (!insights || insights.length === 0)) {
+    return (
+      <div className="text-center py-12 border rounded-lg bg-gray-50">
+        <AlertCircle className="mx-auto h-12 w-12 text-amber-500 opacity-80 mb-4" />
+        <h3 className="text-lg font-medium mb-2">No insights saved for this project</h3>
+        <p className="text-muted-foreground max-w-md mx-auto">
+          This project doesn't have any saved insights yet. You can create insights in the Insights section.
         </p>
       </div>
     )
