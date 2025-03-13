@@ -253,9 +253,9 @@ export default function InsightsPage() {
             variant: "destructive"
           });
         }
-      } catch (fetchError) {
+      } catch (fetchError: unknown) {
         // Handle AbortError (timeout) specifically
-        if (fetchError.name === 'AbortError') {
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
           throw new Error('The search request timed out. Please try a more specific query or different focus area.');
         }
         throw fetchError;
@@ -440,10 +440,7 @@ export default function InsightsPage() {
                     Industries (Optional)
                   </label>
                   <MultiSelect
-                    options={INDUSTRIES.map(industry => ({
-                      label: industry,
-                      value: industry
-                    }))}
+                    options={INDUSTRIES}
                     selected={selectedIndustries}
                     onChange={setSelectedIndustries}
                     placeholder="Select industries..."
@@ -546,9 +543,12 @@ export default function InsightsPage() {
                     {insights.map((insight) => (
                       <InsightCard
                         key={insight.id}
+                        title={insight.title}
+                        description={insight.summary || ''}
+                        summary={insight.summary || ''}
+                        url={insight.url || ''}
+                        focusArea={insight.focus_area}
                         insight={insight}
-                        onClick={() => openModal(insight.id)}
-                        onSaveClick={() => handleSaveClick(insight)}
                       />
                     ))}
                   </div>

@@ -13,7 +13,7 @@ interface InsightCardProps {
   title: string
   description: string
   summary: string
-  url: string
+  url?: string
   focusArea: InsightFocusArea
   insight: any // Using any temporarily, should be properly typed
 }
@@ -22,7 +22,7 @@ export function InsightCard({
   title, 
   description, 
   summary, 
-  url, 
+  url = '', 
   focusArea,
   insight
 }: InsightCardProps) {
