@@ -194,7 +194,7 @@ export default function InsightsPage() {
       
       // Create an AbortController to handle client-side timeouts
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // Increased to 60s timeout to handle more results
+      const timeoutId = setTimeout(() => controller.abort(), 70000); // Increased to 70s timeout to match server-side changes
       
       try {
         const response = await fetch(`/api/insights/search?${params.toString()}`, {
@@ -476,10 +476,10 @@ export default function InsightsPage() {
                             Tips to resolve this issue:
                           </p>
                           <ul className="text-xs list-disc pl-4 space-y-1">
-                            <li>Make your search query more specific (e.g., "employee resistance strategies" instead of just "resistance")</li>
+                            <li>Make your search query more specific (e.g., &ldquo;employee resistance strategies&rdquo; instead of just &ldquo;resistance&rdquo;)</li>
                             <li>Select only 1 industry instead of multiple</li>
                             <li>Try a different focus area that might have more targeted results</li>
-                            <li>If you didn't enter a search query, add one to help focus the search</li>
+                            <li>If you didn&apos;t enter a search query, add one to help focus the search</li>
                             <li>Wait a few minutes and try again - the search service might be experiencing high load</li>
                           </ul>
                         </div>
