@@ -40,7 +40,7 @@ export default clerkMiddleware(async (auth, req) => {
     // Add Content Security Policy
     response.headers.set(
       'Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com; connect-src 'self' https://api.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://*.supabase.co; img-src 'self' data: https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com;"
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://gc.zgo.at https://*.goatcounter.com; connect-src 'self' https://api.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://*.supabase.co https://*.goatcounter.com; img-src 'self' data: https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://*.goatcounter.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com; worker-src 'self' blob:; child-src 'self' blob:;"
     );
     
     return response;
@@ -70,7 +70,7 @@ export default clerkMiddleware(async (auth, req) => {
   // Add Content Security Policy
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com; connect-src 'self' https://api.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://*.supabase.co; img-src 'self' data: https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com;"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://gc.zgo.at https://*.goatcounter.com; connect-src 'self' https://api.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://*.supabase.co https://*.goatcounter.com; img-src 'self' data: https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://*.goatcounter.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com; worker-src 'self' blob:; child-src 'self' blob:;"
   );
   
   return response;

@@ -22,10 +22,6 @@ const nextConfig = {
         source: '/(.*)',
         headers: [
           {
-            key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://gc.zgo.at https://*.goatcounter.com; connect-src 'self' https://*.goatcounter.com; img-src 'self' data: https://*.goatcounter.com; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self' blob:"
-          },
-          {
             key: 'X-DNS-Prefetch-Control',
             value: 'on',
           },
