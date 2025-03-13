@@ -30,7 +30,7 @@ export default function RootLayout({
             id="goatcounter-script"
             strategy="afterInteractive"
             src="https://gc.zgo.at/count.js"
-            data-goatcounter="https://[YOUR_CODE].goatcounter.com/count"
+            data-goatcounter="https://changeamigo.goatcounter.com/count"
           />
         </head>
         <body className={`${inter.className} min-h-screen bg-background antialiased`} suppressHydrationWarning>
