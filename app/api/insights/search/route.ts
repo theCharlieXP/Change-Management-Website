@@ -148,7 +148,7 @@ async function searchTavily(
     query: searchQuery,
     search_depth: "basic",
     include_answer: true,
-    max_results: 5, // Reduced from 10 to 5 for faster results
+    max_results: 10, // Increased from 5 to 10 for more comprehensive results
     search_type: "keyword",
     // Include only the most relevant domains
     include_domains: [
@@ -295,26 +295,50 @@ Focus Area: ${focusAreaInfo.label}
 ${searchContext.industries.length ? `Industries: ${searchContext.industries.join(', ')}` : ''}`
 
   try {
-    // Skip title generation to save time and reduce API calls
+    // Generate a clean title that summarizes the insight search
     const generatedTitle = `${focusAreaInfo.label} Insights: ${searchQuery}`
 
-    // Simplified system prompt for faster processing
-    const systemPrompt = `You are an expert in change management focusing on ${focusAreaInfo.label}. 
-Create a concise analysis with these sections:
+    // Updated system prompt for UK English and proper formatting with the exact requested sections
+    const systemPrompt = `You are an expert in change management focusing on ${focusAreaInfo.label}.
+Create a concise analysis using UK English spelling and grammar with these EXACT sections in this order:
 
+Title (a clear, descriptive title that captures the main theme or key finding)
 Context
+Summary of Results
 Key Findings
-Implications
+Patterns
+Follow-up Questions (to help with learning more)
+References (with links)
+
+For the Title:
+- Generate a concise, descriptive title that captures the main theme
+- Do not include "Title:" prefix
+- Make it specific to the search results
 
 For the Context section:
 - Include the search query and focus area
-- Keep it brief
+- Keep it brief and clean
+- Use UK English spelling (organisation, not organization; programme, not program; etc.)
 
-For Key Findings and Implications:
+For Summary of Results, Key Findings, and Patterns sections:
 - Use bullet points (•)
 - Be concise and specific
 - Focus only on ${focusAreaInfo.label}
-- Provide actionable insights`
+- Provide actionable insights
+- Use UK English spelling
+
+For Follow-up Questions:
+- Suggest 3-5 specific questions that would help deepen understanding
+- Make questions specific and directly related to the insights
+- Format as bullet points (•)
+
+For References:
+- Include the source name and URL for each reference
+- Format as bullet points (•)
+- Include at least the top 5 most relevant sources
+- Format as: • [Source Name] - URL
+
+IMPORTANT: Format each section with the heading on its own line, followed by bullet points. Do not add any additional sections or change the order.`
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -334,8 +358,8 @@ For Key Findings and Implications:
             content: `${contextInfo}\n\n${content}`
           }
         ],
-        temperature: 0.3, // Lower temperature for faster, more deterministic results
-        max_tokens: 800 // Reduced from 1000 to 800 for faster processing
+        temperature: 0.3, // Lower temperature for faster, deterministic results
+        max_tokens: 1000 // Increased from 800 to 1000 for more comprehensive summaries
       })
     })
 
@@ -349,8 +373,8 @@ For Key Findings and Implications:
       .replace(/\n{3,}/g, '\n\n')  // Replace multiple newlines with double newlines
       .trim()
 
-    // Combine title and summary
-    return `${generatedTitle}\n\n${cleanedSummary}`
+    // Return the summary without adding a title prefix - the title is already the first line
+    return cleanedSummary
   } catch (error) {
     console.error('Summarization error:', error)
     return content
@@ -425,7 +449,7 @@ export async function GET(request: Request): Promise<Response> {
       }
       
       // Process the results to create insights - process more results since the user is providing specific queries
-      const resultsToProcess = searchResults.slice(0, 3) // Reduced from 5 to 3 for faster processing
+      const resultsToProcess = searchResults.slice(0, 10) // Increased from 3 to 10 to process all results
       
       // Process insights in parallel for better performance
       // Split processing into smaller batches to avoid overwhelming the system
@@ -542,18 +566,18 @@ export async function GET(request: Request): Promise<Response> {
       let summary = null
       if (validInsights.length > 0) {
         try {
-          // For simplicity, just use the first 2 insights for summarization
-          const insightsForSummary = validInsights.slice(0, 2)
+          // For summarization, use more insights now that we're processing more results
+          const insightsForSummary = validInsights.slice(0, 5) // Increased from 2 to 5
           
-          // Combine content from selected insights for faster summarization
+          // Combine content from selected insights
           const combinedContent = insightsForSummary
             .map(insight => {
               // Use the same string conversion approach
               const contentStr = typeof insight.content === 'string' 
                 ? insight.content 
                 : JSON.stringify(insight.content);
-              // Take first 300 chars to keep it manageable - reduced from 500 for faster processing
-              return contentStr.substring(0, 300);
+              // Take first 500 chars to include more content
+              return contentStr.substring(0, 500);
             })
             .join('\n\n')
           
@@ -562,24 +586,82 @@ export async function GET(request: Request): Promise<Response> {
             combinedContent,
             focusArea,
             query,
-            false, // Use standard mode for faster processing
+            false, // Use standard mode
             { query, focusArea, industries }
           )
           
           // Set a timeout for summary generation
           const summaryTimeout = new Promise<string>((resolve) => {
             setTimeout(() => {
-              // If summarization takes too long, return a basic summary
-              resolve(`${INSIGHT_FOCUS_AREAS[focusArea].label} Insights\n\nContext\nSearch Query: ${query || 'None'}\nFocus Area: ${INSIGHT_FOCUS_AREAS[focusArea].label}\n${industries.length ? `Industries: ${industries.join(', ')}` : ''}\n\nKey Findings\n• Found ${validInsights.length} relevant sources related to ${INSIGHT_FOCUS_AREAS[focusArea].label}.\n• Sources include ${validInsights.slice(0, 2).map(i => i.source).join(', ')}.\n• Review the individual insights for detailed information.`)
-            }, 20000); // 20 second timeout for summarization
+              // If summarization takes too long, return a basic summary with the requested format
+              const fallbackSummary = `${INSIGHT_FOCUS_AREAS[focusArea].label} Insights: ${query || 'General Search'}
+
+Context
+• Search Query: ${query || 'None'}
+• Focus Area: ${INSIGHT_FOCUS_AREAS[focusArea].label}
+${industries.length ? `• Industries: ${industries.join(', ')}` : ''}
+
+Summary of Results
+• Found ${validInsights.length} relevant sources related to ${INSIGHT_FOCUS_AREAS[focusArea].label}.
+• Sources include ${validInsights.slice(0, 3).map(i => i.source).join(', ')}.
+• Review the individual insights for detailed information.
+
+Key Findings
+• The search returned multiple perspectives on ${INSIGHT_FOCUS_AREAS[focusArea].label}.
+• Each source provides unique insights into this focus area.
+• Consider reviewing each source for more detailed information.
+
+Patterns
+• Multiple sources address aspects of ${INSIGHT_FOCUS_AREAS[focusArea].label}.
+• Common themes may emerge upon closer examination of each source.
+• Industry-specific patterns may be present in the individual insights.
+
+Follow-up Questions (to help with learning more)
+• What specific strategies have been most effective for ${INSIGHT_FOCUS_AREAS[focusArea].label}?
+• How do different industries approach ${INSIGHT_FOCUS_AREAS[focusArea].label} differently?
+• What metrics are commonly used to measure success in ${INSIGHT_FOCUS_AREAS[focusArea].label}?
+
+References (with links)
+${validInsights.slice(0, 5).map(i => `• ${i.source} - ${i.url}`).join('\n')}`;
+              resolve(fallbackSummary);
+            }, 30000); // Increased from 20000 to 30000 ms for processing more sources
           })
           
           // Race between normal summarization and timeout
           summary = await Promise.race([summaryPromise, summaryTimeout])
         } catch (error) {
           console.error('Error generating summary:', error)
-          // Provide a basic summary as fallback
-          summary = `${INSIGHT_FOCUS_AREAS[focusArea].label} Insights\n\nContext\nSearch Query: ${query || 'None'}\nFocus Area: ${INSIGHT_FOCUS_AREAS[focusArea].label}\n${industries.length ? `Industries: ${industries.join(', ')}` : ''}\n\nKey Findings\n• Found ${validInsights.length} relevant sources related to ${INSIGHT_FOCUS_AREAS[focusArea].label}.\n• Sources include ${validInsights.slice(0, 2).map(i => i.source).join(', ')}.\n• Review the individual insights for detailed information.`
+          // Provide a basic summary as fallback with the requested format
+          const errorFallbackSummary = `${INSIGHT_FOCUS_AREAS[focusArea].label} Insights: ${query || 'General Search'}
+
+Context
+• Search Query: ${query || 'None'}
+• Focus Area: ${INSIGHT_FOCUS_AREAS[focusArea].label}
+${industries.length ? `• Industries: ${industries.join(', ')}` : ''}
+
+Summary of Results
+• Found ${validInsights.length} relevant sources related to ${INSIGHT_FOCUS_AREAS[focusArea].label}.
+• Sources include ${validInsights.slice(0, 3).map(i => i.source).join(', ')}.
+• Review the individual insights for detailed information.
+
+Key Findings
+• The search returned multiple perspectives on ${INSIGHT_FOCUS_AREAS[focusArea].label}.
+• Each source provides unique insights into this focus area.
+• Consider reviewing each source for more detailed information.
+
+Patterns
+• Multiple sources address aspects of ${INSIGHT_FOCUS_AREAS[focusArea].label}.
+• Common themes may emerge upon closer examination of each source.
+• Industry-specific patterns may be present in the individual insights.
+
+Follow-up Questions (to help with learning more)
+• What specific strategies have been most effective for ${INSIGHT_FOCUS_AREAS[focusArea].label}?
+• How do different industries approach ${INSIGHT_FOCUS_AREAS[focusArea].label} differently?
+• What metrics are commonly used to measure success in ${INSIGHT_FOCUS_AREAS[focusArea].label}?
+
+References (with links)
+${validInsights.slice(0, 5).map(i => `• ${i.source} - ${i.url}`).join('\n')}`;
+          summary = errorFallbackSummary;
         }
       }
       

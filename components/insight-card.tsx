@@ -50,11 +50,17 @@ export function InsightCard({
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm text-muted-foreground">
-            {summary.split('\n').map((point, index) => (
-              <p key={index} className="flex items-start gap-2">
-                {point}
-              </p>
-            ))}
+            {summary.split('\n').map((point, index) => {
+              const cleanPoint = point.replace(/^[-•]\s*/, '').trim()
+              if (!cleanPoint) return null
+              
+              return (
+                <p key={index} className="flex items-start gap-2">
+                  <span className="text-muted-foreground">•</span>
+                  <span className="flex-1">{cleanPoint}</span>
+                </p>
+              )
+            })}
           </div>
         </CardContent>
         <CardFooter className="flex justify-between">

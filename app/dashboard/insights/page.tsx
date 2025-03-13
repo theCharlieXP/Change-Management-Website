@@ -355,15 +355,16 @@ export default function InsightsPage() {
   const handleSaveSummary = () => {
     if (!summary || !focusArea) return
 
-    // Get the generated title from the first line of the summary
-    const generatedTitle = summary.split('\n\n')[0].trim()
+    // Get the title from the first line of the summary
+    const summaryLines = summary.split('\n')
+    const generatedTitle = summaryLines[0].trim()
     
-    // Create the summary insight with the proper title
+    // Create the summary insight with the proper title and content
     const summaryInsight = {
       id: 'summary',
-      title: generatedTitle, // Ensure we use the generated title
-      summary: summary.split('\n\n').slice(1).join('\n\n'),
-      content: summary.split('\n\n').slice(1),
+      title: generatedTitle,
+      summary: summary.substring(generatedTitle.length).trim(),
+      content: summary.substring(generatedTitle.length).trim().split('\n\n'),
       tags: [],
       readTime: '5 min',
       focus_area: focusArea,
@@ -540,8 +541,60 @@ export default function InsightsPage() {
                         <CardTitle className="text-lg">Key Insights Summary</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="whitespace-pre-line text-sm">
-                          {summary}
+                        <div className="space-y-4 text-sm">
+                          {summary.split('\n\n').map((section, sectionIndex) => {
+                            // Check if this is a section header
+                            const lines = section.split('\n');
+                            const sectionHeader = lines[0];
+                            const sectionContent = lines.slice(1);
+                            
+                            // Handle the title section (first section)
+                            if (sectionIndex === 0) {
+                              return (
+                                <h3 key={`section-${sectionIndex}`} className="font-medium text-base">
+                                  {sectionHeader}
+                                </h3>
+                              );
+                            }
+                            
+                            return (
+                              <div key={`section-${sectionIndex}`} className="space-y-2">
+                                <h4 className="font-medium">{sectionHeader}</h4>
+                                <div className="space-y-2">
+                                  {sectionContent.map((point, pointIndex) => {
+                                    const cleanPoint = point.replace(/^[-•]\s*/, '').trim();
+                                    if (!cleanPoint) return null;
+                                    
+                                    // Special handling for References section to make links clickable
+                                    if (sectionHeader === "References (with links)" || sectionHeader === "References") {
+                                      // Extract URL from the reference line if it exists
+                                      const urlMatch = cleanPoint.match(/https?:\/\/[^\s]+/);
+                                      if (urlMatch) {
+                                        const url = urlMatch[0];
+                                        const sourceName = cleanPoint.replace(url, '').replace(/[-\s]*$/, '');
+                                        
+                                        return (
+                                          <div key={`point-${pointIndex}`} className="flex items-start gap-2">
+                                            <span className="text-muted-foreground">•</span>
+                                            <span className="flex-1">
+                                              {sourceName} <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{url}</a>
+                                            </span>
+                                          </div>
+                                        );
+                                      }
+                                    }
+                                    
+                                    return (
+                                      <div key={`point-${pointIndex}`} className="flex items-start gap-2">
+                                        <span className="text-muted-foreground">•</span>
+                                        <span className="flex-1">{cleanPoint}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                         <div className="mt-4 flex justify-end">
                           <Button 
