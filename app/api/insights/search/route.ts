@@ -139,20 +139,18 @@ async function searchTavily(
 
   const searchParams = {
     query: searchQuery,
-    search_depth: "advanced",
+    search_depth: "basic",
     include_answer: true,
-    max_results: 10, // Reduced from 20 to get faster results and avoid timeouts
-    search_type: "keyword", // Changed from semantic to keyword for broader matches
+    max_results: 15,
+    search_type: "keyword",
     include_domains: [
-      // Prioritize most relevant sources but keep the list shorter
       'hbr.org', 'mckinsey.com', 'bcg.com',
       'deloitte.com', 'pwc.com', 'accenture.com',
-      'gartner.com', 'forrester.com'
+      'gartner.com'
     ],
     exclude_domains: [
       'youtube.com', 'facebook.com', 'twitter.com',
-      'instagram.com', 'linkedin.com', 'pinterest.com',
-      'reddit.com'
+      'instagram.com', 'linkedin.com'
     ]
   }
 
@@ -161,7 +159,7 @@ async function searchTavily(
     
     // Create an AbortController to handle timeouts
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 50000); // Increased from 40s to 50s timeout to handle more results
     
     const response = await fetch('https://api.tavily.com/search', {
       method: 'POST',
@@ -210,7 +208,7 @@ async function searchTavily(
         // Only filter out empty content
         return result.content && result.content.length > 0
       })
-      .slice(0, 8) // Take top 8 results from Tavily's ranking to reduce processing time
+      .slice(0, 15) // Take top 15 results from Tavily's ranking to match our max_results setting
 
     console.log('Search results processed:', {
       originalCount: data.results.length,
@@ -478,7 +476,7 @@ export async function GET(request: Request): Promise<Response> {
     const timeoutPromise = new Promise<Response>((_, reject) => {
       setTimeout(() => {
         reject(new Error('Request processing timed out'));
-      }, 28000); // 28 seconds timeout
+      }, 55000); // Increased from 28s to 55s timeout for the entire request
     });
 
     // Create the main processing promise

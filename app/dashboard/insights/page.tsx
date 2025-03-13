@@ -194,7 +194,7 @@ export default function InsightsPage() {
       
       // Create an AbortController to handle client-side timeouts
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second client-side timeout
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // Increased to 60s timeout to handle more results
       
       try {
         const response = await fetch(`/api/insights/search?${params.toString()}`, {
@@ -212,7 +212,7 @@ export default function InsightsPage() {
 
         // Handle specific HTTP status codes
         if (response.status === 504) {
-          throw new Error('The search request timed out. Please try a more specific query or different focus area.');
+          throw new Error('The search request timed out. Please try a more specific query or different focus area, or reduce the number of selected industries.');
         }
 
         if (!response.ok) {
@@ -476,10 +476,10 @@ export default function InsightsPage() {
                             Tips to resolve this issue:
                           </p>
                           <ul className="text-xs list-disc pl-4 space-y-1">
-                            <li>Use more specific search terms</li>
-                            <li>Select a different focus area</li>
-                            <li>Try fewer industries</li>
-                            <li>Wait a few minutes and try again</li>
+                            <li>Make your search query more specific</li>
+                            <li>Select fewer industries (1-2 maximum)</li>
+                            <li>Try a different focus area</li>
+                            <li>Break your search into smaller, more focused queries</li>
                           </ul>
                         </div>
                       ) : (
