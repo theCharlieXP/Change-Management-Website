@@ -25,12 +25,16 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
         <head>
+          {/* Canonical URL */}
+          <link rel="canonical" href={process.env.NEXT_PUBLIC_APP_URL || 'https://changeamigo.com'} />
+          
           {/* Goat Counter Analytics */}
           <Script
             id="goatcounter-script"
             strategy="afterInteractive"
             src="https://gc.zgo.at/count.js"
             data-goatcounter="https://changeamigo.goatcounter.com/count"
+            data-goatcounter-settings='{"allow_local": false}'
           />
         </head>
         <body className={`${inter.className} min-h-screen bg-background antialiased`} suppressHydrationWarning>
@@ -43,4 +47,4 @@ export default function RootLayout({
       </html>
     </ClerkProvider>
   )
-} 
+}
