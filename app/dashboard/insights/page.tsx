@@ -194,7 +194,7 @@ export default function InsightsPage() {
       
       // Create an AbortController to handle client-side timeouts
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 35000); // Reduced from 55s to 35s to match server-side changes
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // Increased from 35000 to 60000 ms
       
       try {
         const response = await fetch(`/api/insights/search?${params.toString()}`, {
@@ -216,8 +216,14 @@ export default function InsightsPage() {
         }
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || errorData.details || `HTTP error! status: ${response.status}`);
+          let errorMessage = `HTTP error! status: ${response.status}`;
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorData.details || errorMessage;
+          } catch (e) {
+            // If we can't parse the JSON, just use the default error message
+          }
+          throw new Error(errorMessage);
         }
 
         const data = await response.json();
@@ -253,12 +259,26 @@ export default function InsightsPage() {
             variant: "destructive"
           });
         }
-      } catch (fetchError: unknown) {
-        // Handle AbortError (timeout) specifically
-        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-          throw new Error('The search request timed out. Please try a more specific query or different focus area.');
+      } catch (error: any) {
+        console.error('Search error:', error);
+        
+        // Provide more specific error messages based on the error
+        if (error.name === 'AbortError') {
+          setError('The search request was cancelled. Please try again with a more specific query.');
+        } else if (error.message.includes('timed out')) {
+          setError('The search request timed out. Please try a more specific query, fewer industries, or a different focus area.');
+        } else {
+          setError(error.message || 'An error occurred while searching. Please try again.');
         }
-        throw fetchError;
+        
+        toast({
+          title: "Search Error",
+          description: error.message || "An error occurred while searching",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+        setLoadingStage(null);
       }
     } catch (err) {
       console.error('Search error:', err);
@@ -270,9 +290,6 @@ export default function InsightsPage() {
         description: errorMessage,
         variant: "destructive"
       });
-    } finally {
-      setLoading(false);
-      setLoadingStage(null);
     }
   }
 

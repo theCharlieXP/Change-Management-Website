@@ -159,8 +159,8 @@ async function searchTavily(
       'youtube.com', 'facebook.com', 'twitter.com',
       'instagram.com', 'linkedin.com'
     ],
-    // Reduce search timeout to avoid server-side timeouts
-    search_timeout: 20 // seconds - reduced from 30s to 20s
+    // Increase search timeout to avoid server-side timeouts
+    search_timeout: 30 // seconds - increased from 20s to 30s
   }
 
   try {
@@ -168,7 +168,7 @@ async function searchTavily(
     
     // Create an AbortController to handle timeouts
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // Reduced from 40s to 25s timeout for the Tavily API request
+    const timeoutId = setTimeout(() => controller.abort(), 40000); // Increased from 25s to 40s timeout for the Tavily API request
     
     const response = await fetch('https://api.tavily.com/search', {
       method: 'POST',
@@ -295,131 +295,26 @@ Focus Area: ${focusAreaInfo.label}
 ${searchContext.industries.length ? `Industries: ${searchContext.industries.join(', ')}` : ''}`
 
   try {
-    // First, generate a title
-    const titleResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          {
-            role: 'system',
-            content: 'Create a clear, specific title (5-10 words) that captures the focus of this research. Use title case, without any punctuation, quotes, or special characters.'
-          },
-          {
-            role: 'user',
-            content: `Search Query: ${searchQuery}\nFocus Area: ${focusAreaInfo.label}\n\nFirst paragraph of content:\n${content.split('\n')[0]}`
-          }
-        ],
-        temperature: 0.2,
-        max_tokens: 50
-      })
-    })
+    // Skip title generation to save time and reduce API calls
+    const generatedTitle = `${focusAreaInfo.label} Insights: ${searchQuery}`
 
-    const titleData = await titleResponse.json()
-    const generatedTitle = titleData.choices[0].message.content.trim()
-
-    // Then generate the summary with either normal or creative mode
-    const systemPrompt = useCreativeMode ? 
-      `You are an expert in change management and organizational transformation. Create a comprehensive analysis focused on ${focusAreaInfo.label} (${focusAreaInfo.description}). 
-
-Use British English spelling and grammar.
-
-Format the response with these exact section headings (without any special characters or numbers):
+    // Simplified system prompt for faster processing
+    const systemPrompt = `You are an expert in change management focusing on ${focusAreaInfo.label}. 
+Create a concise analysis with these sections:
 
 Context
-
 Key Findings
-
-Patterns
-
 Implications
 
-Follow-up Questions
-
 For the Context section:
-- List the search query and filters used
-- Format as "Search Query: [query]"
-- List any industries specified
-- Keep it clear and concise
+- Include the search query and focus area
+- Keep it brief
 
-For all other sections:
-- Start each point with a bullet point character (•)
-- Write in clear, concise business language
-- One point per line
-- No special characters, asterisks, or markdown
-- No numbering
-- No quotes
-- Start each point with a capital letter
-- End each point with a period
-
-For the Implications section specifically:
-- Translate the findings into practical implementation guidance
-- Focus on how the insights impact change planning and execution
-- Provide actionable recommendations
-- Connect directly to change management practices
-
-Your analysis should:
-- Be specific to ${focusAreaInfo.label}
-- Use clear business language
-- Combine insights from sources with expert analysis
-- Provide actionable takeaways
-- Keep points concise but informative` :
-      // Original prompt for normal mode
-      `You are an expert in change management and organizational transformation. Create a comprehensive analysis focused on ${focusAreaInfo.label} (${focusAreaInfo.description}). 
-
-Use British English spelling and grammar.
-
-While there are limited direct sources available, use your expertise to:
-- Analyze the available content thoroughly
-- Expand on the key themes with your expert knowledge
-- Provide practical insights based on industry best practices
-- Draw from your understanding of similar cases and scenarios
-- Offer actionable recommendations
-
-Format the response with these exact section headings (without any special characters or numbers):
-
-Context
-
-Key Findings
-
-Patterns
-
-Implications
-
-Follow-up Questions
-
-For the Context section:
-- List the search query and filters used
-- Format as "Search Query: [query]"
-- List any industries specified
-- Keep it clear and concise
-
-For all other sections:
-- Start each point with a bullet point character (•)
-- Write in clear, concise business language
-- One point per line
-- No special characters, asterisks, or markdown
-- No numbering
-- No quotes
-- Start each point with a capital letter
-- End each point with a period
-
-For the Implications section specifically:
-- Translate the findings into practical implementation guidance
-- Focus on how the insights impact change planning and execution
-- Provide actionable recommendations
-- Connect directly to change management practices
-
-Your analysis should:
-- Be specific to ${focusAreaInfo.label}
-- Use clear business language
-- Combine limited source insights with expert analysis
-- Provide actionable takeaways
-- Keep points concise but informative`
+For Key Findings and Implications:
+- Use bullet points (•)
+- Be concise and specific
+- Focus only on ${focusAreaInfo.label}
+- Provide actionable insights`
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -439,8 +334,8 @@ Your analysis should:
             content: `${contextInfo}\n\n${content}`
           }
         ],
-        temperature: useCreativeMode ? 0.7 : 0.3,
-        max_tokens: 1000
+        temperature: 0.3, // Lower temperature for faster, more deterministic results
+        max_tokens: 800 // Reduced from 1000 to 800 for faster processing
       })
     })
 
@@ -484,7 +379,7 @@ export async function GET(request: Request): Promise<Response> {
     const timeoutPromise = new Promise<Response>((_, reject) => {
       setTimeout(() => {
         reject(new Error('Request processing timed out'));
-      }, 30000); // Reduced from 50s to 30s timeout for the entire request
+      }, 50000); // Increased from 30s to 50s timeout for the entire request
     });
 
     // Create the main processing promise
@@ -530,7 +425,7 @@ export async function GET(request: Request): Promise<Response> {
       }
       
       // Process the results to create insights - process more results since the user is providing specific queries
-      const resultsToProcess = searchResults.slice(0, 5) // Reduced from 10 to 5
+      const resultsToProcess = searchResults.slice(0, 3) // Reduced from 5 to 3 for faster processing
       
       // Process insights in parallel for better performance
       // Split processing into smaller batches to avoid overwhelming the system
@@ -541,7 +436,7 @@ export async function GET(request: Request): Promise<Response> {
             return {
               id: crypto.randomUUID(),
               title: result.title,
-              content: typeof result.content === 'string' ? result.content.substring(0, 1000) : JSON.stringify(result.content).substring(0, 1000),
+              content: typeof result.content === 'string' ? result.content.substring(0, 500) : JSON.stringify(result.content).substring(0, 500),
               focus_area: focusArea,
               source: result.source || new URL(result.url).hostname.replace('www.', ''),
               url: result.url,
@@ -575,7 +470,7 @@ export async function GET(request: Request): Promise<Response> {
           setTimeout(() => {
             // If processing takes too long, return a fallback with basic insights
             console.log('Insight processing timed out, using fallback')
-            resolve(resultsToProcess.slice(0, 3).map(result => { // Reduced from 5 to 3
+            resolve(resultsToProcess.slice(0, 2).map(result => { // Reduced from 3 to 2
               // Use a simple string conversion approach to avoid type issues
               const contentStr = typeof result.content === 'string' 
                 ? result.content 
@@ -584,7 +479,7 @@ export async function GET(request: Request): Promise<Response> {
               return {
                 id: crypto.randomUUID(),
                 title: result.title,
-                content: contentStr.substring(0, 500), // Reduced from 1000 to 500
+                content: contentStr.substring(0, 300), // Reduced from 500 to 300
                 focus_area: focusArea,
                 source: result.source || new URL(result.url).hostname.replace('www.', ''),
                 url: result.url,
@@ -596,7 +491,7 @@ export async function GET(request: Request): Promise<Response> {
                 category: INSIGHT_FOCUS_AREAS[focusArea].label
               };
             }))
-          }, 10000) // 10 second timeout for processing (reduced from 15s)
+          }, 15000) // 15 second timeout for processing (increased from 10s)
         })
         
         // Process batches sequentially to avoid overwhelming the system
@@ -617,7 +512,7 @@ export async function GET(request: Request): Promise<Response> {
       } catch (error) {
         console.error('Error in parallel processing:', error)
         // Fallback to basic processing if parallel fails
-        processedInsights = resultsToProcess.slice(0, 3).map(result => { // Reduced from 5 to 3
+        processedInsights = resultsToProcess.slice(0, 2).map(result => { // Reduced from 3 to 2
           // Use a simple string conversion approach to avoid type issues
           const contentStr = typeof result.content === 'string' 
             ? result.content 
@@ -626,7 +521,7 @@ export async function GET(request: Request): Promise<Response> {
           return {
             id: crypto.randomUUID(),
             title: result.title,
-            content: contentStr.substring(0, 500), // Reduced from 1000 to 500
+            content: contentStr.substring(0, 300), // Reduced from 500 to 300
             focus_area: focusArea,
             source: result.source || new URL(result.url).hostname.replace('www.', ''),
             url: result.url,
@@ -657,8 +552,8 @@ export async function GET(request: Request): Promise<Response> {
               const contentStr = typeof insight.content === 'string' 
                 ? insight.content 
                 : JSON.stringify(insight.content);
-              // Take first 150 chars to keep it manageable
-              return contentStr.substring(0, 150);
+              // Take first 300 chars to keep it manageable - reduced from 500 for faster processing
+              return contentStr.substring(0, 300);
             })
             .join('\n\n')
           
@@ -667,7 +562,7 @@ export async function GET(request: Request): Promise<Response> {
             combinedContent,
             focusArea,
             query,
-            false,
+            false, // Use standard mode for faster processing
             { query, focusArea, industries }
           )
           
@@ -676,7 +571,7 @@ export async function GET(request: Request): Promise<Response> {
             setTimeout(() => {
               // If summarization takes too long, return a basic summary
               resolve(`${INSIGHT_FOCUS_AREAS[focusArea].label} Insights\n\nContext\nSearch Query: ${query || 'None'}\nFocus Area: ${INSIGHT_FOCUS_AREAS[focusArea].label}\n${industries.length ? `Industries: ${industries.join(', ')}` : ''}\n\nKey Findings\n• Found ${validInsights.length} relevant sources related to ${INSIGHT_FOCUS_AREAS[focusArea].label}.\n• Sources include ${validInsights.slice(0, 2).map(i => i.source).join(', ')}.\n• Review the individual insights for detailed information.`)
-            }, 10000) // 10 second timeout for summarization (reduced from 15s)
+            }, 20000); // 20 second timeout for summarization
           })
           
           // Race between normal summarization and timeout
