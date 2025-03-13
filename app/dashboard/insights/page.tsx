@@ -103,7 +103,7 @@ export default function InsightsPage() {
     let isMounted = true
     
     const fetchProjects = async () => {
-      // Skip if auth isn't ready
+      // Skip if auth isn&apos;t ready
       if (!isLoaded) {
         console.log('Auth not loaded yet, waiting...')
         return

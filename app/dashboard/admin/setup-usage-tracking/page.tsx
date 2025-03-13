@@ -63,7 +63,7 @@ export default function SetupUsageTrackingPage() {
             This action will:
           </p>
           <ul className="list-disc pl-6 space-y-2 mb-6">
-            <li>Create the <code>usage_tracker</code> table if it doesn't exist</li>
+            <li>Create the <code>usage_tracker</code> table if it doesn&apos;t exist</li>
             <li>Create the <code>increment_usage</code> function</li>
             <li>Create the <code>reset_usage</code> function</li>
           </ul>

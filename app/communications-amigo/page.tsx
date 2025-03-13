@@ -68,7 +68,7 @@ export default function CommunicationsAmigoPage() {
     if (!isClient) return;
     
     try {
-      // Check if we're intentionally navigating to Communications Amigo
+      // Check if we&apos;re intentionally navigating to Communications Amigo
       const navigatingToAmigo = sessionStorage.getItem('navigatingToAmigo');
       
       // Get the communication data
@@ -77,7 +77,7 @@ export default function CommunicationsAmigoPage() {
       // Clear the navigation flag
       sessionStorage.removeItem('navigatingToAmigo');
       
-      // If we don't have data and weren't intentionally navigating here, go back to dashboard
+      // If we don&apos;t have data and weren&apos;t intentionally navigating here, go back to dashboard
       if (!storedData && navigatingToAmigo !== 'true') {
         console.log('No data found and not intentionally navigating here, redirecting to dashboard');
         router.push('/dashboard/communications');

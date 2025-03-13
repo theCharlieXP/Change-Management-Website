@@ -89,6 +89,6 @@ export function ProfileCreator() {
     }
   }, [createProfile, retryCount, isSignedIn, userId]);
 
-  // This component doesn't render anything
+  // This component doesn&apos;t render anything
   return null;
 } 

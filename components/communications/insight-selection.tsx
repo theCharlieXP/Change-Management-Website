@@ -71,7 +71,7 @@ export function InsightSelection({
         <AlertCircle className="mx-auto h-12 w-12 text-amber-500 opacity-80 mb-4" />
         <h3 className="text-lg font-medium mb-2">No insights saved for this project</h3>
         <p className="text-muted-foreground max-w-md mx-auto">
-          This project doesn't have any saved insights yet. You can create insights in the Insights section.
+          This project doesn&apos;t have any saved insights yet. You can create insights in the Insights section.
         </p>
       </div>
     )

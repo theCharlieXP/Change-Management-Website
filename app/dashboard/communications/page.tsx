@@ -94,20 +94,20 @@ export default function CommunicationsPage() {
   // State for reference documents
   const [referenceDocuments, setReferenceDocuments] = useState<File[]>([])
 
-  // Add state for highlighted text if it doesn't exist
+  // Add state for highlighted text if it doesn&apos;t exist
   const [highlightedTextMap, setHighlightedTextMap] = useState<Record<string, string[]>>({})
   
-  // Add selectedInsightsData if it doesn't exist
+  // Add selectedInsightsData if it doesn&apos;t exist
   const selectedInsightsData = selectedInsights.map(id => {
     return projectInsights.find(insight => insight.id === id) || { id, title: "Unknown Insight" };
   })
   
-  // Add the hasHighlightedInsights function if it doesn't exist
+  // Add the hasHighlightedInsights function if it doesn&apos;t exist
   const hasHighlightedInsights = () => {
     return Object.values(highlightedTextMap).some(highlights => highlights.length > 0);
   }
   
-  // Add the handleHighlightsChange function if it doesn't exist
+  // Add the handleHighlightsChange function if it doesn&apos;t exist
   const handleHighlightsChange = (insightId: string, highlights: string[]) => {
     setHighlightedTextMap(prev => ({
       ...prev,
@@ -596,7 +596,7 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
               errorMessage = errorData.message;
             }
           } catch (parseError) {
-            // If we can't parse the JSON, just use the default error message
+            // If we can&apos;t parse the JSON, just use the default error message
             console.error('Error parsing error response:', parseError);
           }
           
@@ -618,7 +618,7 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
                                     errorMessage.includes('does not exist');
         
         if (isTableNotExistError) {
-          // If the table doesn't exist, just set an empty array and don't show an error
+          // If the table doesn&apos;t exist, just set an empty array and don&apos;t show an error
           console.log('Table does not exist yet, setting empty saved communications');
           setSavedCommunications([]);
         } else {
