@@ -15,15 +15,15 @@ const nextConfig = {
   publicRuntimeConfig: {
     // Add any public runtime configs here if needed
   },
-  // Adding security headers
-  headers: async () => {
+  // Consolidated headers configuration
+  async headers() {
     return [
       {
         source: '/(.*)',
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' gc.zgo.at *.goatcounter.com; connect-src 'self' *.goatcounter.com; img-src 'self' data: *.goatcounter.com; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self' blob:"
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://gc.zgo.at https://*.goatcounter.com; connect-src 'self' https://*.goatcounter.com; img-src 'self' data: https://*.goatcounter.com; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self' blob:"
           },
           {
             key: 'X-DNS-Prefetch-Control',
@@ -55,11 +55,6 @@ const nextConfig = {
           },
         ],
       },
-    ];
-  },
-  // Configure dynamic API routes to be handled properly
-  async headers() {
-    return [
       {
         source: '/api/:path*',
         headers: [
@@ -69,7 +64,7 @@ const nextConfig = {
           },
         ],
       },
-    ]
+    ];
   },
   // Disable static exports for API routes
   output: 'standalone',
