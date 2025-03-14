@@ -145,10 +145,19 @@ export default function DeepSeekUsageTracker({ children }) {
     isNearLimit: isNearLimit
   };
 
+  // Fix: Use React.Children.only and React.cloneElement for function children
+  const renderChildren = () => {
+    if (typeof children === 'function') {
+      // Instead of directly calling the function, render it as a component
+      const ChildrenFunction = children;
+      return <ChildrenFunction {...childrenProps} />;
+    }
+    return children;
+  };
+
   return (
     <>
-      {/* Pass the incrementUsage function to children */}
-      {typeof children === 'function' ? children(childrenProps) : children}
+      {renderChildren()}
       
       {/* Warning Modal */}
       <Dialog open={showWarningModal} onOpenChange={setShowWarningModal}>

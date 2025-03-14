@@ -156,10 +156,20 @@ export default function InsightSearchUsageTracker({ children }) {
       usageCount >= FREE_TIER_LIMIT
   };
 
+  // Fix: Use a proper React component rendering approach for function children
+  const renderChildren = () => {
+    if (typeof children === 'function') {
+      // Instead of directly calling the function, render it as a component
+      const ChildrenFunction = children;
+      return <ChildrenFunction {...childrenProps} />;
+    }
+    return children;
+  };
+
   return (
     <>
       {/* Pass the incrementUsage function to children */}
-      {typeof children === 'function' ? children(childrenProps) : children}
+      {renderChildren()}
       
       {/* Upgrade Modal */}
       <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
