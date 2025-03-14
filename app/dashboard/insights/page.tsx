@@ -97,6 +97,9 @@ export default function InsightsPage() {
   const { toast } = useToast()
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [insightToSave, setInsightToSave] = useState<Insight | null>(null)
+  const [incrementUsageFunc, setIncrementUsageFunc] = useState<(() => Promise<boolean>) | null>(null)
+  const [remainingSearchesCount, setRemainingSearchesCount] = useState<number>(0)
+  const [isSearchLimitReached, setIsSearchLimitReached] = useState<boolean>(false)
 
   // Fetch projects when auth is ready
   useEffect(() => {
@@ -176,6 +179,18 @@ export default function InsightsPage() {
     }
 
     setError(null)
+    
+    // Check if user can perform the search
+    if (!incrementUsageFunc) {
+      setError('Search functionality not available')
+      return
+    }
+    
+    const canSearch = await incrementUsageFunc()
+    if (!canSearch) {
+      return // The modal will be shown by the usage tracker
+    }
+    
     setLoading(true)
     setSummary(null)
     
@@ -393,279 +408,274 @@ export default function InsightsPage() {
         remainingSearches, 
         isLimitReached 
       }: { 
-        incrementUsage: () => boolean; 
+        incrementUsage: () => Promise<boolean>; 
         remainingSearches: number; 
         isLimitReached: boolean;
-      }) => (
-        <div className="space-y-6">
-          <div className="flex flex-col md:flex-row justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Insights</h1>
-              <p className="text-muted-foreground">
-                Discover valuable change management insights from trusted sources
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-4">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium">Search Criteria</h3>
-                <p className="text-sm text-muted-foreground">
-                  Define your search to find relevant insights
+      }) => {
+        // Set the state variables when the callback is called
+        useEffect(() => {
+          setIncrementUsageFunc(() => incrementUsage);
+          setRemainingSearchesCount(remainingSearches);
+          setIsSearchLimitReached(isLimitReached);
+        }, [incrementUsage, remainingSearches, isLimitReached]);
+        
+        return (
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">Insights</h1>
+                <p className="text-muted-foreground">
+                  Search for insights on change management topics
                 </p>
               </div>
+            </div>
 
+            <div className="grid gap-6 md:grid-cols-4">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label htmlFor="focus-area" className="text-sm font-medium">
-                    Insight Focus Area <span className="text-red-500">*</span>
-                  </label>
-                  <Select
-                    value={focusArea}
-                    onValueChange={(value) => setFocusArea(value as InsightFocusArea)}
-                  >
-                    <SelectTrigger id="focus-area">
-                      <SelectValue placeholder="Select focus area" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(INSIGHT_FOCUS_AREAS).map(([key, { label }]) => (
-                        <SelectItem key={key} value={key}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <h3 className="text-lg font-medium">Search Criteria</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Define your search to find relevant insights
+                  </p>
                 </div>
 
-                <div className="space-y-2">
-                  <label htmlFor="query" className="text-sm font-medium">
-                    Search Query
-                  </label>
-                  <div className="flex space-x-2">
-                    <Input
-                      id="query"
-                      placeholder="Enter keywords..."
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      onKeyDown={handleKeyPress}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label htmlFor="focus-area" className="text-sm font-medium">
+                      Insight Focus Area <span className="text-red-500">*</span>
+                    </label>
+                    <Select
+                      value={focusArea}
+                      onValueChange={(value) => setFocusArea(value as InsightFocusArea)}
+                    >
+                      <SelectTrigger id="focus-area">
+                        <SelectValue placeholder="Select focus area" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(INSIGHT_FOCUS_AREAS).map(([key, { label }]) => (
+                          <SelectItem key={key} value={key}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="query" className="text-sm font-medium">
+                      Search Query
+                    </label>
+                    <div className="flex space-x-2">
+                      <Input
+                        id="query"
+                        placeholder="Enter keywords..."
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        onKeyDown={handleKeyPress}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="industries" className="text-sm font-medium">
+                      Industries (Optional)
+                    </label>
+                    <MultiSelect
+                      options={INDUSTRIES}
+                      selected={selectedIndustries}
+                      onChange={setSelectedIndustries}
+                      placeholder="Select industries..."
                     />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <label htmlFor="industries" className="text-sm font-medium">
-                    Industries (Optional)
-                  </label>
-                  <MultiSelect
-                    options={INDUSTRIES}
-                    selected={selectedIndustries}
-                    onChange={setSelectedIndustries}
-                    placeholder="Select industries..."
-                  />
-                </div>
+                  <Button 
+                    onClick={fetchInsights} 
+                    disabled={loading || !focusArea}
+                    className="w-full"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Searching...
+                      </>
+                    ) : (
+                      "Search for Insights"
+                    )}
+                  </Button>
 
-                <Button 
-                  onClick={fetchInsights} 
-                  disabled={loading || !focusArea}
-                  className="w-full"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Searching...
-                    </>
-                  ) : (
-                    "Search for Insights"
-                  )}
-                </Button>
-
-                {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-md p-3 text-sm text-red-800">
-                    <div className="font-medium flex items-center gap-1.5">
-                      <AlertCircle className="h-4 w-4" />
-                      Error
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-3 text-sm text-red-800">
+                      <div className="font-medium flex items-center gap-1.5">
+                        <AlertCircle className="h-4 w-4" />
+                        Error
+                      </div>
+                      <div className="mt-1">
+                        {error.includes('timed out') ? (
+                          <div className="space-y-2">
+                            <p>{error}</p>
+                            <p className="text-xs font-medium mt-2">
+                              Tips to resolve this issue:
+                            </p>
+                            <ul className="text-xs list-disc pl-4 space-y-1">
+                              <li>Make your search query more specific (e.g., &ldquo;employee resistance strategies&rdquo; instead of just &ldquo;resistance&rdquo;)</li>
+                              <li>Select only 1 industry instead of multiple</li>
+                              <li>Try a different focus area that might have more targeted results</li>
+                              <li>If you didn&apos;t enter a search query, add one to help focus the search</li>
+                              <li>Wait a few minutes and try again - the search service might be experiencing high load</li>
+                            </ul>
+                          </div>
+                        ) : (
+                          error
+                        )}
+                      </div>
                     </div>
-                    <div className="mt-1">
-                      {error.includes('timed out') ? (
-                        <div className="space-y-2">
-                          <p>{error}</p>
-                          <p className="text-xs font-medium mt-2">
-                            Tips to resolve this issue:
-                          </p>
-                          <ul className="text-xs list-disc pl-4 space-y-1">
-                            <li>Make your search query more specific (e.g., &ldquo;employee resistance strategies&rdquo; instead of just &ldquo;resistance&rdquo;)</li>
-                            <li>Select only 1 industry instead of multiple</li>
-                            <li>Try a different focus area that might have more targeted results</li>
-                            <li>If you didn&apos;t enter a search query, add one to help focus the search</li>
-                            <li>Wait a few minutes and try again - the search service might be experiencing high load</li>
-                          </ul>
-                        </div>
-                      ) : (
-                        error
-                      )}
+                  )}
+
+                  <Button 
+                    variant="outline" 
+                    onClick={resetFilters}
+                    className="w-full"
+                    disabled={loading}
+                  >
+                    Reset Filters
+                  </Button>
+                </div>
+              </div>
+
+              <div className="md:col-span-3 space-y-4">
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center h-64 border rounded-lg bg-white p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                    <h3 className="text-lg font-medium mb-2">Searching for Insights</h3>
+                    <p className="text-sm text-muted-foreground text-center mb-4">
+                      {loadingStage || "Processing your request..."}
+                    </p>
+                    <div className="w-full max-w-md">
+                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-primary animate-pulse" style={{ width: '100%' }}></div>
+                      </div>
                     </div>
                   </div>
+                ) : insights.length > 0 ? (
+                  <div className="space-y-6">
+                    {summary && (
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-lg">Key Insights Summary</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4 text-sm">
+                            {summary.split('\n\n').map((section, sectionIndex) => {
+                              // Check if this is a section header
+                              const lines = section.split('\n');
+                              const sectionHeader = lines[0];
+                              const sectionContent = lines.slice(1);
+                              
+                              // Handle the title section (first section)
+                              if (sectionIndex === 0) {
+                                return (
+                                  <h3 key={`section-${sectionIndex}`} className="font-medium text-base">
+                                    {sectionHeader}
+                                  </h3>
+                                );
+                              }
+                              
+                              return (
+                                <div key={`section-${sectionIndex}`} className="space-y-2">
+                                  <h4 className="font-medium">{sectionHeader}</h4>
+                                  <div className="space-y-2">
+                                    {sectionContent.map((point, pointIndex) => {
+                                      const cleanPoint = point.replace(/^[-•]\s*/, '').trim();
+                                      if (!cleanPoint) return null;
+                                      
+                                      // Special handling for References section to make links clickable
+                                      if (sectionHeader === "References (with links)" || sectionHeader === "References") {
+                                        // Extract URL from the reference line if it exists
+                                        const urlMatch = cleanPoint.match(/https?:\/\/[^\s]+/);
+                                        if (urlMatch) {
+                                          const url = urlMatch[0];
+                                          const sourceName = cleanPoint.replace(url, '').replace(/[-\s]*$/, '');
+                                          
+                                          return (
+                                            <div key={`point-${pointIndex}`} className="flex items-start gap-2">
+                                              <span className="text-muted-foreground">•</span>
+                                              <span className="flex-1">
+                                                {sourceName} <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{url}</a>
+                                              </span>
+                                            </div>
+                                          );
+                                        }
+                                      }
+                                      
+                                      return (
+                                        <div key={`point-${pointIndex}`} className="flex items-start gap-2">
+                                          <span className="text-muted-foreground">•</span>
+                                          <span className="flex-1">{cleanPoint}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="mt-4 flex justify-end">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={handleSaveSummary}
+                            >
+                              <BookmarkPlus className="h-4 w-4 mr-2" />
+                              Save Summary
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-64 border rounded-lg bg-white p-8">
+                    <h3 className="text-lg font-medium mb-2">No Insights Found</h3>
+                    <p className="text-sm text-muted-foreground text-center max-w-md">
+                      {error ? 
+                        "Please try adjusting your search criteria or try again later." : 
+                        "Select a focus area and search to discover valuable insights for your change management initiatives."}
+                    </p>
+                  </div>
                 )}
-
-                <Button 
-                  variant="outline" 
-                  onClick={resetFilters}
-                  className="w-full"
-                  disabled={loading}
-                >
-                  Reset Filters
-                </Button>
               </div>
             </div>
 
-            <div className="md:col-span-3 space-y-4">
-              {loading ? (
-                <div className="flex flex-col items-center justify-center h-64 border rounded-lg bg-white p-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Searching for Insights</h3>
-                  <p className="text-sm text-muted-foreground text-center mb-4">
-                    {loadingStage || "Processing your request..."}
-                  </p>
-                  <div className="w-full max-w-md">
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-primary animate-pulse" style={{ width: '100%' }}></div>
-                    </div>
+            {/* Usage limit indicator */}
+            {!isPremiumUser() && (
+              <div className="text-sm text-muted-foreground mb-2">
+                {isSearchLimitReached ? (
+                  <div className="flex items-center text-amber-600 text-sm">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    <span>You&apos;ve reached your Basic plan limit. <Link href="/dashboard/account" className="underline">Upgrade to Pro</Link></span>
                   </div>
-                </div>
-              ) : insights.length > 0 ? (
-                <div className="space-y-6">
-                  {summary && (
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Key Insights Summary</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4 text-sm">
-                          {summary.split('\n\n').map((section, sectionIndex) => {
-                            // Check if this is a section header
-                            const lines = section.split('\n');
-                            const sectionHeader = lines[0];
-                            const sectionContent = lines.slice(1);
-                            
-                            // Handle the title section (first section)
-                            if (sectionIndex === 0) {
-                              return (
-                                <h3 key={`section-${sectionIndex}`} className="font-medium text-base">
-                                  {sectionHeader}
-                                </h3>
-                              );
-                            }
-                            
-                            return (
-                              <div key={`section-${sectionIndex}`} className="space-y-2">
-                                <h4 className="font-medium">{sectionHeader}</h4>
-                                <div className="space-y-2">
-                                  {sectionContent.map((point, pointIndex) => {
-                                    const cleanPoint = point.replace(/^[-•]\s*/, '').trim();
-                                    if (!cleanPoint) return null;
-                                    
-                                    // Special handling for References section to make links clickable
-                                    if (sectionHeader === "References (with links)" || sectionHeader === "References") {
-                                      // Extract URL from the reference line if it exists
-                                      const urlMatch = cleanPoint.match(/https?:\/\/[^\s]+/);
-                                      if (urlMatch) {
-                                        const url = urlMatch[0];
-                                        const sourceName = cleanPoint.replace(url, '').replace(/[-\s]*$/, '');
-                                        
-                                        return (
-                                          <div key={`point-${pointIndex}`} className="flex items-start gap-2">
-                                            <span className="text-muted-foreground">•</span>
-                                            <span className="flex-1">
-                                              {sourceName} <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{url}</a>
-                                            </span>
-                                          </div>
-                                        );
-                                      }
-                                    }
-                                    
-                                    return (
-                                      <div key={`point-${pointIndex}`} className="flex items-start gap-2">
-                                        <span className="text-muted-foreground">•</span>
-                                        <span className="flex-1">{cleanPoint}</span>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div className="mt-4 flex justify-end">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={handleSaveSummary}
-                          >
-                            <BookmarkPlus className="h-4 w-4 mr-2" />
-                            Save Summary
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
+                ) : (
+                  <span>You have {remainingSearchesCount} free searches remaining</span>
+                )}
+              </div>
+            )}
 
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {insights.map((insight) => (
-                      <InsightCard
-                        key={insight.id}
-                        title={insight.title}
-                        description={insight.summary || ''}
-                        summary={insight.summary || ''}
-                        url={insight.url || ''}
-                        focusArea={insight.focus_area}
-                        insight={insight}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-64 border rounded-lg bg-white p-8">
-                  <h3 className="text-lg font-medium mb-2">No Insights Found</h3>
-                  <p className="text-sm text-muted-foreground text-center max-w-md">
-                    {error ? 
-                      "Please try adjusting your search criteria or try again later." : 
-                      "Select a focus area and search to discover valuable insights for your change management initiatives."}
-                  </p>
-                </div>
-              )}
-            </div>
+            {/* Add Save Dialog */}
+            {showSaveDialog && insightToSave && (
+              <SaveToProjectDialog
+                open={showSaveDialog}
+                onOpenChange={(open) => {
+                  setShowSaveDialog(open)
+                  if (!open) setInsightToSave(null)
+                }}
+                insight={insightToSave}
+                isLoading={projectsLoading}
+                isSummary={insightToSave.id === 'summary'}
+              />
+            )}
           </div>
-
-          {/* Usage limit indicator */}
-          {!isPremiumUser() && (
-            <div className="text-sm text-muted-foreground mb-2">
-              {isLimitReached ? (
-                <div className="flex items-center text-amber-600 text-sm">
-                  <AlertCircle className="h-4 w-4 mr-1" />
-                  <span>You&apos;ve reached your Basic plan limit. <Link href="/dashboard/account" className="underline">Upgrade to Pro</Link></span>
-                </div>
-              ) : (
-                <span>You have {remainingSearches} free searches remaining</span>
-              )}
-            </div>
-          )}
-
-          {/* Add Save Dialog */}
-          {showSaveDialog && insightToSave && (
-            <SaveToProjectDialog
-              open={showSaveDialog}
-              onOpenChange={(open) => {
-                setShowSaveDialog(open)
-                if (!open) setInsightToSave(null)
-              }}
-              insight={insightToSave}
-              isLoading={projectsLoading}
-              isSummary={insightToSave.id === 'summary'}
-            />
-          )}
-        </div>
-      )}
+        );
+      }}
     </InsightSearchUsageTracker>
   )
 } 

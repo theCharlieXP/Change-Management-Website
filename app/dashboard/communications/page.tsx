@@ -94,20 +94,20 @@ export default function CommunicationsPage() {
   // State for reference documents
   const [referenceDocuments, setReferenceDocuments] = useState<File[]>([])
 
-  // Add state for highlighted text if it doesn&apos;t exist
+  // Add state for highlighted text if it&apos;s doesn't exist
   const [highlightedTextMap, setHighlightedTextMap] = useState<Record<string, string[]>>({})
   
-  // Add selectedInsightsData if it doesn&apos;t exist
+  // Add selectedInsightsData if it&apos;s doesn't exist
   const selectedInsightsData = selectedInsights.map(id => {
     return projectInsights.find(insight => insight.id === id) || { id, title: "Unknown Insight" };
   })
   
-  // Add the hasHighlightedInsights function if it doesn&apos;t exist
+  // Add the hasHighlightedInsights function if it&apos;s doesn't exist
   const hasHighlightedInsights = () => {
     return Object.values(highlightedTextMap).some(highlights => highlights.length > 0);
   }
   
-  // Add the handleHighlightsChange function if it doesn&apos;t exist
+  // Add the handleHighlightsChange function if it&apos;s doesn't exist
   const handleHighlightsChange = (insightId: string, highlights: string[]) => {
     setHighlightedTextMap(prev => ({
       ...prev,
@@ -259,23 +259,26 @@ export default function CommunicationsPage() {
         
         if (response.ok) {
           const data = await response.json()
-          if (data && Array.isArray(data) && data.length > 0) {
+          if (data && Array.isArray(data)) {
             setProjectInsights(data)
             setLoading(false)
             return
           }
         }
         
-        // If API call fails or returns empty, fall back to mock data
-        provideMockInsights(value)
+        // If API call fails or returns empty, set empty insights array
+        // No longer falling back to mock data
+        setProjectInsights([]);
+        setLoading(false);
       }catch (error) {
         console.error('Error fetching insights:', error)
-        // Fall back to mock data
-        provideMockInsights(value)
+        // No longer falling back to mock data
+        setProjectInsights([]);
+        setLoading(false);
       }
     }
     
-    // Function to provide mock insights for any project ID
+    // Function to provide mock insights for any project ID - only used for testing
     const provideMockInsights = (projectId: string) => {
       // Create mock insights for the selected project
       const mockInsights: InsightSummary[] = [
