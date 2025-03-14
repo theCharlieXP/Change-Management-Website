@@ -97,6 +97,28 @@ export default function CommunicationsPage() {
   // Add state for highlighted text if it&apos;s doesn't exist
   const [highlightedTextMap, setHighlightedTextMap] = useState<Record<string, string[]>>({})
   
+  // Add state for DeepSeek tracker
+  const [deepSeekTracker, setDeepSeekTracker] = useState<DeepSeekTracker | null>(null);
+  
+  // Add state variable to store tracker values
+  const [trackerValues, setTrackerValues] = useState<DeepSeekTracker | null>(null);
+  
+  // Add state for saved communications
+  const [savedCommunications, setSavedCommunications] = useState<SavedCommunication[]>([])
+  const [loadingSaved, setLoadingSaved] = useState(false)
+  const [selectedSavedCommunication, setSelectedSavedCommunication] = useState<SavedCommunication | null>(null)
+  
+  // Add state for delete confirmation
+  const [communicationToDelete, setCommunicationToDelete] = useState<SavedCommunication | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Use an effect to update the deepSeekTracker when trackerValues changes
+  useEffect(() => {
+    if (trackerValues) {
+      setDeepSeekTracker(trackerValues);
+    }
+  }, [trackerValues]);
+  
   // Add selectedInsightsData if it&apos;s doesn't exist
   const selectedInsightsData = selectedInsights.map(id => {
     return projectInsights.find(insight => insight.id === id) || { id, title: "Unknown Insight" };
@@ -349,19 +371,6 @@ export default function CommunicationsPage() {
     setStep(prev => prev - 1)
   }
 
-  // Update the state definition with the new interface
-  const [deepSeekTracker, setDeepSeekTracker] = useState<DeepSeekTracker | null>(null);
-  
-  // Add a new state variable to store tracker values
-  const [trackerValues, setTrackerValues] = useState<DeepSeekTracker | null>(null);
-  
-  // Use an effect to update the deepSeekTracker when trackerValues changes
-  useEffect(() => {
-    if (trackerValues) {
-      setDeepSeekTracker(trackerValues);
-    }
-  }, [trackerValues]);
-
   const handleGenerateCommunication = async () => {
     // Check if we can use Deep Seek
     if (deepSeekTracker) {
@@ -582,15 +591,6 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
     }
   }, [isClient, toast, step, setStep, setGeneratedCommunication])
 
-  // Add state for saved communications
-  const [savedCommunications, setSavedCommunications] = useState<SavedCommunication[]>([])
-  const [loadingSaved, setLoadingSaved] = useState(false)
-  const [selectedSavedCommunication, setSelectedSavedCommunication] = useState<SavedCommunication | null>(null)
-  
-  // Add state for delete confirmation
-  const [communicationToDelete, setCommunicationToDelete] = useState<SavedCommunication | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  
   // Add useEffect to fetch saved communications when a project is selected
   useEffect(() => {
     if (!selectedProject || !isSignedIn) return;
