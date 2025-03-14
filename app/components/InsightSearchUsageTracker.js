@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Progress } from '@/components/ui/progress';
 import { CreditCard, AlertCircle } from 'lucide-react';
 import { INSIGHT_SEARCH_FEATURE, FREE_TIER_LIMIT, PRO_TIER_INSIGHT_LIMIT } from '@/lib/subscription-client';
+
+// Create a wrapper component to handle the function children
+const ChildrenRenderer = memo(({ children, props }) => {
+  if (typeof children === 'function') {
+    return children(props);
+  }
+  return children;
+});
+ChildrenRenderer.displayName = 'ChildrenRenderer';
 
 export default function InsightSearchUsageTracker({ children }) {
   const router = useRouter();
@@ -74,7 +83,7 @@ export default function InsightSearchUsageTracker({ children }) {
     }
   };
 
-  const incrementUsage = async () => {
+  const incrementUsage = useCallback(async () => {
     // First update local state for immediate feedback
     const newCount = usageCount + 1;
     setUsageCount(newCount);
@@ -133,16 +142,16 @@ export default function InsightSearchUsageTracker({ children }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [usageCount, isPremium]);
 
-  const handleUpgradeClick = () => {
+  const handleUpgradeClick = useCallback(() => {
     router.push('/dashboard/account');
     setShowUpgradeModal(false);
-  };
+  }, [router]);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setShowUpgradeModal(false);
-  };
+  }, []);
 
   // Prepare the props to pass to children
   const childrenProps = {
@@ -156,20 +165,9 @@ export default function InsightSearchUsageTracker({ children }) {
       usageCount >= FREE_TIER_LIMIT
   };
 
-  // Fix: Use a proper React component rendering approach for function children
-  const renderChildren = () => {
-    if (typeof children === 'function') {
-      // Instead of directly calling the function, render it as a component
-      const ChildrenFunction = children;
-      return <ChildrenFunction {...childrenProps} />;
-    }
-    return children;
-  };
-
   return (
     <>
-      {/* Pass the incrementUsage function to children */}
-      {renderChildren()}
+      <ChildrenRenderer children={children} props={childrenProps} />
       
       {/* Upgrade Modal */}
       <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>

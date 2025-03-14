@@ -1,12 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { AlertCircle } from 'lucide-react';
 import { DEEP_SEEK_FEATURE, DEEP_SEEK_LIMIT } from '@/lib/subscription-client';
+
+// Create a wrapper component to handle the function children
+const ChildrenRenderer = memo(({ children, props }) => {
+  if (typeof children === 'function') {
+    return children(props);
+  }
+  return children;
+});
+ChildrenRenderer.displayName = 'ChildrenRenderer';
 
 export default function DeepSeekUsageTracker({ children }) {
   const router = useRouter();
@@ -67,7 +76,7 @@ export default function DeepSeekUsageTracker({ children }) {
     }
   };
 
-  const incrementUsage = async () => {
+  const incrementUsage = useCallback(async () => {
     // First update local state for immediate feedback
     const newCount = usageCount + 1;
     setUsageCount(newCount);
@@ -129,11 +138,11 @@ export default function DeepSeekUsageTracker({ children }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [usageCount]);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setShowWarningModal(false);
-  };
+  }, []);
 
   // Prepare the props to pass to children
   const childrenProps = {
@@ -145,19 +154,9 @@ export default function DeepSeekUsageTracker({ children }) {
     isNearLimit: isNearLimit
   };
 
-  // Fix: Use React.Children.only and React.cloneElement for function children
-  const renderChildren = () => {
-    if (typeof children === 'function') {
-      // Instead of directly calling the function, render it as a component
-      const ChildrenFunction = children;
-      return <ChildrenFunction {...childrenProps} />;
-    }
-    return children;
-  };
-
   return (
     <>
-      {renderChildren()}
+      <ChildrenRenderer children={children} props={childrenProps} />
       
       {/* Warning Modal */}
       <Dialog open={showWarningModal} onOpenChange={setShowWarningModal}>
