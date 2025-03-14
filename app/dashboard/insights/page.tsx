@@ -100,6 +100,26 @@ export default function InsightsPage() {
   const [incrementUsageFunc, setIncrementUsageFunc] = useState<(() => Promise<boolean>) | null>(null)
   const [remainingSearchesCount, setRemainingSearchesCount] = useState<number>(0)
   const [isSearchLimitReached, setIsSearchLimitReached] = useState<boolean>(false)
+  
+  // New state variables to store tracker values
+  const [trackerValues, setTrackerValues] = useState<{
+    incrementUsage: (() => Promise<boolean>) | null;
+    remainingSearches: number;
+    isLimitReached: boolean;
+  }>({
+    incrementUsage: null,
+    remainingSearches: 0,
+    isLimitReached: false
+  });
+
+  // Effect to update component state when tracker values change
+  useEffect(() => {
+    if (trackerValues.incrementUsage) {
+      setIncrementUsageFunc(() => trackerValues.incrementUsage);
+    }
+    setRemainingSearchesCount(trackerValues.remainingSearches);
+    setIsSearchLimitReached(trackerValues.isLimitReached);
+  }, [trackerValues]);
 
   // Fetch projects when auth is ready
   useEffect(() => {
@@ -412,12 +432,19 @@ export default function InsightsPage() {
         remainingSearches: number; 
         isLimitReached: boolean;
       }) => {
-        // Set the state variables when the callback is called
-        useEffect(() => {
-          setIncrementUsageFunc(() => incrementUsage);
-          setRemainingSearchesCount(remainingSearches);
-          setIsSearchLimitReached(isLimitReached);
-        }, [incrementUsage, remainingSearches, isLimitReached]);
+        // Update the tracker values when they change
+        // This is safe because React will batch these updates
+        if (
+          trackerValues.incrementUsage !== incrementUsage ||
+          trackerValues.remainingSearches !== remainingSearches ||
+          trackerValues.isLimitReached !== isLimitReached
+        ) {
+          setTrackerValues({
+            incrementUsage,
+            remainingSearches,
+            isLimitReached
+          });
+        }
         
         return (
           <div className="space-y-6">
