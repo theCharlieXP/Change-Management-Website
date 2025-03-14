@@ -135,17 +135,20 @@ export default function DeepSeekUsageTracker({ children }) {
     setShowWarningModal(false);
   };
 
+  // Prepare the props to pass to children
+  const childrenProps = {
+    incrementUsage, 
+    usageCount, 
+    usageLimit: DEEP_SEEK_LIMIT, 
+    remainingUses: Math.max(0, DEEP_SEEK_LIMIT - usageCount),
+    isLimitReached: usageCount >= DEEP_SEEK_LIMIT,
+    isNearLimit: isNearLimit
+  };
+
   return (
     <>
       {/* Pass the incrementUsage function to children */}
-      {children({ 
-        incrementUsage, 
-        usageCount, 
-        usageLimit: DEEP_SEEK_LIMIT, 
-        remainingUses: Math.max(0, DEEP_SEEK_LIMIT - usageCount),
-        isLimitReached: usageCount >= DEEP_SEEK_LIMIT,
-        isNearLimit: isNearLimit
-      })}
+      {typeof children === 'function' ? children(childrenProps) : children}
       
       {/* Warning Modal */}
       <Dialog open={showWarningModal} onOpenChange={setShowWarningModal}>

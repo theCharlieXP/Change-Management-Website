@@ -144,19 +144,22 @@ export default function InsightSearchUsageTracker({ children }) {
     setShowUpgradeModal(false);
   };
 
+  // Prepare the props to pass to children
+  const childrenProps = {
+    incrementUsage, 
+    usageCount, 
+    usageLimit: isPremium ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT, 
+    isPremium,
+    remainingSearches: Math.max(0, (isPremium ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT) - usageCount),
+    isLimitReached: isPremium ? 
+      usageCount >= PRO_TIER_INSIGHT_LIMIT : 
+      usageCount >= FREE_TIER_LIMIT
+  };
+
   return (
     <>
       {/* Pass the incrementUsage function to children */}
-      {children({ 
-        incrementUsage, 
-        usageCount, 
-        usageLimit: isPremium ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT, 
-        isPremium,
-        remainingSearches: Math.max(0, (isPremium ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT) - usageCount),
-        isLimitReached: isPremium ? 
-          usageCount >= PRO_TIER_INSIGHT_LIMIT : 
-          usageCount >= FREE_TIER_LIMIT
-      })}
+      {typeof children === 'function' ? children(childrenProps) : children}
       
       {/* Upgrade Modal */}
       <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
