@@ -10,11 +10,11 @@ import { CreditCard, AlertCircle } from 'lucide-react';
 import { INSIGHT_SEARCH_FEATURE, FREE_TIER_LIMIT, PRO_TIER_INSIGHT_LIMIT } from '@/lib/subscription-client';
 
 // Create a wrapper component to handle the function children
-const ChildrenRenderer = memo(({ children, props }) => {
-  if (typeof children === 'function') {
-    return children(props);
+const ChildrenRenderer = memo(({ render, props }) => {
+  if (typeof render === 'function') {
+    return render(props);
   }
-  return children;
+  return render;
 });
 ChildrenRenderer.displayName = 'ChildrenRenderer';
 
@@ -167,7 +167,7 @@ export default function InsightSearchUsageTracker({ children }) {
 
   return (
     <>
-      <ChildrenRenderer children={children} props={childrenProps} />
+      <ChildrenRenderer render={children} props={childrenProps} />
       
       {/* Upgrade Modal */}
       <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>

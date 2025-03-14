@@ -9,11 +9,11 @@ import { AlertCircle } from 'lucide-react';
 import { DEEP_SEEK_FEATURE, DEEP_SEEK_LIMIT } from '@/lib/subscription-client';
 
 // Create a wrapper component to handle the function children
-const ChildrenRenderer = memo(({ children, props }) => {
-  if (typeof children === 'function') {
-    return children(props);
+const ChildrenRenderer = memo(({ render, props }) => {
+  if (typeof render === 'function') {
+    return render(props);
   }
-  return children;
+  return render;
 });
 ChildrenRenderer.displayName = 'ChildrenRenderer';
 
@@ -156,7 +156,7 @@ export default function DeepSeekUsageTracker({ children }) {
 
   return (
     <>
-      <ChildrenRenderer children={children} props={childrenProps} />
+      <ChildrenRenderer render={children} props={childrenProps} />
       
       {/* Warning Modal */}
       <Dialog open={showWarningModal} onOpenChange={setShowWarningModal}>
