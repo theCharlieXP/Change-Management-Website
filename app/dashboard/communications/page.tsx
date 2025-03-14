@@ -351,6 +351,16 @@ export default function CommunicationsPage() {
 
   // Update the state definition with the new interface
   const [deepSeekTracker, setDeepSeekTracker] = useState<DeepSeekTracker | null>(null);
+  
+  // Add a new state variable to store tracker values
+  const [trackerValues, setTrackerValues] = useState<DeepSeekTracker | null>(null);
+  
+  // Use an effect to update the deepSeekTracker when trackerValues changes
+  useEffect(() => {
+    if (trackerValues) {
+      setDeepSeekTracker(trackerValues);
+    }
+  }, [trackerValues]);
 
   const handleGenerateCommunication = async () => {
     // Check if we can use Deep Seek
@@ -977,9 +987,14 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
   return (
     <DeepSeekUsageTracker>
       {(tracker: DeepSeekTracker) => {
-        // Store the tracker in state for use in other functions
-        if (!deepSeekTracker) {
-          setDeepSeekTracker(tracker);
+        // Update trackerValues instead of directly updating state
+        if (!trackerValues || 
+            trackerValues.usageCount !== tracker.usageCount || 
+            trackerValues.usageLimit !== tracker.usageLimit || 
+            trackerValues.remainingUses !== tracker.remainingUses || 
+            trackerValues.isLimitReached !== tracker.isLimitReached || 
+            trackerValues.isNearLimit !== tracker.isNearLimit) {
+          setTrackerValues(tracker);
         }
         
         return (
