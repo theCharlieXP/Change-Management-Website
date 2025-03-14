@@ -98,9 +98,6 @@ export default function CommunicationsPage() {
   const [highlightedTextMap, setHighlightedTextMap] = useState<Record<string, string[]>>({})
   
   // Add state for DeepSeek tracker
-  const [deepSeekTracker, setDeepSeekTracker] = useState<DeepSeekTracker | null>(null);
-  
-  // Add state variable to store tracker values
   const [trackerValues, setTrackerValues] = useState<DeepSeekTracker | null>(null);
   
   // Add state for saved communications
@@ -111,13 +108,6 @@ export default function CommunicationsPage() {
   // Add state for delete confirmation
   const [communicationToDelete, setCommunicationToDelete] = useState<SavedCommunication | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  
-  // Use an effect to update the deepSeekTracker when trackerValues changes
-  useEffect(() => {
-    if (trackerValues) {
-      setDeepSeekTracker(trackerValues);
-    }
-  }, [trackerValues]);
   
   // Add selectedInsightsData if it&apos;s doesn't exist
   const selectedInsightsData = selectedInsights.map(id => {
@@ -373,8 +363,8 @@ export default function CommunicationsPage() {
 
   const handleGenerateCommunication = async () => {
     // Check if we can use Deep Seek
-    if (deepSeekTracker) {
-      const canUseDeepSeek = await deepSeekTracker.incrementUsage();
+    if (trackerValues) {
+      const canUseDeepSeek = await trackerValues.incrementUsage();
       if (!canUseDeepSeek) {
         toast({
           title: "Usage Limit Reached",
@@ -385,10 +375,10 @@ export default function CommunicationsPage() {
       }
       
       // If approaching limit, show warning
-      if (deepSeekTracker.isNearLimit) {
+      if (trackerValues.isNearLimit) {
         toast({
           title: "Approaching Usage Limit",
-          description: `You have ${deepSeekTracker.remainingUses} Deep Seek operations remaining today.`,
+          description: `You have ${trackerValues.remainingUses} Deep Seek operations remaining today.`,
           variant: "default",
         });
       }
@@ -658,8 +648,8 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
   // Function to edit a saved communication with Amigo
   const handleEditWithAmigo = async (communication: SavedCommunication) => {
     // Check if we can use Deep Seek
-    if (deepSeekTracker) {
-      const canUseDeepSeek = await deepSeekTracker.incrementUsage();
+    if (trackerValues) {
+      const canUseDeepSeek = await trackerValues.incrementUsage();
       if (!canUseDeepSeek) {
         toast({
           title: "Usage Limit Reached",
@@ -670,10 +660,10 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
       }
       
       // If approaching limit, show warning
-      if (deepSeekTracker.isNearLimit) {
+      if (trackerValues.isNearLimit) {
         toast({
           title: "Approaching Usage Limit",
-          description: `You have ${deepSeekTracker.remainingUses} Deep Seek operations remaining today.`,
+          description: `You have ${trackerValues.remainingUses} Deep Seek operations remaining today.`,
           variant: "default",
         });
       }
