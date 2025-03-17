@@ -5,7 +5,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID;
+const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID || 'price_1R3LPcDwldg3cn1FQ484VxT6';
 
 // Create Supabase client
 const createSupabaseClient = () => {

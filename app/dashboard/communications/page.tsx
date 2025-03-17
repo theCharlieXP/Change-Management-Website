@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Loader2, MessageSquare, FileText, Send, ArrowLeft, ArrowRight, Maximize2, X, Highlighter, RefreshCw, Wand2, Trash2 } from "lucide-react"
+import { Loader2, MessageSquare, FileText, Send, ArrowLeft, ArrowRight, Maximize2, X, Highlighter, RefreshCw, Wand2, Trash2, AlertCircle } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from '@clerk/nextjs'
 import type { Project } from '@/types/projects'
@@ -408,20 +408,38 @@ export default function CommunicationsPage() {
       return
     }
     
+    // Get the project details
+    const project = projects.find(p => p.id === selectedProject)
+    if (!project) {
+      toast({
+        title: "Error",
+        description: "Project not found.",
+        variant: "destructive"
+      })
+      setLoading(false)
+      return
+    }
+    
     // Prepare the prompt
     const basePrompt = communicationTypeDetails.aiPrompt
     
     // Add insights content with highlighted text prioritised
-    const insightsContent = insightsData.map(insight => {
-      const highlights = highlightedTextMap[insight.id] || [];
-      let highlightedContent = '';
-      
-      if (highlights.length > 0) {
-        highlightedContent = `\nHIGHLIGHTED KEY POINTS:\n${highlights.map(h => `• ${h}`).join('\n')}`;
-      }
-      
-      return `${insight.title}: ${insight.content}${highlightedContent}`;
-    }).join('\n\n')
+    let insightsContent = "";
+    
+    if (insightsData.length > 0) {
+      insightsContent = insightsData.map(insight => {
+        const highlights = highlightedTextMap[insight.id] || [];
+        let highlightedContent = "";
+        
+        if (highlights.length > 0) {
+          highlightedContent = `\nHIGHLIGHTED KEY POINTS:\n${highlights.map(h => `• ${h}`).join('\n')}`;
+        }
+        
+        return `${insight.title}: ${insight.content}${highlightedContent}`;
+      }).join('\n\n');
+    } else {
+      insightsContent = "No insights selected. Create communication based on project details and customization options.";
+    }
     
     // Add customization options
     const customizationOptions = `
@@ -772,7 +790,7 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
               <h2 className="text-2xl font-bold">Select Insights</h2>
               <Button 
                 onClick={handleNextStep}
-                disabled={selectedInsights.length === 0}
+                disabled={selectedProject === null}
                 className="flex-shrink-0"
               >
                 Next Step
@@ -780,7 +798,9 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
               </Button>
             </div>
             <p className="text-muted-foreground">
-              Select content to include in your communication.
+              {projectInsights.length === 0 && selectedProject 
+                ? "This project doesn't have any saved insights, but you can still proceed to create a communication."
+                : "Select content to include in your communication."}
               {hasHighlightedInsights() && (
                 <span className="ml-1 text-yellow-600 inline-flex items-center">
                   <Highlighter className="h-3.5 w-3.5 mr-1" />
@@ -802,26 +822,37 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
       
       case 2:
         return (
-          <div className="space-y-4 w-full">
-            <div className="flex justify-between items-center flex-wrap gap-2">
-              <h2 className="text-2xl font-bold">Communication Type</h2>
-              <div className="space-x-2 flex-shrink-0">
-                <Button variant="outline" onClick={handlePreviousStep}size="sm">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
+          <div className="space-y-6 w-full">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Communication Details</h2>
+              <div className="flex space-x-2">
+                <Button variant="outline" onClick={handlePreviousStep}>
+                  <ArrowLeft className="mr-2 h-4 w-4" /> Back
                 </Button>
                 <Button 
                   onClick={handleNextStep}
                   disabled={!communicationType}
                 >
-                  Next Step
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  Next <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
             </div>
-            <p className="text-muted-foreground">
-              Select the type of communication you want to create.
-            </p>
+            
+            {selectedInsights.length === 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm text-amber-800 font-medium">No insights selected</p>
+                    <p className="text-sm text-amber-700">
+                      You haven't selected any insights to include in your communication. 
+                      Your communication will be created based on the project details and options you provide.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <CommunicationTypeSelection
               selectedType={communicationType}
               onTypeSelect={(type) => setCommunicationType(type)}

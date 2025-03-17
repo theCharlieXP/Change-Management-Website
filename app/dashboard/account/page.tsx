@@ -136,7 +136,7 @@ export default function AccountPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="text-center py-4">
-                  <span className="text-3xl font-bold">£4</span>
+                  <span className="text-3xl font-bold">£3</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
                 <div className="space-y-4">

@@ -70,8 +70,11 @@ export function InsightSelection({
       <div className="text-center py-12 border rounded-lg bg-gray-50">
         <AlertCircle className="mx-auto h-12 w-12 text-amber-500 opacity-80 mb-4" />
         <h3 className="text-lg font-medium mb-2">No insights saved for this project</h3>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          This project doesn&apos;t have any saved insights yet. You can create insights in the Insights section.
+        <p className="text-muted-foreground max-w-md mx-auto mb-4">
+          This project doesn&apos;t have any saved insights yet. You can create insights in the Insights section or proceed to create a communication without insights.
+        </p>
+        <p className="text-sm text-blue-600">
+          Click &quot;Next Step&quot; above to continue to the next stage.
         </p>
       </div>
     )

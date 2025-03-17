@@ -46,6 +46,13 @@ function SuccessContent() {
         localStorage.setItem('isPremiumUser', 'true');
         localStorage.setItem('insightSearchUsageCount', '0');
         
+        // Store the pro tier limit for immediate UI feedback
+        if (data.proStatus) {
+          localStorage.setItem('proTierLimit', data.proStatus.usageLimit.toString());
+          localStorage.setItem('subscriptionTier', data.proStatus.tier);
+          localStorage.setItem('subscriptionStatus', data.proStatus.subscriptionStatus);
+        }
+        
         console.log('Payment verified successfully');
       } else {
         throw new Error('Payment verification failed');
@@ -58,6 +65,7 @@ function SuccessContent() {
       // In a production app, you would handle this error properly
       localStorage.setItem('isPremiumUser', 'true');
       localStorage.setItem('insightSearchUsageCount', '0');
+      localStorage.setItem('proTierLimit', '100');  // PRO_TIER_INSIGHT_LIMIT
     } finally {
       setIsVerifying(false);
     }

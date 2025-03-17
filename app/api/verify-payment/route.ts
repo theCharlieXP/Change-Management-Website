@@ -153,6 +153,12 @@ const { userId  } = authData;
     return NextResponse.json({
       success: true,
       isPremium: true,
+      proStatus: {
+        tier: 'pro',
+        usageLimit: 100, // PRO_TIER_INSIGHT_LIMIT
+        subscriptionStatus: 'active',
+        currentUsage: 0
+      }
     });
   } catch (error: any) {
     console.error('Error verifying payment:', error);

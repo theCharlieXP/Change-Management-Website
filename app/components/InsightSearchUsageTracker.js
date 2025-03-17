@@ -38,7 +38,13 @@ export default function InsightSearchUsageTracker({ children }) {
     const storedIsPremium = localStorage.getItem('isPremiumUser') === 'true';
     if (storedIsPremium) {
       setIsPremium(true);
-      setUsageLimit(PRO_TIER_INSIGHT_LIMIT);
+      // Check if we have a stored pro tier limit
+      const storedProTierLimit = localStorage.getItem('proTierLimit');
+      if (storedProTierLimit) {
+        setUsageLimit(parseInt(storedProTierLimit, 10));
+      } else {
+        setUsageLimit(PRO_TIER_INSIGHT_LIMIT);
+      }
     }
     
     // Fetch actual usage from server
@@ -73,8 +79,9 @@ export default function InsightSearchUsageTracker({ children }) {
         // If user has premium, update the limit
         if (data.usage.isPremium) {
           setIsPremium(true);
-          setUsageLimit(PRO_TIER_INSIGHT_LIMIT);
+          setUsageLimit(data.usage.limit || PRO_TIER_INSIGHT_LIMIT);
           localStorage.setItem('isPremiumUser', 'true');
+          localStorage.setItem('proTierLimit', (data.usage.limit || PRO_TIER_INSIGHT_LIMIT).toString());
         }
       }
     } catch (error) {
