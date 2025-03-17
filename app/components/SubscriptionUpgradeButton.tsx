@@ -23,7 +23,7 @@ export default function SubscriptionUpgradeButton() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID || 'price_1OoXXXXXXXXXXXXXXXXXXXXX',
+          priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID,
           successUrl: `${window.location.origin}/success`,
           cancelUrl: `${window.location.origin}/cancel`,
         }),

@@ -38,3 +38,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Stripe testing files
+.env.test
+stripe.env
+test-stripe*.js
+fix-stripe-key.js
+update-key.js
