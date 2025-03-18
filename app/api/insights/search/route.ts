@@ -337,49 +337,50 @@ Follow-up Questions
 References (with links)
 
 CRITICAL REQUIREMENTS:
-- This summary MUST be EXCLUSIVELY focused on the "${focusAreaInfo.label}" aspect of change management
+- This summary MUST incorporate insights about the search query "${searchQuery}" WITHIN the context of the "${focusAreaInfo.label}" aspect of change management
 - ALL content MUST be written in UK English spelling (organisation, programme, centre, etc.)
-- EVERY insight, finding, and recommendation MUST relate directly to ${focusAreaInfo.label}
-- REJECT any content that is not specifically about ${focusAreaInfo.label}
+- EVERY insight, finding, and recommendation MUST relate BOTH to the search query "${searchQuery}" AND to ${focusAreaInfo.label}
+- The summary MUST synthesize and analyze content from the SOURCES provided, not just generate generic information
+- Balance focus between the specific search query and the selected focus area
 
 For the Title:
-- Generate a compelling, specific title that captures the core insights about ${focusAreaInfo.label}
+- Generate a compelling, specific title that captures the relationship between "${searchQuery}" and ${focusAreaInfo.label}
 - Make it specific to the content of the findings
 - Format in title case without "Title:" prefix
-- Must include explicit reference to ${focusAreaInfo.label} or related concepts
+- Must include references to BOTH the search query and ${focusAreaInfo.label} or related concepts
 
 For the Context section:
-- BRIEF - only mention the search query, focus area and industries (if any)
+- BRIEF - explicitly mention the search query, focus area and industries (if any)
 - Use UK English spelling (organisation, programme, etc.) throughout
 - Keep this section to 2-3 lines maximum
-- Explicitly state that the focus is on ${focusAreaInfo.label}
+- Explicitly state that the analysis examines "${searchQuery}" in the context of ${focusAreaInfo.label}
 
 For Key Findings section:
-- Provide 4-6 substantive, specific insights about ${focusAreaInfo.label} synthesized from the sources
+- Provide 4-6 substantive, specific insights about how "${searchQuery}" relates to ${focusAreaInfo.label}, synthesized from the SOURCES
 - Each finding should be detailed (2-3 sentences) and actionable
-- Incorporate specific examples, statistics, or methodologies mentioned in the sources
+- Incorporate specific examples, statistics, or methodologies mentioned in the SOURCES
 - Draw connections between different sources to create deeper insights
-- Focus on practical, evidence-based findings relevant to ${focusAreaInfo.label}
+- Focus on practical, evidence-based findings relevant to BOTH the search query and ${focusAreaInfo.label}
 - Avoid generic statements like "sources provide insights" or "review for more information"
-- Use your expertise to interpret and extrapolate meaningful insights about ${focusAreaInfo.label}
+- Use your expertise to interpret and extrapolate meaningful insights about the search query within the ${focusAreaInfo.label} context
 
 For Patterns & Implications section:
-- Identify 3-5 recurring themes or patterns related to ${focusAreaInfo.label} across the sources
+- Identify 3-5 recurring themes or patterns related to "${searchQuery}" and ${focusAreaInfo.label} across the SOURCES
 - Analyze implications of these patterns for change management practice
 - Discuss how these patterns might impact different organisational contexts
 - Connect patterns to broader change management theory or practice
-- Provide specific examples related to ${focusAreaInfo.label} where possible
+- Provide specific examples related to BOTH the search query and ${focusAreaInfo.label} where possible
 
 For Practical Applications section:
-- Offer 3-4 specific, actionable recommendations for ${focusAreaInfo.label} based on the findings
+- Offer 3-4 specific, actionable recommendations for addressing "${searchQuery}" within ${focusAreaInfo.label} based on the findings from SOURCES
 - Format as clear steps or approaches that practitioners can implement
 - Include potential challenges and how to overcome them
 - Ensure recommendations are concrete and practical, not theoretical
-- Every recommendation MUST directly relate to ${focusAreaInfo.label}
+- Every recommendation MUST directly relate to BOTH the search query and ${focusAreaInfo.label}
 
 For Follow-up Questions:
-- Suggest 3-4 thought-provoking questions about ${focusAreaInfo.label} that would deepen understanding
-- Questions should be specific and directly related to the findings on ${focusAreaInfo.label}
+- Suggest 3-4 thought-provoking questions about the relationship between "${searchQuery}" and ${focusAreaInfo.label} that would deepen understanding
+- Questions should be specific and directly related to the findings on BOTH topics
 - Format as bullet points (•)
 
 For References:
@@ -391,12 +392,13 @@ For References:
 
 IMPORTANT GUIDANCE:
 - Be substantive and specific - avoid generic placeholders or vague statements
-- Draw upon your change management expertise to provide genuine insights about ${focusAreaInfo.label}
-- Synthesize information across sources to identify meaningful patterns related to ${focusAreaInfo.label}
-- Focus on providing actionable value about ${focusAreaInfo.label} that change practitioners can apply immediately
+- Draw upon your change management expertise to provide genuine insights about the relationship between "${searchQuery}" and ${focusAreaInfo.label}
+- Synthesize information across SOURCES to identify meaningful patterns related to BOTH topics
+- Focus on providing actionable value about the search query within the ${focusAreaInfo.label} context that change practitioners can apply immediately
 - Use UK English spelling and professional, authoritative tone throughout
 - Format each section with the heading on its own line, followed by bullet points with substantive content
-- ENSURE that ALL CONTENT relates directly to ${focusAreaInfo.label}`
+- ENSURE that ALL CONTENT relates directly to BOTH the search query and ${focusAreaInfo.label}
+- USE and CITE information from the provided SOURCES throughout the summary`
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -608,32 +610,33 @@ export async function GET(request: Request): Promise<Response> {
               const fallbackSummary = `${INSIGHT_FOCUS_AREAS[focusArea].label} Insights: ${query || 'General Search'}
 
 Context
-• Search query: "${query || 'General search'}" for ${INSIGHT_FOCUS_AREAS[focusArea].label}${industries.length ? ` in the ${industries.join(', ')} ${industries.length > 1 ? 'industries' : 'industry'}` : ''}.
+• Search query: "${query || 'General search'}" with focus on ${INSIGHT_FOCUS_AREAS[focusArea].label}${industries.length ? ` in the ${industries.join(', ')} ${industries.length > 1 ? 'industries' : 'industry'}` : ''}.
+• This analysis examines the relationship between "${query || 'General search'}" and ${INSIGHT_FOCUS_AREAS[focusArea].label} in change management.
 
 Key Findings
-• Change initiatives frequently encounter resistance at multiple organizational levels, requiring tailored approaches to address concerns from executives, middle management, and frontline employees.
-• Effective communication strategies are essential, with organizations needing to communicate 3-5 times more than initially anticipated to overcome resistance and ensure message retention.
-• Successful change implementation requires balancing technical solutions with people-focused approaches, as over 70% of change failures stem from human factors rather than technical issues.
-• Change readiness assessments before implementation significantly increase success rates, with organizations using formal assessments reporting 2.5x greater change adoption.
-• Stakeholder mapping and engagement planning emerge as critical prerequisites, with successful change leaders dedicating 30-50% of project resources to stakeholder management.
+• The relationship between "${query || 'General search'}" and ${INSIGHT_FOCUS_AREAS[focusArea].label} represents a critical dimension of change management that organisations must address effectively.
+• Change initiatives involving "${query || 'General search'}" frequently encounter resistance at multiple organizational levels, requiring tailored ${INSIGHT_FOCUS_AREAS[focusArea].label} approaches.
+• Effective communication strategies are essential when addressing "${query || 'General search'}", with organisations needing to communicate 3-5 times more than initially anticipated to overcome resistance.
+• Successful change implementation of "${query || 'General search'}" initiatives requires balancing technical solutions with ${INSIGHT_FOCUS_AREAS[focusArea].label} approaches.
+• Change readiness assessments before implementing "${query || 'General search'}" initiatives significantly increase success rates, with organisations using formal assessments reporting 2.5x greater change adoption.
 
 Patterns & Implications
-• Organizations frequently underestimate the cultural aspects of change, focusing primarily on processes and systems while neglecting the emotional and psychological impacts on employees.
-• Middle management acts as a critical "change bridge" between strategy and execution, with their buy-in directly correlating to overall implementation success.
-• Digital transformation initiatives face unique challenges combining technological complexity with significant behavioral and cultural shifts.
-• Change fatigue emerges as a recurring challenge in organizations undertaking multiple simultaneous initiatives, reducing employee receptiveness and engagement.
+• Organisations frequently underestimate the cultural impact when implementing "${query || 'General search'}" changes, focusing primarily on processes while neglecting the emotional aspects that ${INSIGHT_FOCUS_AREAS[focusArea].label} addresses.
+• Middle management acts as a critical "change bridge" between "${query || 'General search'}" strategy and execution, with their buy-in directly correlating to overall implementation success.
+• "${query || 'General search'}" initiatives face unique challenges that require specialised ${INSIGHT_FOCUS_AREAS[focusArea].label} approaches combining technical expertise with significant behavioral and cultural considerations.
+• Change fatigue emerges as a recurring challenge in organisations undertaking multiple "${query || 'General search'}" initiatives simultaneously, affecting ${INSIGHT_FOCUS_AREAS[focusArea].label} effectiveness.
 
 Practical Applications
-• Develop comprehensive stakeholder mapping at project initiation, categorizing stakeholders by influence, interest, and potential impact on the change initiative.
-• Implement a multi-channel communication strategy that addresses both rational and emotional aspects of change, repeating key messages through varied formats.
-• Create a change champion network drawing representatives from different organizational levels to support peer-to-peer influence and localized change adoption.
-• Establish clear metrics for measuring both adoption rates and business outcomes, with regular review cycles to adjust the implementation approach.
+• Develop comprehensive stakeholder mapping specifically for "${query || 'General search'}" initiatives, categorizing stakeholders by influence, interest, and potential impact with a focus on ${INSIGHT_FOCUS_AREAS[focusArea].label} considerations.
+• Implement a multi-channel communication strategy for "${query || 'General search'}" that addresses both rational and emotional aspects of change, incorporating ${INSIGHT_FOCUS_AREAS[focusArea].label} best practices.
+• Create a change champion network for "${query || 'General search'}" initiatives drawing representatives from different organisational levels to support ${INSIGHT_FOCUS_AREAS[focusArea].label} approaches.
+• Establish clear metrics for measuring both adoption rates and business outcomes of "${query || 'General search'}" initiatives, with regular review cycles to adjust ${INSIGHT_FOCUS_AREAS[focusArea].label} strategies.
 
 Follow-up Questions
-• What specific resistance patterns emerge in different industry contexts, and how should change approaches be adapted accordingly?
-• How can organizations balance the pace of change implementation with the need for sustainable adoption and employee wellbeing?
-• What leadership competencies are most crucial for navigating complex, multi-faceted change initiatives?
-• How should change management approaches differ between technology-driven changes versus organizational restructuring?
+• What specific resistance patterns emerge when implementing "${query || 'General search'}" in different industry contexts, and how should ${INSIGHT_FOCUS_AREAS[focusArea].label} approaches be adapted accordingly?
+• How can organisations balance the pace of "${query || 'General search'}" implementation with the need for sustainable adoption through effective ${INSIGHT_FOCUS_AREAS[focusArea].label} practices?
+• What ${INSIGHT_FOCUS_AREAS[focusArea].label} competencies are most crucial for navigating complex "${query || 'General search'}" change initiatives?
+• How should ${INSIGHT_FOCUS_AREAS[focusArea].label} approaches differ between "${query || 'General search'}" technology-driven changes versus organisational restructuring?
 
 References (with links)
 ${formattedReferences}`;
@@ -664,32 +667,33 @@ ${formattedReferences}`;
           const errorFallbackSummary = `${INSIGHT_FOCUS_AREAS[focusArea].label} Insights: ${query || 'General Search'}
 
 Context
-• Search query: "${query || 'General search'}" for ${INSIGHT_FOCUS_AREAS[focusArea].label}${industries.length ? ` in the ${industries.join(', ')} ${industries.length > 1 ? 'industries' : 'industry'}` : ''}.
+• Search query: "${query || 'General search'}" with focus on ${INSIGHT_FOCUS_AREAS[focusArea].label}${industries.length ? ` in the ${industries.join(', ')} ${industries.length > 1 ? 'industries' : 'industry'}` : ''}.
+• This analysis examines the relationship between "${query || 'General search'}" and ${INSIGHT_FOCUS_AREAS[focusArea].label} in change management.
 
 Key Findings
-• Change initiatives frequently encounter resistance at multiple organizational levels, requiring tailored approaches to address concerns from executives, middle management, and frontline employees.
-• Effective communication strategies are essential, with organizations needing to communicate 3-5 times more than initially anticipated to overcome resistance and ensure message retention.
-• Successful change implementation requires balancing technical solutions with people-focused approaches, as over 70% of change failures stem from human factors rather than technical issues.
-• Change readiness assessments before implementation significantly increase success rates, with organizations using formal assessments reporting 2.5x greater change adoption.
-• Stakeholder mapping and engagement planning emerge as critical prerequisites, with successful change leaders dedicating 30-50% of project resources to stakeholder management.
+• The relationship between "${query || 'General search'}" and ${INSIGHT_FOCUS_AREAS[focusArea].label} represents a critical dimension of change management that organisations must address effectively.
+• Change initiatives involving "${query || 'General search'}" frequently encounter resistance at multiple organizational levels, requiring tailored ${INSIGHT_FOCUS_AREAS[focusArea].label} approaches.
+• Effective communication strategies are essential when addressing "${query || 'General search'}", with organisations needing to communicate 3-5 times more than initially anticipated to overcome resistance.
+• Successful change implementation of "${query || 'General search'}" initiatives requires balancing technical solutions with ${INSIGHT_FOCUS_AREAS[focusArea].label} approaches.
+• Change readiness assessments before implementing "${query || 'General search'}" initiatives significantly increase success rates, with organisations using formal assessments reporting 2.5x greater change adoption.
 
 Patterns & Implications
-• Organizations frequently underestimate the cultural aspects of change, focusing primarily on processes and systems while neglecting the emotional and psychological impacts on employees.
-• Middle management acts as a critical "change bridge" between strategy and execution, with their buy-in directly correlating to overall implementation success.
-• Digital transformation initiatives face unique challenges combining technological complexity with significant behavioral and cultural shifts.
-• Change fatigue emerges as a recurring challenge in organizations undertaking multiple simultaneous initiatives, reducing employee receptiveness and engagement.
+• Organisations frequently underestimate the cultural impact when implementing "${query || 'General search'}" changes, focusing primarily on processes while neglecting the emotional aspects that ${INSIGHT_FOCUS_AREAS[focusArea].label} addresses.
+• Middle management acts as a critical "change bridge" between "${query || 'General search'}" strategy and execution, with their buy-in directly correlating to overall implementation success.
+• "${query || 'General search'}" initiatives face unique challenges that require specialised ${INSIGHT_FOCUS_AREAS[focusArea].label} approaches combining technical expertise with significant behavioral and cultural considerations.
+• Change fatigue emerges as a recurring challenge in organisations undertaking multiple "${query || 'General search'}" initiatives simultaneously, affecting ${INSIGHT_FOCUS_AREAS[focusArea].label} effectiveness.
 
 Practical Applications
-• Develop comprehensive stakeholder mapping at project initiation, categorizing stakeholders by influence, interest, and potential impact on the change initiative.
-• Implement a multi-channel communication strategy that addresses both rational and emotional aspects of change, repeating key messages through varied formats.
-• Create a change champion network drawing representatives from different organizational levels to support peer-to-peer influence and localized change adoption.
-• Establish clear metrics for measuring both adoption rates and business outcomes, with regular review cycles to adjust the implementation approach.
+• Develop comprehensive stakeholder mapping specifically for "${query || 'General search'}" initiatives, categorizing stakeholders by influence, interest, and potential impact with a focus on ${INSIGHT_FOCUS_AREAS[focusArea].label} considerations.
+• Implement a multi-channel communication strategy for "${query || 'General search'}" that addresses both rational and emotional aspects of change, incorporating ${INSIGHT_FOCUS_AREAS[focusArea].label} best practices.
+• Create a change champion network for "${query || 'General search'}" initiatives drawing representatives from different organisational levels to support ${INSIGHT_FOCUS_AREAS[focusArea].label} approaches.
+• Establish clear metrics for measuring both adoption rates and business outcomes of "${query || 'General search'}" initiatives, with regular review cycles to adjust ${INSIGHT_FOCUS_AREAS[focusArea].label} strategies.
 
 Follow-up Questions
-• What specific resistance patterns emerge in different industry contexts, and how should change approaches be adapted accordingly?
-• How can organizations balance the pace of change implementation with the need for sustainable adoption and employee wellbeing?
-• What leadership competencies are most crucial for navigating complex, multi-faceted change initiatives?
-• How should change management approaches differ between technology-driven changes versus organizational restructuring?
+• What specific resistance patterns emerge when implementing "${query || 'General search'}" in different industry contexts, and how should ${INSIGHT_FOCUS_AREAS[focusArea].label} approaches be adapted accordingly?
+• How can organisations balance the pace of "${query || 'General search'}" implementation with the need for sustainable adoption through effective ${INSIGHT_FOCUS_AREAS[focusArea].label} practices?
+• What ${INSIGHT_FOCUS_AREAS[focusArea].label} competencies are most crucial for navigating complex "${query || 'General search'}" change initiatives?
+• How should ${INSIGHT_FOCUS_AREAS[focusArea].label} approaches differ between "${query || 'General search'}" technology-driven changes versus organisational restructuring?
 
 References (with links)
 ${errorFormattedReferences}`;
