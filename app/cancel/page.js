@@ -15,7 +15,7 @@ export default function Cancel() {
             Payment Cancelled
           </h1>
           <p className="text-gray-600 mb-8">
-            Your payment was cancelled. You can try again whenever you&apos;re ready.
+            Your payment was cancelled. You can try again whenever you{"'"}re ready.
           </p>
           
           <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 justify-center">

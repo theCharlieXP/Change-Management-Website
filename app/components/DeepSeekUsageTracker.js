@@ -167,7 +167,7 @@ export default function DeepSeekUsageTracker({ children }) {
               Daily Usage Limit Reached
             </DialogTitle>
             <DialogDescription>
-              You&apos;ve used all {DEEP_SEEK_LIMIT} Deep Seek operations available for today.
+              You{"'"}ve used all {DEEP_SEEK_LIMIT} Deep Seek operations available for today.
             </DialogDescription>
           </DialogHeader>
           

@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -881,7 +882,7 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
                 <div className="flex-1">
                   <p className="text-sm text-yellow-800 font-medium">Highlighted Key Points</p>
                   <p className="text-xs text-yellow-700 mb-2">
-                    You&apos;ve highlighted key points in {Object.keys(highlightedTextMap).filter(id => highlightedTextMap[id].length > 0).length} insight(s). 
+                    You{"'"}ve highlighted key points in {Object.keys(highlightedTextMap).filter(id => highlightedTextMap[id].length > 0).length} insight(s). 
                     These points will be prioritised in the generated communication.
                   </p>
                 </div>
