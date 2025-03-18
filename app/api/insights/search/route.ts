@@ -96,6 +96,12 @@ interface SearchResult {
   published_date?: string
   description?: string
   relevanceScore?: number
+  originalSource?: boolean
+}
+
+// Extend the Insight type to include the originalSource property
+interface ExtendedInsight extends Insight {
+  originalSource?: boolean;
 }
 
 async function searchTavily(
@@ -211,12 +217,23 @@ async function searchTavily(
       throw new Error('Invalid response format from Tavily API')
     }
 
+    // Store the raw Tavily results for reference
+    const tavilyOriginalResults = data.results;
+
     // Simplify the scoring and filtering of results
     const scoredResults = data.results
       .filter((result: SearchResult) => {
         // Only filter out empty content
         return result.content && result.content.length > 0
       })
+      // Add the original source data to each result
+      .map((result: SearchResult) => {
+        return {
+          ...result,
+          originalSource: true, // Flag to indicate this is an original Tavily source
+          source: result.source || (new URL(result.url).hostname.replace(/^www\./, ''))
+        };
+      });
 
     console.log('Search results processed:', {
       originalCount: data.results.length,
@@ -281,6 +298,7 @@ async function summarizeWithDeepseek(
     query: string,
     focusArea: InsightFocusArea,
     industries: string[],
+    originalSources?: {url: string, source?: string, title?: string}[]
   }
 ): Promise<string> {
   const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
@@ -293,6 +311,14 @@ async function summarizeWithDeepseek(
 Query: ${searchContext.query}
 Focus Area: ${focusAreaInfo.label}
 ${searchContext.industries.length ? `Industries: ${searchContext.industries.join(', ')}` : ''}`
+
+  // Format the original sources for references
+  const sourcesInfo = searchContext.originalSources && searchContext.originalSources.length > 0 ? 
+    `\n\nOriginal Sources (MUST be included in References section):
+${searchContext.originalSources.map((s, i) => 
+  `${i+1}. ${s.source || new URL(s.url).hostname.replace(/^www\./, '')} - ${s.title || 'Article'} 
+   URL: ${s.url}`
+).join('\n')}` : '';
 
   try {
     // Generate a clean title that summarizes the insight search
@@ -333,13 +359,12 @@ For Follow-up Questions:
 - Format as bullet points (•)
 
 For References:
-- Include the EXACT source name and FULL URL for each reference
+- CRITICAL: You MUST include the EXACT original source URLs provided in the Original Sources section
+- NEVER modify, shorten, or change the URLs provided in the Original Sources section
 - Format as bullet points (•)
-- Include all of the most relevant sources
-- Format EXACTLY as: • [Source Name] - https://www.exacturl.com/page
-- Do not abbreviate or modify the URLs in any way
-- Make sure each URL is complete and starts with http:// or https://
-- Keep the exact domain and path of each URL
+- Include all sources from the Original Sources section
+- Format EXACTLY as: • [Source Name] - [Full URL]
+- The URLs must be complete and exactly as provided
 
 IMPORTANT: Format each section with the heading on its own line, followed by bullet points. Do not add any additional sections or change the order.`
 
@@ -358,7 +383,7 @@ IMPORTANT: Format each section with the heading on its own line, followed by bul
           },
           {
             role: 'user',
-            content: `${contextInfo}\n\n${content}`
+            content: `${contextInfo}${sourcesInfo}\n\n${content}`
           }
         ],
         temperature: 0.3, // Lower temperature for faster, deterministic results
@@ -387,8 +412,8 @@ IMPORTANT: Format each section with the heading on its own line, followed by bul
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url)
   const query = searchParams.get('query') || ''
-  const focusArea = searchParams.get('focusArea') as InsightFocusArea
-  const industriesParam = searchParams.get('industries')
+  const focusArea = searchParams.get('focusArea') as InsightFocusArea || 'challenges-barriers'
+  const industriesParam = searchParams.get('industries') || ''
   const industries = industriesParam ? industriesParam.split(',') : []
   
   // Validate required parameters
@@ -399,7 +424,11 @@ export async function GET(request: Request): Promise<Response> {
     )
   }
 
-  console.log('Search request received:', { query, focusArea, industries })
+  console.log('Search request:', {
+    query,
+    focusArea,
+    industries
+  })
   
   try {
     // Set a timeout for the entire request processing
@@ -409,188 +438,123 @@ export async function GET(request: Request): Promise<Response> {
       }, 50000); // Increased from 30s to 50s timeout for the entire request
     });
 
-    // Create the main processing promise
-    const processingPromise = (async (): Promise<Response> => {
-      // Search for relevant content
-      let searchResults: SearchResult[] = []
+    // Create a processing promise that will be raced against the timeout
+    const processingPromise = (async () => {
+      // Step 1: Set up search environment
+      console.log('Setting up search')
       
-      try {
-        searchResults = await searchTavily(query, focusArea, industries)
-      } catch (error: unknown) {
-        console.error('Error in search:', error)
-        // If Tavily search fails, return a specific error
-        if (error instanceof Error) {
-          if (error.message.includes('timed out')) {
-            return NextResponse.json(
-              { 
-                error: 'Search timed out. Please try a more specific query, fewer industries, or a different focus area.',
-                details: error.message
-              },
-              { status: 504 }
-            )
-          }
-          
-          return NextResponse.json(
-            { 
-              error: 'Search service error',
-              details: error.message
-            },
-            { status: 500 }
-          )
-        }
+      // Update the loading stage - this function is defined in the client
+      const setLoadingStage = (stage: string) => {
+        console.log(`Loading stage: ${stage}`)
+        // This is a no-op function for the server-side environment
+        // The actual setLoadingStage is passed in the client context
+      }
+
+      // Step 2: Search for relevant insights using Tavily
+      setLoadingStage("Searching through trusted sources...")
+      
+      // Process the search results
+      const searchResults = await searchTavily(query, focusArea, industries)
+      console.log(`Found ${searchResults.length} search results from Tavily`)
+      
+      // Step 3: Process search results
+      setLoadingStage("Processing insights...")
+      
+      // Process search results in batches to avoid timeouts
+      const batchSize = 10
+      const batches = []
+      for (let i = 0; i < searchResults.length; i += batchSize) {
+        batches.push(searchResults.slice(i, i + batchSize))
       }
       
-      if (searchResults.length === 0) {
-        return NextResponse.json(
-          { 
-            results: [],
-            summary: null,
-            message: 'No results found. Try adjusting your search criteria.'
-          },
-          { status: 200 }
-        )
-      }
-      
-      // Process the results to create insights - process more results since the user is providing specific queries
-      const resultsToProcess = searchResults.slice(0, 10) // Increased from 3 to 10 to process all results
-      
-      // Process insights in parallel for better performance
-      // Split processing into smaller batches to avoid overwhelming the system
+      // Define the processBatch function
       const processBatch = async (batch: SearchResult[]) => {
-        return Promise.all(batch.map(async (result) => {
-          try {
-            // Create the insight with minimal processing - no title generation or other heavy processing
+        console.log(`Processing ${batch.length} search results`)
+        
+        // Map each search result to an insight
+        const insights: ExtendedInsight[] = await Promise.all(
+          batch.map(async (result: SearchResult) => {
+            // Generate a title that better represents the content
+            const title = await generateTitle(result.content.slice(0, 500), result.title)
+            
+            // Create an insight from the search result
             return {
-              id: crypto.randomUUID(),
-              title: result.title,
-              content: typeof result.content === 'string' ? result.content.substring(0, 500) : JSON.stringify(result.content).substring(0, 500),
+              id: Math.random().toString(36).substring(2, 15),
+              title,
+              summary: result.content,
+              content: [result.content],
+              category: focusArea,
+              tags: [],
+              readTime: `${Math.ceil(result.content.length / 1000)} min read`,
               focus_area: focusArea,
-              source: result.source || new URL(result.url).hostname.replace('www.', ''),
+              source: result.source || (new URL(result.url)).hostname.replace(/^www\./, ''),
               url: result.url,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
-              summary: '',
-              tags: industries,
-              readTime: '3 min',
-              category: INSIGHT_FOCUS_AREAS[focusArea].label
-            } as Insight
-          } catch (error) {
-            console.error('Error processing search result:', error)
-            return null
-          }
-        }))
+              originalSource: result.originalSource || false // Flag to track original Tavily sources
+            }
+          })
+        )
+
+        return insights
       }
       
-      // Wait for all insight processing to complete with a timeout
-      let processedInsights: (Insight | null)[] = []
-      try {
-        // Process in batches of 3 for better performance
-        const batchSize = 3
-        const batches = []
-        
-        for (let i = 0; i < resultsToProcess.length; i += batchSize) {
-          batches.push(resultsToProcess.slice(i, i + batchSize))
-        }
-        
-        // Set a timeout for the parallel processing
-        const processingTimeout = new Promise<(Insight | null)[]>((resolve) => {
-          setTimeout(() => {
-            // If processing takes too long, return a fallback with basic insights
-            console.log('Insight processing timed out, using fallback')
-            resolve(resultsToProcess.slice(0, 2).map(result => { // Reduced from 3 to 2
-              // Use a simple string conversion approach to avoid type issues
-              const contentStr = typeof result.content === 'string' 
-                ? result.content 
-                : JSON.stringify(result.content);
-              
-              return {
-                id: crypto.randomUUID(),
-                title: result.title,
-                content: contentStr.substring(0, 300), // Reduced from 500 to 300
-                focus_area: focusArea,
-                source: result.source || new URL(result.url).hostname.replace('www.', ''),
-                url: result.url,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                summary: '',
-                tags: industries,
-                readTime: '3 min',
-                category: INSIGHT_FOCUS_AREAS[focusArea].label
-              };
-            }))
-          }, 15000) // 15 second timeout for processing (increased from 10s)
-        })
-        
-        // Process batches sequentially to avoid overwhelming the system
-        const batchResults = []
-        for (const batch of batches) {
-          const batchResult = await processBatch(batch)
-          batchResults.push(...batchResult)
-          
-          // Small delay between batches to avoid overwhelming the system
-          await new Promise(resolve => setTimeout(resolve, 100))
-        }
-        
-        // Race between normal processing and timeout
-        processedInsights = await Promise.race([
-          Promise.resolve(batchResults),
-          processingTimeout
-        ])
-      } catch (error) {
-        console.error('Error in parallel processing:', error)
-        // Fallback to basic processing if parallel fails
-        processedInsights = resultsToProcess.slice(0, 2).map(result => { // Reduced from 3 to 2
-          // Use a simple string conversion approach to avoid type issues
-          const contentStr = typeof result.content === 'string' 
-            ? result.content 
-            : JSON.stringify(result.content);
-          
-          return {
-            id: crypto.randomUUID(),
-            title: result.title,
-            content: contentStr.substring(0, 300), // Reduced from 500 to 300
-            focus_area: focusArea,
-            source: result.source || new URL(result.url).hostname.replace('www.', ''),
-            url: result.url,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            summary: '',
-            tags: industries,
-            readTime: '3 min',
-            category: INSIGHT_FOCUS_AREAS[focusArea].label
-          };
-        })
-      }
+      const processedBatches = await Promise.all(batches.map(processBatch))
+      const processedInsights = processedBatches.flat().filter(Boolean) as ExtendedInsight[]
       
-      // Filter out any null results from failed processing
-      const validInsights = processedInsights.filter(insight => insight !== null) as Insight[]
+      // Filter out any invalid entries and limit to top results
+      const validInsights = processedInsights
+        .filter((insight: ExtendedInsight) => 
+          insight && 
+          insight.title && 
+          insight.content && 
+          insight.content.length > 0 && 
+          insight.url
+        )
+        .slice(0, 10) // Limit to top 10 results for performance
       
-      // Generate a summary if we have insights
+      console.log('Valid insights count:', validInsights.length)
+
+      // Collect original Tavily sources for the summary
+      const originalTavilySources = validInsights
+        .filter((insight: ExtendedInsight) => insight.originalSource)
+        .map((insight: ExtendedInsight) => ({
+          url: insight.url || '',  // Ensure url is always a string
+          source: insight.source,
+          title: insight.title
+        }));
+      
+      console.log('Original Tavily sources count:', originalTavilySources.length);
+      
+      // Generate a summary if we have valid insights
       let summary = null
       if (validInsights.length > 0) {
         try {
-          // For summarization, use more insights now that we're processing more results
-          const insightsForSummary = validInsights.slice(0, 5) // Increased from 2 to 5
+          console.log('Generating summary from insights...')
+
+          // Wait for content to process with a progress indicator
+          await new Promise(resolve => setTimeout(resolve, 1500))
+          setLoadingStage("Synthesizing insights and generating summary...")
           
-          // Combine content from selected insights
-          const combinedContent = insightsForSummary
-            .map(insight => {
-              // Use the same string conversion approach
-              const contentStr = typeof insight.content === 'string' 
-                ? insight.content 
-                : JSON.stringify(insight.content);
-              // Take first 500 chars to include more content
-              return contentStr.substring(0, 500);
-            })
-            .join('\n\n')
+          // Combine content for summarization
+          // Use just enough content to get a good summary without overloading the model
+          const contentForSummary = validInsights
+            .map((insight: ExtendedInsight) => insight.summary || insight.content?.[0] || '')
+            .join('\n\n---\n\n')
+            .substring(0, 10000) // Limit to 10k characters to avoid token limits
           
-          // Generate summary with a timeout
+          // Generate a summary
           const summaryPromise = summarizeWithDeepseek(
-            combinedContent,
+            contentForSummary,
             focusArea,
             query,
             false, // Use standard mode
-            { query, focusArea, industries }
+            { 
+              query, 
+              focusArea, 
+              industries,
+              originalSources: originalTavilySources 
+            }
           )
           
           // Set a timeout for summary generation

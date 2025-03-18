@@ -120,14 +120,10 @@ export default function InsightSearchUsageTracker({ children }) {
       return false;
     }
     
-    // Immediately update local state for better user feedback
-    // This ensures the UI reflects the change even if the API call is slow
-    const newLocalCount = usageCount + 1;
-    console.log('Setting local usage count before API call:', newLocalCount);
-    setUsageCount(newLocalCount);
-    localStorage.setItem('insightSearchUsageCount', newLocalCount.toString());
+    // Track the pre-update count for comparison later
+    const preUpdateCount = usageCount;
     
-    // Then update server
+    // Server update first - don't update local state until we get confirmation
     try {
       setIsLoading(true);
       setError(null);
@@ -154,11 +150,17 @@ export default function InsightSearchUsageTracker({ children }) {
       console.log('API response for increment:', data);
       
       if (data.success) {
-        // Update with server data (which may be different from our local count)
+        // Update with server data - this is the authoritative count
         const serverCount = data.usage.count;
         console.log('Updating usage count from server response:', serverCount);
-        setUsageCount(serverCount);
-        localStorage.setItem('insightSearchUsageCount', serverCount.toString());
+        
+        // Only update if the server count is different
+        if (serverCount !== preUpdateCount) {
+          setUsageCount(serverCount);
+          localStorage.setItem('insightSearchUsageCount', serverCount.toString());
+        } else {
+          console.warn('Server did not increment the count as expected');
+        }
         
         // Check if user can use the feature (server may have determined they can't)
         if (!data.canUseFeature) {
@@ -177,8 +179,13 @@ export default function InsightSearchUsageTracker({ children }) {
       console.error('Error incrementing usage:', error);
       setError(error.message);
       
-      // We've already incremented locally above, so no need to do it again
-      // Just check if the new count exceeds the limit
+      // In case of error, we increment locally as a fallback
+      const newLocalCount = preUpdateCount + 1;
+      console.log('Setting local usage count after API error:', newLocalCount);
+      setUsageCount(newLocalCount);
+      localStorage.setItem('insightSearchUsageCount', newLocalCount.toString());
+      
+      // Check if the new count exceeds the limit
       if (newLocalCount >= currentLimit) {
         setShowUpgradeModal(true);
         return false;
@@ -214,6 +221,13 @@ export default function InsightSearchUsageTracker({ children }) {
   return (
     <>
       <ChildrenRenderer render={children} props={childrenProps} />
+      
+      {/* Hidden element to store latest usage tracker values for direct access */}
+      <div 
+        id="usage-tracker-data" 
+        data-values={JSON.stringify(childrenProps)} 
+        style={{ display: 'none' }}
+      />
       
       {/* Upgrade Modal */}
       <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>

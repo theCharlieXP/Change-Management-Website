@@ -214,15 +214,29 @@ export default function InsightsPage() {
     }
     
     try {
+      // Store the previous state for debugging
+      const previousRemaining = remainingSearchesCount;
+      
       // Important: This incrementUsageFunc call updates the usage counter
       const canSearch = await incrementUsageFunc();
       
       // Log the result of the incrementUsage call for debugging
       console.log('Increment usage result:', canSearch);
+      console.log('Previous remaining searches:', previousRemaining, 'New remaining:', remainingSearchesCount);
       
       if (!canSearch) {
         console.log('Search limit reached or increment failed');
         return // The modal will be shown by the usage tracker
+      }
+      
+      // Get the latest usage tracker values to ensure UI is up to date
+      // This ensures we don't reset to old values during the loading process
+      const trackerElement = document.getElementById('usage-tracker-data');
+      if (trackerElement) {
+        const trackerData = JSON.parse(trackerElement.dataset.values || '{}');
+        if (trackerData.remainingSearches !== undefined) {
+          setRemainingSearchesCount(trackerData.remainingSearches);
+        }
       }
       
       setLoading(true)
