@@ -795,7 +795,7 @@ export default function InsightsPage() {
                 {isSearchLimitReached ? (
                   <div className="flex items-center text-amber-600 font-medium">
                     <AlertCircle className="h-4 w-4 mr-1" />
-                    <span>You've reached your Basic plan limit. <Link href="/dashboard/account" className="underline font-bold">Upgrade to Pro</Link></span>
+                    <span>You&apos;ve reached your Basic plan limit. <Link href="/dashboard/account" className="underline font-bold">Upgrade to Pro</Link></span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between p-3 border rounded-md bg-slate-50">

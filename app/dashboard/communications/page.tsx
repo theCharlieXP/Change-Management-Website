@@ -369,7 +369,7 @@ export default function CommunicationsPage() {
       if (!canUseDeepSeek) {
         toast({
           title: "Usage Limit Reached",
-          description: "You've reached your daily limit for Deep Seek operations.",
+          description: "You&apos;ve reached your daily limit for Deep Seek operations.",
           variant: "destructive",
         });
         return;
@@ -672,7 +672,7 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
       if (!canUseDeepSeek) {
         toast({
           title: "Usage Limit Reached",
-          description: "You've reached your daily limit for Deep Seek operations.",
+          description: "You&apos;ve reached your daily limit for Deep Seek operations.",
           variant: "destructive",
         });
         return;
@@ -882,7 +882,7 @@ ${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}
                 <div className="flex-1">
                   <p className="text-sm text-yellow-800 font-medium">Highlighted Key Points</p>
                   <p className="text-xs text-yellow-700 mb-2">
-                    You{"'"}ve highlighted key points in {Object.keys(highlightedTextMap).filter(id => highlightedTextMap[id].length > 0).length} insight(s). 
+                    You&apos;ve highlighted key points in {Object.keys(highlightedTextMap).filter(id => highlightedTextMap[id].length > 0).length} insight(s). 
                     These points will be prioritised in the generated communication.
                   </p>
                 </div>

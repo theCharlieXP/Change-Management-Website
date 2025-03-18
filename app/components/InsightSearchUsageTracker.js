@@ -244,8 +244,8 @@ export default function InsightSearchUsageTracker({ children }) {
             </DialogTitle>
             <DialogDescription>
               {isPremium 
-                ? `You've used all ${PRO_TIER_INSIGHT_LIMIT} Insight Searches available for today on your Pro plan.`
-                : `You've used all ${FREE_TIER_LIMIT} free Insight Searches available on the basic plan.`
+                ? `You&apos;ve used all ${PRO_TIER_INSIGHT_LIMIT} Insight Searches available for today on your Pro plan.`
+                : `You&apos;ve used all ${FREE_TIER_LIMIT} free Insight Searches available on the basic plan.`
               }
             </DialogDescription>
           </DialogHeader>
