@@ -29,6 +29,16 @@ export async function POST(req: NextRequest) {
     const currentUsage = await getFeatureUsage(userId, featureId);
     console.log(`Current usage for ${featureId} by user ${userId}: ${currentUsage.count}/${currentUsage.limit}`);
 
+    // Check if user has already reached their limit
+    if (currentUsage.isLimitReached) {
+      console.log(`User ${userId} has already reached their usage limit for ${featureId}`);
+      return NextResponse.json({
+        success: false,
+        canUseFeature: false,
+        usage: currentUsage
+      });
+    }
+
     // Increment usage
     console.log(`Attempting to increment usage for feature ${featureId} for user ${userId}`);
     const result = await incrementFeatureUsage(featureId);
@@ -36,8 +46,13 @@ export async function POST(req: NextRequest) {
     // Log the result for debugging
     if (result.success) {
       console.log(`Successfully incremented usage for user ${userId}. New count: ${result.usage.count}/${result.usage.limit}`);
+      
+      // Double-check that the count was actually incremented
+      if (result.usage.count <= currentUsage.count) {
+        console.warn(`Warning: Usage count did not increase after increment. Before: ${currentUsage.count}, After: ${result.usage.count}`);
+      }
     } else {
-      console.log(`Failed to increment usage for user ${userId}. Reason: limit reached or other error`);
+      console.log(`Failed to increment usage for user ${userId}. Reason: ${result.usage.isLimitReached ? 'limit reached' : 'other error'}`);
     }
     
     return NextResponse.json({

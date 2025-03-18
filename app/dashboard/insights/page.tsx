@@ -630,11 +630,12 @@ export default function InsightsPage() {
                                       
                                       // Special handling for References section to make links clickable
                                       if (sectionHeader === "References (with links)" || sectionHeader === "References") {
-                                        // Extract URL from the reference line if it exists
-                                        const urlMatch = cleanPoint.match(/\s*-\s*(https?:\/\/[^\s]+)$/);
+                                        // Try multiple patterns to extract URLs
+                                        // First try the standard format: Source - http://url
+                                        const standardUrlMatch = cleanPoint.match(/\s*-\s*(https?:\/\/[^\s]+)$/);
                                         
-                                        if (urlMatch) {
-                                          const url = urlMatch[1]; // Get the captured URL
+                                        if (standardUrlMatch) {
+                                          const url = standardUrlMatch[1]; // Get the captured URL
                                           // Get everything before the URL (source name)
                                           const sourceName = cleanPoint.substring(0, cleanPoint.indexOf(' - ')).trim();
                                           
@@ -646,23 +647,33 @@ export default function InsightsPage() {
                                               </span>
                                             </div>
                                           );
-                                        } else {
-                                          // If the URL isn't properly formatted with a hyphen, try to find any URL
-                                          const genericUrlMatch = cleanPoint.match(/(https?:\/\/[^\s]+)/);
-                                          if (genericUrlMatch) {
-                                            const url = genericUrlMatch[1];
-                                            const sourceName = cleanPoint.replace(url, '').trim();
-                                            
-                                            return (
-                                              <div key={`point-${pointIndex}`} className="flex items-start gap-2">
-                                                <span className="text-muted-foreground">•</span>
-                                                <span className="flex-1">
-                                                  {sourceName} <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{url}</a>
-                                                </span>
-                                              </div>
-                                            );
-                                          }
                                         }
+                                        
+                                        // Also try to find any URL in the text if the standard format fails
+                                        const anyUrlMatch = cleanPoint.match(/(https?:\/\/[^\s]+)/);
+                                        if (anyUrlMatch) {
+                                          const url = anyUrlMatch[1];
+                                          // Remove the URL from the text to get the source name
+                                          const textWithoutUrl = cleanPoint.replace(url, '').trim();
+                                          const sourceName = textWithoutUrl.replace(/\s*-\s*$/, '').trim() || 'Source';
+                                          
+                                          return (
+                                            <div key={`point-${pointIndex}`} className="flex items-start gap-2">
+                                              <span className="text-muted-foreground">•</span>
+                                              <span className="flex-1">
+                                                {sourceName} <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{url}</a>
+                                              </span>
+                                            </div>
+                                          );
+                                        }
+                                        
+                                        // If no URL was found, just display the text
+                                        return (
+                                          <div key={`point-${pointIndex}`} className="flex items-start gap-2">
+                                            <span className="text-muted-foreground">•</span>
+                                            <span className="flex-1">{cleanPoint}</span>
+                                          </div>
+                                        );
                                       }
                                       
                                       return (

@@ -333,10 +333,13 @@ For Follow-up Questions:
 - Format as bullet points (•)
 
 For References:
-- Include the source name and URL for each reference
+- Include the EXACT source name and FULL URL for each reference
 - Format as bullet points (•)
-- Include at least the top 5 most relevant sources
-- Format as: • [Source Name] - URL
+- Include all of the most relevant sources
+- Format EXACTLY as: • [Source Name] - https://www.exacturl.com/page
+- Do not abbreviate or modify the URLs in any way
+- Make sure each URL is complete and starts with http:// or https://
+- Keep the exact domain and path of each URL
 
 IMPORTANT: Format each section with the heading on its own line, followed by bullet points. Do not add any additional sections or change the order.`
 
@@ -594,6 +597,14 @@ export async function GET(request: Request): Promise<Response> {
           const summaryTimeout = new Promise<string>((resolve) => {
             setTimeout(() => {
               // If summarization takes too long, return a basic summary with the requested format
+              // Create nicely formatted references with exact URLs
+              const formattedReferences = validInsights.slice(0, 5).map(insight => {
+                // Format reference with fallbacks for missing values
+                const sourceText = insight.source || 'Source';
+                const urlText = insight.url || '#';
+                return `• ${sourceText} - ${urlText}`;
+              }).join('\n');
+              
               const fallbackSummary = `${INSIGHT_FOCUS_AREAS[focusArea].label} Insights: ${query || 'General Search'}
 
 Context
@@ -603,7 +614,7 @@ ${industries.length ? `• Industries: ${industries.join(', ')}` : ''}
 
 Summary of Results
 • Found ${validInsights.length} relevant sources related to ${INSIGHT_FOCUS_AREAS[focusArea].label}.
-• Sources include ${validInsights.slice(0, 3).map(i => i.source).join(', ')}.
+• Sources include ${validInsights.slice(0, 3).map(i => i.source || 'Unknown Source').join(', ')}.
 • Review the individual insights for detailed information.
 
 Key Findings
@@ -622,7 +633,7 @@ Follow-up Questions (to help with learning more)
 • What metrics are commonly used to measure success in ${INSIGHT_FOCUS_AREAS[focusArea].label}?
 
 References (with links)
-${validInsights.slice(0, 5).map(i => `• ${i.source} - ${i.url}`).join('\n')}`;
+${formattedReferences}`;
               resolve(fallbackSummary);
             }, 30000); // Increased from 20000 to 30000 ms for processing more sources
           })
@@ -632,6 +643,15 @@ ${validInsights.slice(0, 5).map(i => `• ${i.source} - ${i.url}`).join('\n')}`;
         } catch (error) {
           console.error('Error generating summary:', error)
           // Provide a basic summary as fallback with the requested format
+          
+          // Create nicely formatted references with exact URLs
+          const errorFormattedReferences = validInsights.slice(0, 5).map(insight => {
+            // Format reference with fallbacks for missing values
+            const sourceText = insight.source || 'Source';
+            const urlText = insight.url || '#';
+            return `• ${sourceText} - ${urlText}`;
+          }).join('\n');
+          
           const errorFallbackSummary = `${INSIGHT_FOCUS_AREAS[focusArea].label} Insights: ${query || 'General Search'}
 
 Context
@@ -641,7 +661,7 @@ ${industries.length ? `• Industries: ${industries.join(', ')}` : ''}
 
 Summary of Results
 • Found ${validInsights.length} relevant sources related to ${INSIGHT_FOCUS_AREAS[focusArea].label}.
-• Sources include ${validInsights.slice(0, 3).map(i => i.source).join(', ')}.
+• Sources include ${validInsights.slice(0, 3).map(i => i.source || 'Unknown Source').join(', ')}.
 • Review the individual insights for detailed information.
 
 Key Findings
@@ -660,7 +680,7 @@ Follow-up Questions (to help with learning more)
 • What metrics are commonly used to measure success in ${INSIGHT_FOCUS_AREAS[focusArea].label}?
 
 References (with links)
-${validInsights.slice(0, 5).map(i => `• ${i.source} - ${i.url}`).join('\n')}`;
+${errorFormattedReferences}`;
           summary = errorFallbackSummary;
         }
       }

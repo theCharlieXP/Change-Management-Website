@@ -208,6 +208,7 @@ export async function incrementFeatureUsage(featureId: string): Promise<{
   const userId = authData.userId;
   
   if (!userId) {
+    console.warn('incrementFeatureUsage called without a valid userId');
     return {
       success: false,
       canUseFeature: false,
@@ -223,9 +224,11 @@ export async function incrementFeatureUsage(featureId: string): Promise<{
 
   // Get current usage
   const currentUsage = await getFeatureUsage(userId, featureId);
+  console.log(`[incrementFeatureUsage] Current usage before increment: ${currentUsage.count}/${currentUsage.limit}`);
   
   // Check if user has reached their limit
   if (currentUsage.isLimitReached) {
+    console.log(`[incrementFeatureUsage] User ${userId} has reached usage limit (${currentUsage.count}/${currentUsage.limit})`);
     return {
       success: false,
       canUseFeature: false,
@@ -236,13 +239,14 @@ export async function incrementFeatureUsage(featureId: string): Promise<{
   // Increment usage
   const supabase = createClientComponentClient();
   
+  console.log(`[incrementFeatureUsage] Calling increment_usage RPC for user ${userId} and feature ${featureId}`);
   const { error } = await supabase.rpc('increment_usage', {
     p_user_id: userId,
     p_feature_id: featureId
   });
   
   if (error) {
-    console.error('Error incrementing usage:', error);
+    console.error(`[incrementFeatureUsage] Error calling increment_usage RPC:`, error);
     return {
       success: false,
       canUseFeature: false,
@@ -252,6 +256,41 @@ export async function incrementFeatureUsage(featureId: string): Promise<{
   
   // Get updated usage
   const updatedUsage = await getFeatureUsage(userId, featureId);
+  
+  // Verify that the count actually increased
+  if (updatedUsage.count <= currentUsage.count) {
+    console.warn(`[incrementFeatureUsage] Count did not increase after increment! Before: ${currentUsage.count}, After: ${updatedUsage.count}`);
+    
+    // Manually increment if the database operation didn't increase the count
+    if (updatedUsage.count === currentUsage.count) {
+      console.log(`[incrementFeatureUsage] Attempting direct update of usage_tracker table...`);
+      
+      // Direct update as a fallback
+      const { error: updateError } = await supabase
+        .from('usage_tracker')
+        .update({ 
+          count: updatedUsage.count + 1,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId)
+        .eq('feature_id', featureId);
+        
+      if (updateError) {
+        console.error(`[incrementFeatureUsage] Direct update also failed:`, updateError);
+      } else {
+        console.log(`[incrementFeatureUsage] Direct update successful, fetching latest count`);
+        // Fetch the usage again after direct update
+        const finalUsage = await getFeatureUsage(userId, featureId);
+        return {
+          success: true,
+          canUseFeature: !finalUsage.isLimitReached,
+          usage: finalUsage
+        };
+      }
+    }
+  }
+  
+  console.log(`[incrementFeatureUsage] Usage successfully incremented. New count: ${updatedUsage.count}/${updatedUsage.limit}`);
   
   return {
     success: true,

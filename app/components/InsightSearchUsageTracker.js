@@ -120,6 +120,13 @@ export default function InsightSearchUsageTracker({ children }) {
       return false;
     }
     
+    // Immediately update local state for better user feedback
+    // This ensures the UI reflects the change even if the API call is slow
+    const newLocalCount = usageCount + 1;
+    console.log('Setting local usage count before API call:', newLocalCount);
+    setUsageCount(newLocalCount);
+    localStorage.setItem('insightSearchUsageCount', newLocalCount.toString());
+    
     // Then update server
     try {
       setIsLoading(true);
@@ -137,25 +144,25 @@ export default function InsightSearchUsageTracker({ children }) {
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        const errorMessage = errorData.error || 'Failed to update usage';
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `Failed to update usage: HTTP ${response.status}`;
         console.error('API error incrementing usage:', errorMessage);
         throw new Error(errorMessage);
       }
       
       const data = await response.json();
-      console.log('API response:', data);
+      console.log('API response for increment:', data);
       
       if (data.success) {
-        // Update with server data
-        const newCount = data.usage.count;
-        console.log('Setting new usage count:', newCount);
-        setUsageCount(newCount);
-        localStorage.setItem('insightSearchUsageCount', newCount.toString());
+        // Update with server data (which may be different from our local count)
+        const serverCount = data.usage.count;
+        console.log('Updating usage count from server response:', serverCount);
+        setUsageCount(serverCount);
+        localStorage.setItem('insightSearchUsageCount', serverCount.toString());
         
-        // Check if user can use the feature
+        // Check if user can use the feature (server may have determined they can't)
         if (!data.canUseFeature) {
-          console.log('User cannot use feature (limit reached)');
+          console.log('Server says user cannot use feature (limit reached)');
           setShowUpgradeModal(true);
           return false;
         }
@@ -170,15 +177,9 @@ export default function InsightSearchUsageTracker({ children }) {
       console.error('Error incrementing usage:', error);
       setError(error.message);
       
-      // Still increment locally even if the API fails
-      // This ensures the UI is updated even if there's a server issue
-      const newCount = usageCount + 1;
-      setUsageCount(newCount);
-      localStorage.setItem('insightSearchUsageCount', newCount.toString());
-      
-      // Check if user has reached limit
-      const currentLimit = isPremium ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT;
-      if (newCount >= currentLimit) {
+      // We've already incremented locally above, so no need to do it again
+      // Just check if the new count exceeds the limit
+      if (newLocalCount >= currentLimit) {
         setShowUpgradeModal(true);
         return false;
       }
