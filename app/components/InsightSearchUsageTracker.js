@@ -49,10 +49,21 @@ export default function InsightSearchUsageTracker({ children }) {
     
     // Fetch actual usage from server
     fetchUsage();
+    
+    // Set up an interval to periodically refresh usage data in the background
+    // This ensures that if multiple tabs/sessions are open, they all stay in sync
+    const refreshInterval = setInterval(() => {
+      // Only do the silent refresh if the component is still mounted
+      fetchUsage(true); // true = silent refresh (no console logs)
+    }, 60000); // Refresh every minute
+    
+    return () => {
+      clearInterval(refreshInterval);
+    };
   }, []);
 
-  const fetchUsage = async () => {
-    console.log('Fetching initial usage data');
+  const fetchUsage = async (silent = false) => {
+    if (!silent) console.log('Fetching initial usage data');
     try {
       const response = await fetch('/api/subscription/get-usage', {
         method: 'POST',
@@ -72,27 +83,42 @@ export default function InsightSearchUsageTracker({ children }) {
       }
       
       const data = await response.json();
-      console.log('Usage data fetched:', data);
+      if (!silent) console.log('Usage data fetched:', data);
       
       if (data.success) {
         // Update local state with server data
         const serverCount = data.usage.count || 0;
-        console.log('Setting usage count from server:', serverCount);
-        setUsageCount(serverCount);
+        if (!silent) console.log('Setting usage count from server:', serverCount);
         
-        // Update localStorage for UI consistency
-        localStorage.setItem('insightSearchUsageCount', serverCount.toString());
+        // Only update if the server count is different to avoid unnecessary renders
+        if (serverCount !== usageCount) {
+          setUsageCount(serverCount);
+          
+          // Update localStorage for UI consistency
+          localStorage.setItem('insightSearchUsageCount', serverCount.toString());
+          
+          // Dispatch an event to notify other components of the usage update
+          document.dispatchEvent(new CustomEvent('insightUsageUpdated', { 
+            detail: { 
+              count: serverCount,
+              remainingSearches: Math.max(0, (isPremium ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT) - serverCount),
+              isLimitReached: isPremium ? 
+                serverCount >= PRO_TIER_INSIGHT_LIMIT : 
+                serverCount >= FREE_TIER_LIMIT
+            } 
+          }));
+        }
         
         // If user has premium, update the limit
         if (data.usage.isPremium) {
-          console.log('User is premium, updating limit');
+          if (!silent) console.log('User is premium, updating limit');
           setIsPremium(true);
           const premiumLimit = data.usage.limit || PRO_TIER_INSIGHT_LIMIT;
           setUsageLimit(premiumLimit);
           localStorage.setItem('isPremiumUser', 'true');
           localStorage.setItem('proTierLimit', premiumLimit.toString());
         } else {
-          console.log('User is on free tier');
+          if (!silent) console.log('User is on free tier');
         }
       } else {
         console.warn('API call was successful but returned success: false');
@@ -102,9 +128,9 @@ export default function InsightSearchUsageTracker({ children }) {
       // Fall back to localStorage if API fails
       const storedCount = localStorage.getItem('insightSearchUsageCount');
       if (storedCount) {
-        console.log('Using cached usage count from localStorage:', storedCount);
+        if (!silent) console.log('Using cached usage count from localStorage:', storedCount);
       } else {
-        console.log('No cached usage data available, defaulting to 0');
+        if (!silent) console.log('No cached usage data available, defaulting to 0');
       }
     }
   };

@@ -336,41 +336,50 @@ Practical Applications
 Follow-up Questions
 References (with links)
 
+CRITICAL REQUIREMENTS:
+- This summary MUST be EXCLUSIVELY focused on the "${focusAreaInfo.label}" aspect of change management
+- ALL content MUST be written in UK English spelling (organisation, programme, centre, etc.)
+- EVERY insight, finding, and recommendation MUST relate directly to ${focusAreaInfo.label}
+- REJECT any content that is not specifically about ${focusAreaInfo.label}
+
 For the Title:
-- Generate a compelling, specific title that captures the core insights
+- Generate a compelling, specific title that captures the core insights about ${focusAreaInfo.label}
 - Make it specific to the content of the findings
 - Format in title case without "Title:" prefix
+- Must include explicit reference to ${focusAreaInfo.label} or related concepts
 
 For the Context section:
 - BRIEF - only mention the search query, focus area and industries (if any)
-- Use UK English spelling (organisation, programme, etc.)
+- Use UK English spelling (organisation, programme, etc.) throughout
 - Keep this section to 2-3 lines maximum
+- Explicitly state that the focus is on ${focusAreaInfo.label}
 
 For Key Findings section:
-- Provide 4-6 substantive, specific insights synthesized from the sources
+- Provide 4-6 substantive, specific insights about ${focusAreaInfo.label} synthesized from the sources
 - Each finding should be detailed (2-3 sentences) and actionable
 - Incorporate specific examples, statistics, or methodologies mentioned in the sources
 - Draw connections between different sources to create deeper insights
-- Focus on practical, evidence-based findings relevant to change practitioners
+- Focus on practical, evidence-based findings relevant to ${focusAreaInfo.label}
 - Avoid generic statements like "sources provide insights" or "review for more information"
-- Use your expertise to interpret and extrapolate meaningful insights
+- Use your expertise to interpret and extrapolate meaningful insights about ${focusAreaInfo.label}
 
 For Patterns & Implications section:
-- Identify 3-5 recurring themes or patterns across the sources
+- Identify 3-5 recurring themes or patterns related to ${focusAreaInfo.label} across the sources
 - Analyze implications of these patterns for change management practice
-- Discuss how these patterns might impact different organizational contexts
+- Discuss how these patterns might impact different organisational contexts
 - Connect patterns to broader change management theory or practice
-- Provide specific examples where possible
+- Provide specific examples related to ${focusAreaInfo.label} where possible
 
 For Practical Applications section:
-- Offer 3-4 specific, actionable recommendations based on the findings
+- Offer 3-4 specific, actionable recommendations for ${focusAreaInfo.label} based on the findings
 - Format as clear steps or approaches that practitioners can implement
 - Include potential challenges and how to overcome them
 - Ensure recommendations are concrete and practical, not theoretical
+- Every recommendation MUST directly relate to ${focusAreaInfo.label}
 
 For Follow-up Questions:
-- Suggest 3-4 thought-provoking questions that would deepen understanding
-- Questions should be specific and directly related to the findings
+- Suggest 3-4 thought-provoking questions about ${focusAreaInfo.label} that would deepen understanding
+- Questions should be specific and directly related to the findings on ${focusAreaInfo.label}
 - Format as bullet points (•)
 
 For References:
@@ -382,11 +391,12 @@ For References:
 
 IMPORTANT GUIDANCE:
 - Be substantive and specific - avoid generic placeholders or vague statements
-- Draw upon your change management expertise to provide genuine insights
-- Synthesize information across sources to identify meaningful patterns
-- Focus on providing actionable value that change practitioners can apply immediately
-- Use UK English spelling and professional, authoritative tone
-- Format each section with the heading on its own line, followed by bullet points with substantive content`
+- Draw upon your change management expertise to provide genuine insights about ${focusAreaInfo.label}
+- Synthesize information across sources to identify meaningful patterns related to ${focusAreaInfo.label}
+- Focus on providing actionable value about ${focusAreaInfo.label} that change practitioners can apply immediately
+- Use UK English spelling and professional, authoritative tone throughout
+- Format each section with the heading on its own line, followed by bullet points with substantive content
+- ENSURE that ALL CONTENT relates directly to ${focusAreaInfo.label}`
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',

@@ -127,7 +127,7 @@ export default function InsightsPage() {
     });
   }, [trackerValues]);
 
-  // Add an event listener to update from DOM events triggered by the tracker
+  // Add a more reliable event listener to update from DOM events triggered by the tracker
   useEffect(() => {
     const handleUsageUpdate = (event: CustomEvent) => {
       console.log('Received usage update event:', event.detail);
@@ -155,6 +155,51 @@ export default function InsightsPage() {
     // Clean up event listener
     return () => {
       document.removeEventListener('insightUsageUpdated', handleUsageUpdate as EventListener);
+    };
+  }, []);
+
+  // Add a special effect to check for usage tracker data on page load/navigation
+  useEffect(() => {
+    // This runs when component mounts or after navigation
+    const checkTrackerData = () => {
+      const trackerElement = document.getElementById('usage-tracker-data');
+      if (trackerElement && trackerElement.dataset.values) {
+        try {
+          const trackerData = JSON.parse(trackerElement.dataset.values);
+          console.log('Found tracker data in DOM:', trackerData);
+          
+          // Update our local state to match the tracker data
+          if (trackerData.remainingSearches !== undefined) {
+            setRemainingSearchesCount(trackerData.remainingSearches);
+          }
+          
+          if (trackerData.isLimitReached !== undefined) {
+            setIsSearchLimitReached(trackerData.isLimitReached);
+          }
+          
+          // Update the tracker values for consistency
+          setTrackerValues(prevValues => ({
+            ...prevValues,
+            incrementUsage: prevValues.incrementUsage, // Keep the existing function
+            remainingSearches: trackerData.remainingSearches || prevValues.remainingSearches,
+            isLimitReached: trackerData.isLimitReached || prevValues.isLimitReached
+          }));
+          
+          console.log('Updated state from DOM tracker data');
+        } catch (error) {
+          console.error('Error parsing tracker data:', error);
+        }
+      }
+    };
+    
+    // Check immediately on mount
+    checkTrackerData();
+    
+    // Also check after a short delay to ensure the tracker component has initialized
+    const delayedCheck = setTimeout(checkTrackerData, 500);
+    
+    return () => {
+      clearTimeout(delayedCheck);
     };
   }, []);
 
