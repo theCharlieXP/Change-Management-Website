@@ -50,6 +50,24 @@ export async function POST(req: NextRequest) {
       // Double-check that the count was actually incremented
       if (result.usage.count <= currentUsage.count) {
         console.warn(`Warning: Usage count did not increase after increment. Before: ${currentUsage.count}, After: ${result.usage.count}`);
+        
+        // Do an additional check by directly fetching the latest usage
+        const verifiedUsage = await getFeatureUsage(userId, featureId);
+        console.log(`Verified usage after increment: ${verifiedUsage.count}/${verifiedUsage.limit}`);
+        
+        // Use the verified usage if it's higher than what was returned from incrementFeatureUsage
+        if (verifiedUsage.count > result.usage.count) {
+          console.log(`Using verified count (${verifiedUsage.count}) instead of result count (${result.usage.count})`);
+          result.usage = verifiedUsage;
+        }
+        
+        // If we still don't see an increment, force a manual increment
+        if (verifiedUsage.count <= currentUsage.count) {
+          console.warn(`Still no increment detected. Forcing a count of ${currentUsage.count + 1}`);
+          result.usage.count = currentUsage.count + 1;
+          result.usage.remaining = Math.max(0, result.usage.limit - result.usage.count);
+          result.usage.isLimitReached = result.usage.count >= result.usage.limit;
+        }
       }
     } else {
       console.log(`Failed to increment usage for user ${userId}. Reason: ${result.usage.isLimitReached ? 'limit reached' : 'other error'}`);

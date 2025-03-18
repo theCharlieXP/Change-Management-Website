@@ -120,10 +120,13 @@ export default function InsightSearchUsageTracker({ children }) {
       return false;
     }
     
-    // Track the pre-update count for comparison later
-    const preUpdateCount = usageCount;
+    // Immediately update local state for better UX and to prevent race conditions
+    const optimisticCount = usageCount + 1;
+    console.log('Setting optimistic local count:', optimisticCount);
+    setUsageCount(optimisticCount);
+    localStorage.setItem('insightSearchUsageCount', optimisticCount.toString());
     
-    // Server update first - don't update local state until we get confirmation
+    // Server update after local optimistic update
     try {
       setIsLoading(true);
       setError(null);
@@ -154,13 +157,9 @@ export default function InsightSearchUsageTracker({ children }) {
         const serverCount = data.usage.count;
         console.log('Updating usage count from server response:', serverCount);
         
-        // Only update if the server count is different
-        if (serverCount !== preUpdateCount) {
-          setUsageCount(serverCount);
-          localStorage.setItem('insightSearchUsageCount', serverCount.toString());
-        } else {
-          console.warn('Server did not increment the count as expected');
-        }
+        // Always update with the server count to ensure consistency
+        setUsageCount(serverCount);
+        localStorage.setItem('insightSearchUsageCount', serverCount.toString());
         
         // Check if user can use the feature (server may have determined they can't)
         if (!data.canUseFeature) {
@@ -168,6 +167,17 @@ export default function InsightSearchUsageTracker({ children }) {
           setShowUpgradeModal(true);
           return false;
         }
+        
+        // Force update the child components via the DOM storage
+        document.dispatchEvent(new CustomEvent('insightUsageUpdated', { 
+          detail: { 
+            count: serverCount,
+            remainingSearches: Math.max(0, (isPremium ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT) - serverCount),
+            isLimitReached: isPremium ? 
+              serverCount >= PRO_TIER_INSIGHT_LIMIT : 
+              serverCount >= FREE_TIER_LIMIT
+          } 
+        }));
         
         // Return true to indicate success
         return true;
@@ -179,14 +189,9 @@ export default function InsightSearchUsageTracker({ children }) {
       console.error('Error incrementing usage:', error);
       setError(error.message);
       
-      // In case of error, we increment locally as a fallback
-      const newLocalCount = preUpdateCount + 1;
-      console.log('Setting local usage count after API error:', newLocalCount);
-      setUsageCount(newLocalCount);
-      localStorage.setItem('insightSearchUsageCount', newLocalCount.toString());
-      
+      // We've already incremented locally above, so no need to do it again
       // Check if the new count exceeds the limit
-      if (newLocalCount >= currentLimit) {
+      if (optimisticCount >= currentLimit) {
         setShowUpgradeModal(true);
         return false;
       }

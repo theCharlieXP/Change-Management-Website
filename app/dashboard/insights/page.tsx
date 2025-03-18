@@ -127,6 +127,37 @@ export default function InsightsPage() {
     });
   }, [trackerValues]);
 
+  // Add an event listener to update from DOM events triggered by the tracker
+  useEffect(() => {
+    const handleUsageUpdate = (event: CustomEvent) => {
+      console.log('Received usage update event:', event.detail);
+      
+      if (event.detail) {
+        // Update local state with the new values
+        setRemainingSearchesCount(event.detail.remainingSearches);
+        setIsSearchLimitReached(event.detail.isLimitReached);
+        
+        // Also update the tracker values for consistency
+        setTrackerValues(prevValues => ({
+          ...prevValues,
+          remainingSearches: event.detail.remainingSearches,
+          isLimitReached: event.detail.isLimitReached
+        }));
+        
+        // Force the UI to refresh with the latest count
+        console.log('Updated remaining searches to:', event.detail.remainingSearches);
+      }
+    };
+    
+    // Add event listener
+    document.addEventListener('insightUsageUpdated', handleUsageUpdate as EventListener);
+    
+    // Clean up event listener
+    return () => {
+      document.removeEventListener('insightUsageUpdated', handleUsageUpdate as EventListener);
+    };
+  }, []);
+
   // Fetch projects when auth is ready
   useEffect(() => {
     let isMounted = true
@@ -218,6 +249,8 @@ export default function InsightsPage() {
       const previousRemaining = remainingSearchesCount;
       
       // Important: This incrementUsageFunc call updates the usage counter
+      // We need to wait for its result before proceeding
+      console.log('Calling incrementUsage function...');
       const canSearch = await incrementUsageFunc();
       
       // Log the result of the incrementUsage call for debugging
@@ -229,13 +262,24 @@ export default function InsightsPage() {
         return // The modal will be shown by the usage tracker
       }
       
-      // Get the latest usage tracker values to ensure UI is up to date
-      // This ensures we don't reset to old values during the loading process
+      // Check if we're at the limit after incrementing
+      if (remainingSearchesCount <= 0 || isSearchLimitReached) {
+        console.log('No remaining searches after increment, stopping search');
+        return;
+      }
+      
+      // Double check usage tracker data from the DOM element
       const trackerElement = document.getElementById('usage-tracker-data');
       if (trackerElement) {
         const trackerData = JSON.parse(trackerElement.dataset.values || '{}');
         if (trackerData.remainingSearches !== undefined) {
+          if (trackerData.remainingSearches <= 0 || trackerData.isLimitReached) {
+            console.log('Usage tracker data indicates no remaining searches, stopping search');
+            return;
+          }
+          // Update our local state to match the tracker data
           setRemainingSearchesCount(trackerData.remainingSearches);
+          setIsSearchLimitReached(trackerData.isLimitReached);
         }
       }
       
@@ -690,6 +734,22 @@ export default function InsightsPage() {
                                         );
                                       }
                                       
+                                      // Enhanced display for Key Findings, Patterns & Implications, and Practical Applications
+                                      // These sections should have more prominent styling
+                                      if (
+                                        sectionHeader === "Key Findings" || 
+                                        sectionHeader === "Patterns & Implications" || 
+                                        sectionHeader === "Practical Applications"
+                                      ) {
+                                        return (
+                                          <div key={`point-${pointIndex}`} className="flex items-start gap-2">
+                                            <span className="text-primary font-bold">•</span>
+                                            <span className="flex-1">{cleanPoint}</span>
+                                          </div>
+                                        );
+                                      }
+                                      
+                                      // Default rendering for other sections
                                       return (
                                         <div key={`point-${pointIndex}`} className="flex items-start gap-2">
                                           <span className="text-muted-foreground">•</span>
@@ -731,21 +791,26 @@ export default function InsightsPage() {
 
             {/* Usage limit indicator */}
             {!isPremiumUser() && (
-              <div className="text-sm text-muted-foreground mb-2">
+              <div className="text-sm mb-4">
                 {isSearchLimitReached ? (
-                  <div className="flex items-center text-amber-600 text-sm">
+                  <div className="flex items-center text-amber-600 font-medium">
                     <AlertCircle className="h-4 w-4 mr-1" />
-                    <span>You{""}ve reached your Basic plan limit. <Link href="/dashboard/account" className="underline">Upgrade to Pro</Link></span>
+                    <span>You've reached your Basic plan limit. <Link href="/dashboard/account" className="underline font-bold">Upgrade to Pro</Link></span>
                   </div>
                 ) : (
-                  <div className="flex items-center text-sm">
-                    <span>You have <span className="font-semibold">{remainingSearchesCount}</span> free searches remaining</span>
-                    {remainingSearchesCount <= 5 && (
-                      <span className="ml-2 text-amber-600">
-                        <AlertCircle className="h-3 w-3 inline-block mr-1" />
-                        Running low
-                      </span>
-                    )}
+                  <div className="flex items-center justify-between p-3 border rounded-md bg-slate-50">
+                    <span>
+                      You have <span className="font-bold text-primary">{remainingSearchesCount}</span> free searches remaining
+                      {remainingSearchesCount <= 5 && (
+                        <span className="ml-2 text-amber-600">
+                          <AlertCircle className="h-3 w-3 inline-block mr-1" />
+                          Running low
+                        </span>
+                      )}
+                    </span>
+                    <Link href="/dashboard/account" className="text-xs text-primary underline">
+                      Upgrade for more
+                    </Link>
                   </div>
                 )}
               </div>
