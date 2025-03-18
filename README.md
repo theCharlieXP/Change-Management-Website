@@ -20,6 +20,27 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Project Configuration
+
+This project is configured to use the App Router (app directory), while maintaining compatibility with some Pages Router features for backward compatibility. The key configuration files are:
+
+- `next.config.js` - Contains the Next.js configuration
+- `pages/_document.js` and `pages/_app.js` - Special Next.js files for the Pages Router
+- `app/` directory - Contains the App Router components and routes
+
+### Common Issues and Fixes
+
+#### _document.js Error
+
+If you encounter an error like `Cannot find module for page: /_document`, ensure that:
+
+1. `_document.js` exists ONLY in the `pages/` directory, not in the root directory
+2. `_app.js` exists ONLY in the `pages/` directory, not in the root directory
+3. Clear the `.next` directory with `rm -rf .next` before rebuilding
+4. Make sure `next.config.js` doesn't contain unrecognized options like `strictMode` or `disableStaticImages`
+
+The build process includes `next-build-fix.js` which helps resolve some common build issues.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
