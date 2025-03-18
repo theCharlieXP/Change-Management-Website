@@ -119,6 +119,12 @@ export default function InsightsPage() {
     }
     setRemainingSearchesCount(trackerValues.remainingSearches);
     setIsSearchLimitReached(trackerValues.isLimitReached);
+    
+    // Log the current usage state for debugging
+    console.log('Usage tracker updated:', {
+      remainingSearches: trackerValues.remainingSearches,
+      isLimitReached: trackerValues.isLimitReached
+    });
   }, [trackerValues]);
 
   // Fetch projects when auth is ready
@@ -202,19 +208,26 @@ export default function InsightsPage() {
     
     // Check if user can perform the search
     if (!incrementUsageFunc) {
+      console.error('Search functionality not available: incrementUsageFunc is null');
       setError('Search functionality not available')
       return
     }
     
-    const canSearch = await incrementUsageFunc()
-    if (!canSearch) {
-      return // The modal will be shown by the usage tracker
-    }
-    
-    setLoading(true)
-    setSummary(null)
-    
     try {
+      // Important: This incrementUsageFunc call updates the usage counter
+      const canSearch = await incrementUsageFunc();
+      
+      // Log the result of the incrementUsage call for debugging
+      console.log('Increment usage result:', canSearch);
+      
+      if (!canSearch) {
+        console.log('Search limit reached or increment failed');
+        return // The modal will be shown by the usage tracker
+      }
+      
+      setLoading(true)
+      setSummary(null)
+      
       // Step 1: Initial search
       setLoadingStage("Initialising search...")
       const params = new URLSearchParams()
@@ -618,19 +631,37 @@ export default function InsightsPage() {
                                       // Special handling for References section to make links clickable
                                       if (sectionHeader === "References (with links)" || sectionHeader === "References") {
                                         // Extract URL from the reference line if it exists
-                                        const urlMatch = cleanPoint.match(/https?:\/\/[^\s]+/);
+                                        const urlMatch = cleanPoint.match(/\s*-\s*(https?:\/\/[^\s]+)$/);
+                                        
                                         if (urlMatch) {
-                                          const url = urlMatch[0];
-                                          const sourceName = cleanPoint.replace(url, '').replace(/[-\s]*$/, '');
+                                          const url = urlMatch[1]; // Get the captured URL
+                                          // Get everything before the URL (source name)
+                                          const sourceName = cleanPoint.substring(0, cleanPoint.indexOf(' - ')).trim();
                                           
                                           return (
                                             <div key={`point-${pointIndex}`} className="flex items-start gap-2">
                                               <span className="text-muted-foreground">•</span>
                                               <span className="flex-1">
-                                                {sourceName} <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{url}</a>
+                                                {sourceName} - <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{url}</a>
                                               </span>
                                             </div>
                                           );
+                                        } else {
+                                          // If the URL isn't properly formatted with a hyphen, try to find any URL
+                                          const genericUrlMatch = cleanPoint.match(/(https?:\/\/[^\s]+)/);
+                                          if (genericUrlMatch) {
+                                            const url = genericUrlMatch[1];
+                                            const sourceName = cleanPoint.replace(url, '').trim();
+                                            
+                                            return (
+                                              <div key={`point-${pointIndex}`} className="flex items-start gap-2">
+                                                <span className="text-muted-foreground">•</span>
+                                                <span className="flex-1">
+                                                  {sourceName} <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{url}</a>
+                                                </span>
+                                              </div>
+                                            );
+                                          }
                                         }
                                       }
                                       
@@ -682,7 +713,15 @@ export default function InsightsPage() {
                     <span>You{""}ve reached your Basic plan limit. <Link href="/dashboard/account" className="underline">Upgrade to Pro</Link></span>
                   </div>
                 ) : (
-                  <span>You have {remainingSearchesCount} free searches remaining</span>
+                  <div className="flex items-center text-sm">
+                    <span>You have <span className="font-semibold">{remainingSearchesCount}</span> free searches remaining</span>
+                    {remainingSearchesCount <= 5 && (
+                      <span className="ml-2 text-amber-600">
+                        <AlertCircle className="h-3 w-3 inline-block mr-1" />
+                        Running low
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             )}
