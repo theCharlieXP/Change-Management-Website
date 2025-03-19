@@ -1,90 +1,79 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { incrementFeatureUsage, getFeatureUsage, INSIGHT_SEARCH_FEATURE } from '@/lib/subscription';
+import { prisma } from '@/lib/prisma';
+import { INSIGHT_SEARCH_FEATURE } from '@/lib/subscription-client';
 
-export async function POST(req: NextRequest) {
-  const authData = await auth();
-  const { userId } = authData;
-
-  if (!userId) {
-    console.error('[increment-usage] Unauthorized access attempt');
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
-  }
-
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const { featureId } = await req.json();
-
-    if (!featureId) {
-      console.error(`[increment-usage] Missing featureId parameter from user ${userId}`);
-      return NextResponse.json(
-        { error: 'Feature ID is required' },
-        { status: 400 }
-      );
+    const { userId } = auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Obtain current usage before incrementing for logging purposes
-    console.log(`[increment-usage] Getting current usage for user ${userId}, feature ${featureId}`);
-    const currentUsage = await getFeatureUsage(userId, featureId);
-    console.log(`[increment-usage] Current usage: ${currentUsage.count}/${currentUsage.limit}`);
+    const { featureId } = await request.json();
+    if (!featureId) {
+      return NextResponse.json({ error: 'Feature ID is required' }, { status: 400 });
+    }
 
-    // Check if user has already reached their limit
-    if (currentUsage.isLimitReached) {
-      console.log(`[increment-usage] User ${userId} has already reached their usage limit for ${featureId}`);
-      return NextResponse.json({
-        success: false,
-        canUseFeature: false,
-        usage: currentUsage
+    // Get current usage
+    const currentUsage = await prisma.usageTracker.findFirst({
+      where: {
+        userId,
+        featureId,
+        date: new Date().toISOString().split('T')[0]
+      }
+    });
+
+    // If no usage record exists for today, create one
+    if (!currentUsage) {
+      await prisma.usageTracker.create({
+        data: {
+          userId,
+          featureId,
+          count: 1,
+          date: new Date().toISOString().split('T')[0]
+        }
+      });
+      return NextResponse.json({ success: true, count: 1 });
+    }
+
+    // Check if user has reached their limit
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { subscription: true }
+    });
+
+    const isPremium = user?.subscription?.tier === 'pro';
+    const limit = isPremium ? 100 : 20; // Pro users get 100 searches, free users get 20
+
+    if (currentUsage.count >= limit) {
+      return NextResponse.json({ 
+        success: true, 
+        count: currentUsage.count,
+        limitReached: true,
+        limit
       });
     }
 
     // Increment usage
-    console.log(`[increment-usage] Attempting to increment usage for user ${userId}`);
-    const result = await incrementFeatureUsage(featureId);
-    
-    // Log the result for debugging
-    if (result.success) {
-      console.log(`[increment-usage] Successfully incremented usage. New count: ${result.usage.count}/${result.usage.limit}`);
-      
-      // Double-check that the count was actually incremented
-      if (result.usage.count <= currentUsage.count) {
-        console.warn(`[increment-usage] Warning: Usage count did not increase. Before: ${currentUsage.count}, After: ${result.usage.count}`);
-        
-        // Do an additional check by directly fetching the latest usage
-        console.log(`[increment-usage] Verifying usage after increment...`);
-        const verifiedUsage = await getFeatureUsage(userId, featureId);
-        console.log(`[increment-usage] Verified usage: ${verifiedUsage.count}/${verifiedUsage.limit}`);
-        
-        // Use the verified usage if it's higher than what was returned from incrementFeatureUsage
-        if (verifiedUsage.count > result.usage.count) {
-          console.log(`[increment-usage] Using verified count (${verifiedUsage.count}) instead of result count (${result.usage.count})`);
-          result.usage = verifiedUsage;
-        }
-        
-        // If we still don't see an increment, force a manual increment
-        if (verifiedUsage.count <= currentUsage.count) {
-          console.warn(`[increment-usage] Still no increment detected. Forcing a count of ${currentUsage.count + 1}`);
-          result.usage.count = currentUsage.count + 1;
-          result.usage.remaining = Math.max(0, result.usage.limit - result.usage.count);
-          result.usage.isLimitReached = result.usage.count >= result.usage.limit;
-        }
+    const updatedUsage = await prisma.usageTracker.update({
+      where: {
+        id: currentUsage.id
+      },
+      data: {
+        count: currentUsage.count + 1
       }
-    } else {
-      console.log(`[increment-usage] Failed to increment usage. Reason: ${result.usage.isLimitReached ? 'limit reached' : 'other error'}`);
-    }
-    
-    return NextResponse.json({
-      success: result.success,
-      canUseFeature: result.canUseFeature,
-      usage: result.usage
     });
-  } catch (error: any) {
-    console.error(`[increment-usage] Error for user ${userId}:`, error);
-    return NextResponse.json(
-      { error: `Failed to increment usage: ${error.message}` },
-      { status: 500 }
-    );
+
+    return NextResponse.json({ 
+      success: true, 
+      count: updatedUsage.count,
+      limitReached: updatedUsage.count >= limit,
+      limit
+    });
+
+  } catch (error) {
+    console.error('Error incrementing usage:', error);
+    return NextResponse.json({ error: 'Failed to increment usage' }, { status: 500 });
   }
 } 
