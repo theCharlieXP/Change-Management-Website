@@ -511,7 +511,7 @@ export default function InsightsPage() {
     const generatedTitle = summaryLines[0].trim()
     
     // Create the summary insight with the proper title and content
-    const summaryInsight = {
+    const summaryInsight: Insight = {
       id: 'summary',
       title: generatedTitle,
       summary: summary.substring(generatedTitle.length).trim(),
@@ -519,7 +519,6 @@ export default function InsightsPage() {
       tags: [],
       readTime: '5 min',
       focus_area: focusArea,
-      notes: summaryNotes,
       url: '', // Add empty url since it's a summary
       source: 'Generated Summary' // Add source to clarify it's a generated summary
     }
