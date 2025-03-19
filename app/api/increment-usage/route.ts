@@ -4,7 +4,7 @@ import { incrementFeatureUsage, INSIGHT_SEARCH_FEATURE } from '@/lib/subscriptio
 
 export async function POST(req: NextRequest) {
   const authData = await auth();
-const { userId  } = authData;
+  const { userId } = authData;
 
   if (!userId) {
     console.error('Unauthorized access attempt to increment-usage');
@@ -15,27 +15,27 @@ const { userId  } = authData;
   }
 
   try {
-    const { feature } = await req.json();
+    const { featureId } = await req.json();
 
-    if (!feature) {
-      console.error(`Missing feature parameter in request from user ${userId}`);
+    if (!featureId) {
+      console.error(`Missing featureId parameter in request from user ${userId}`);
       return NextResponse.json(
-        { error: 'Feature parameter is required' },
+        { error: 'FeatureId parameter is required' },
         { status: 400 }
       );
     }
 
-    if (feature !== INSIGHT_SEARCH_FEATURE) {
-      console.error(`Invalid feature parameter: ${feature} from user ${userId}`);
+    if (featureId !== INSIGHT_SEARCH_FEATURE) {
+      console.error(`Invalid featureId parameter: ${featureId} from user ${userId}`);
       return NextResponse.json(
-        { error: 'Invalid feature parameter' },
+        { error: 'Invalid featureId parameter' },
         { status: 400 }
       );
     }
 
-    console.log(`Incrementing usage for feature ${feature} for user ${userId}`);
+    console.log(`Incrementing usage for feature ${featureId} for user ${userId}`);
     
-    const result = await incrementFeatureUsage(feature);
+    const result = await incrementFeatureUsage(featureId);
     
     if (!result.success) {
       console.error(`Error incrementing usage for user ${userId}:`, result.usage);
