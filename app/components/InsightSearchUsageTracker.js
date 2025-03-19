@@ -63,92 +63,87 @@ export default function InsightSearchUsageTracker({ children }) {
   }, []);
 
   const fetchUsage = async (silent = false) => {
-    if (!silent) console.log('Fetching initial usage data');
     try {
-      const response = await fetch('/api/subscription/get-usage', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          featureId: INSIGHT_SEARCH_FEATURE 
-        }),
-      });
+      setIsLoading(true);
+      setError(null);
+      
+      console.log('[fetchUsage] Starting usage fetch...');
+      const response = await fetch('/api/subscription');
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || `HTTP error ${response.status}`;
-        console.error('Failed to fetch usage data:', errorMessage);
-        throw new Error(errorMessage);
+        throw new Error(`Failed to fetch usage: HTTP ${response.status}`);
       }
       
       const data = await response.json();
-      if (!silent) console.log('Usage data fetched:', data);
+      console.log('[fetchUsage] Received data:', data);
       
       if (data.success) {
         // Update local state with server data
         const serverCount = data.usage.count || 0;
-        if (!silent) console.log('Setting usage count from server:', serverCount);
+        console.log('[fetchUsage] Setting usage count from server:', serverCount);
         
         // Only update if the server count is different to avoid unnecessary renders
         if (serverCount !== usageCount) {
+          console.log('[fetchUsage] Updating usage count from', usageCount, 'to', serverCount);
           setUsageCount(serverCount);
           
           // Update localStorage for UI consistency
           localStorage.setItem('insightSearchUsageCount', serverCount.toString());
           
           // Dispatch an event to notify other components of the usage update
-          document.dispatchEvent(new CustomEvent('insightUsageUpdated', { 
-            detail: { 
-              count: serverCount,
-              remainingSearches: Math.max(0, (isPremium ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT) - serverCount),
-              isLimitReached: isPremium ? 
-                serverCount >= PRO_TIER_INSIGHT_LIMIT : 
-                serverCount >= FREE_TIER_LIMIT
-            } 
-          }));
+          const eventDetail = { 
+            count: serverCount,
+            remainingSearches: Math.max(0, (isPremium ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT) - serverCount),
+            isLimitReached: isPremium ? 
+              serverCount >= PRO_TIER_INSIGHT_LIMIT : 
+              serverCount >= FREE_TIER_LIMIT
+          };
+          console.log('[fetchUsage] Dispatching usage update event:', eventDetail);
+          document.dispatchEvent(new CustomEvent('insightUsageUpdated', { detail: eventDetail }));
         }
         
         // If user has premium, update the limit
         if (data.usage.isPremium) {
-          if (!silent) console.log('User is premium, updating limit');
+          console.log('[fetchUsage] User is premium, updating limit');
           setIsPremium(true);
           const premiumLimit = data.usage.limit || PRO_TIER_INSIGHT_LIMIT;
           setUsageLimit(premiumLimit);
           localStorage.setItem('isPremiumUser', 'true');
           localStorage.setItem('proTierLimit', premiumLimit.toString());
         } else {
-          if (!silent) console.log('User is on free tier');
+          console.log('[fetchUsage] User is on free tier');
         }
       } else {
-        console.warn('API call was successful but returned success: false');
+        console.warn('[fetchUsage] API call was successful but returned success: false');
       }
     } catch (error) {
-      console.error('Error fetching usage:', error);
+      console.error('[fetchUsage] Error fetching usage:', error);
       // Fall back to localStorage if API fails
       const storedCount = localStorage.getItem('insightSearchUsageCount');
       if (storedCount) {
-        if (!silent) console.log('Using cached usage count from localStorage:', storedCount);
+        console.log('[fetchUsage] Using cached usage count from localStorage:', storedCount);
       } else {
-        if (!silent) console.log('No cached usage data available, defaulting to 0');
+        console.log('[fetchUsage] No cached usage data available, defaulting to 0');
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const incrementUsage = useCallback(async () => {
-    console.log('Incrementing usage, current count:', usageCount);
+    console.log('[incrementUsage] Starting usage increment, current count:', usageCount);
     
     // First check if user has already reached limit
     const currentLimit = isPremium ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT;
     if (usageCount >= currentLimit) {
-      console.log('User has already reached usage limit');
+      console.log('[incrementUsage] User has already reached usage limit');
       setShowUpgradeModal(true);
       return false;
     }
     
     // Immediately update local state for better UX and to prevent race conditions
     const optimisticCount = usageCount + 1;
-    console.log('Setting optimistic local count:', optimisticCount);
+    console.log('[incrementUsage] Setting optimistic local count:', optimisticCount);
     setUsageCount(optimisticCount);
     localStorage.setItem('insightSearchUsageCount', optimisticCount.toString());
     
@@ -157,7 +152,7 @@ export default function InsightSearchUsageTracker({ children }) {
       setIsLoading(true);
       setError(null);
       
-      console.log('Calling API to increment usage');
+      console.log('[incrementUsage] Calling API to increment usage');
       const response = await fetch('/api/subscription/increment-usage', {
         method: 'POST',
         headers: {
@@ -171,17 +166,17 @@ export default function InsightSearchUsageTracker({ children }) {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.error || `Failed to update usage: HTTP ${response.status}`;
-        console.error('API error incrementing usage:', errorMessage);
+        console.error('[incrementUsage] API error:', errorMessage);
         throw new Error(errorMessage);
       }
       
       const data = await response.json();
-      console.log('API response for increment:', data);
+      console.log('[incrementUsage] API response:', data);
       
       if (data.success) {
         // Update with server data - this is the authoritative count
         const serverCount = data.usage.count;
-        console.log('Updating usage count from server response:', serverCount);
+        console.log('[incrementUsage] Updating usage count from server:', serverCount);
         
         // Always update with the server count to ensure consistency
         setUsageCount(serverCount);
@@ -189,35 +184,36 @@ export default function InsightSearchUsageTracker({ children }) {
         
         // Check if user can use the feature (server may have determined they can't)
         if (!data.canUseFeature) {
-          console.log('Server says user cannot use feature (limit reached)');
+          console.log('[incrementUsage] Server says user cannot use feature (limit reached)');
           setShowUpgradeModal(true);
           return false;
         }
         
         // Force update the child components via the DOM storage
-        document.dispatchEvent(new CustomEvent('insightUsageUpdated', { 
-          detail: { 
-            count: serverCount,
-            remainingSearches: Math.max(0, (isPremium ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT) - serverCount),
-            isLimitReached: isPremium ? 
-              serverCount >= PRO_TIER_INSIGHT_LIMIT : 
-              serverCount >= FREE_TIER_LIMIT
-          } 
-        }));
+        const eventDetail = { 
+          count: serverCount,
+          remainingSearches: Math.max(0, (isPremium ? PRO_TIER_INSIGHT_LIMIT : FREE_TIER_LIMIT) - serverCount),
+          isLimitReached: isPremium ? 
+            serverCount >= PRO_TIER_INSIGHT_LIMIT : 
+            serverCount >= FREE_TIER_LIMIT
+        };
+        console.log('[incrementUsage] Dispatching usage update event:', eventDetail);
+        document.dispatchEvent(new CustomEvent('insightUsageUpdated', { detail: eventDetail }));
         
         // Return true to indicate success
         return true;
       }
       
-      console.log('API call was not successful');
+      console.log('[incrementUsage] API call was not successful');
       return false;
     } catch (error) {
-      console.error('Error incrementing usage:', error);
+      console.error('[incrementUsage] Error:', error);
       setError(error.message);
       
       // We've already incremented locally above, so no need to do it again
       // Check if the new count exceeds the limit
       if (optimisticCount >= currentLimit) {
+        console.log('[incrementUsage] Optimistic count exceeds limit, showing upgrade modal');
         setShowUpgradeModal(true);
         return false;
       }

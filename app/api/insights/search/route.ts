@@ -121,52 +121,55 @@ async function searchTavily(
     hasApiKey: !!TAVILY_API_KEY
   })
 
-  // Construct search query - Simplified to improve results
+  // Construct search query - Improved to better combine search query and focus area
   const queryParts = []
   const focusAreaInfo = INSIGHT_FOCUS_AREAS[focusArea]
   
-  // Start with the main query - make it the primary focus
+  // Start with the main query
   if (query) {
     queryParts.push(query)
-    
-    // Don't add any additional keywords to keep the query as clean as possible
-  } else {
-    // If no specific query, use only the first keyword to keep it focused
-    queryParts.push(focusAreaInfo.keywords[0])
   }
   
-  // Add industries if specified (but keep it simple)
+  // Add focus area keywords strategically
+  if (focusAreaInfo.keywords.length > 0) {
+    // Use the first 2-3 most relevant keywords from the focus area
+    const relevantKeywords = focusAreaInfo.keywords.slice(0, 3)
+    queryParts.push(...relevantKeywords)
+  }
+  
+  // Add industries if specified
   if (industries?.length) {
-    // Only add the first industry to avoid over-filtering
-    queryParts.push(industries[0])
+    // Add up to 2 industries to avoid over-filtering
+    queryParts.push(...industries.slice(0, 2))
   }
 
-  // Only add "change management" if absolutely necessary and query is very short
-  if (!query.toLowerCase().includes('change management') && queryParts.join(' ').length < 10) {
+  // Add "change management" context if not present
+  if (!queryParts.some(part => part.toLowerCase().includes('change management'))) {
     queryParts.push("change management")
   }
 
-  // Combine with simple spaces - no special weighting or complex combinations
+  // Combine with proper weighting
   const searchQuery = queryParts.join(' ')
   console.log('Constructed search query:', searchQuery)
 
   const searchParams = {
     query: searchQuery,
-    search_depth: "basic",
+    search_depth: "advanced", // Changed from basic to advanced for better results
     include_answer: true,
-    max_results: 10, // Increased from 5 to 10 for more comprehensive results
+    max_results: 15, // Increased from 10 to 15 for more comprehensive results
     search_type: "keyword",
     // Include only the most relevant domains
     include_domains: [
       'hbr.org', 'mckinsey.com', 'bcg.com',
-      'deloitte.com', 'pwc.com'
+      'deloitte.com', 'pwc.com', 'accenture.com',
+      'gartner.com', 'forrester.com'
     ],
     exclude_domains: [
       'youtube.com', 'facebook.com', 'twitter.com',
       'instagram.com', 'linkedin.com'
     ],
     // Increase search timeout to avoid server-side timeouts
-    search_timeout: 30 // seconds - increased from 20s to 30s
+    search_timeout: 30 // seconds
   }
 
   try {
@@ -343,6 +346,12 @@ CRITICAL REQUIREMENTS:
 - The summary should organically blend insights about ${searchQuery} within the context of ${focusAreaInfo.label}
 - The content should seamlessly integrate knowledge from the SOURCES provided with general domain expertise
 - Avoid awkward phrasing like "...affecting ${focusAreaInfo.label} effectiveness" - instead write naturally
+- Each section must be SPECIFICALLY tailored to the combination of "${searchQuery}" and ${focusAreaInfo.label}
+- Focus on providing actionable insights that practitioners can apply to their change initiatives
+- Include specific examples, metrics, and methodologies when available in the sources
+- Draw connections between different sources to create deeper insights
+- Highlight unique perspectives or unconventional wisdom when present
+- Address potential challenges and solutions specific to the focus area
 
 For the Title:
 - Create an engaging, specific title that naturally combines the concepts of ${searchQuery} and ${focusAreaInfo.label}
@@ -398,7 +407,7 @@ IMPORTANT GUIDANCE:
 - Focus on providing actionable value that change practitioners can apply immediately
 - Use UK English spelling and professional, authoritative tone throughout
 - Format each section with the heading on its own line, followed by bullet points with substantive content
-- NEVER use awkward phrasing like "affecting ${focusAreaInfo.label} effectiveness" - write naturally
+- NEVER use awkward phrasing like "affecting ${focusAreaInfo.label} effectiveness"
 - NEVER use quotation marks around the search terms or focus area in your response text`
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -594,52 +603,39 @@ export async function GET(request: Request): Promise<Response> {
           const summaryTimeout = new Promise<string>((resolve) => {
             setTimeout(() => {
               // If summarization takes too long, return a basic summary with the requested format
-              // Create nicely formatted references with exact URLs
-              const formattedReferences = validInsights.slice(0, 5).map(insight => {
-                // Format reference with fallbacks for missing values
-                const sourceText = insight.source || 'Source';
-                const urlText = insight.url || '#';
-                return `• ${sourceText} - ${urlText}`;
-              }).join('\n');
-              
-              // Get the three most reputable sources to highlight
-              const topSources = validInsights.slice(0, 3)
-                .map(i => i.source || 'Unknown Source')
-                .join(', ');
-              
               // Create a more helpful fallback summary using the new format
-              const fallbackSummary = `${INSIGHT_FOCUS_AREAS[focusArea].label} and ${query || 'General Change Management'}: Key Insights
+              const fallbackSummary = `${focusAreaInfo.label} and ${query || 'General Change Management'}: Key Insights
 
 Context
-• This analysis explores ${query || 'general change management'} practices with a focus on ${INSIGHT_FOCUS_AREAS[focusArea].label}${industries.length ? ` in the ${industries.join(', ')} ${industries.length > 1 ? 'industries' : 'industry'}` : ''}.
+• This analysis explores ${query || 'general change management'} practices with a focus on ${focusAreaInfo.label}${industries.length ? ` in the ${industries.join(', ')} ${industries.length > 1 ? 'industries' : 'industry'}` : ''}.
 
 Key Findings
-• Understanding the relationship between ${query || 'change management'} and ${INSIGHT_FOCUS_AREAS[focusArea].label.toLowerCase()} is critical for organisations implementing successful transformations.
-• Change initiatives often encounter resistance at multiple organizational levels, which requires tailored approaches that address specific stakeholder concerns and motivations.
-• Effective communication strategies are essential when implementing significant changes, with organisations typically needing more touchpoints than initially anticipated to overcome resistance.
-• Successful transformation requires balancing technical solutions with people-focused approaches that acknowledge the human elements of change.
-• Conducting thorough readiness assessments before implementation significantly increases success rates, allowing organisations to identify and address potential issues proactively.
+• ${focusAreaInfo.label} plays a crucial role in ${query || 'change management'} initiatives, with successful implementation requiring careful consideration of ${focusAreaInfo.keywords.slice(0, 3).join(', ')}.
+• Organisations implementing ${query || 'change initiatives'} must address ${focusAreaInfo.keywords.slice(3, 5).join(' and ')} to ensure sustainable transformation.
+• Effective ${focusAreaInfo.label.toLowerCase()} strategies often involve ${focusAreaInfo.keywords.slice(5, 7).join(' and ')}, particularly in complex organisational contexts.
+• The relationship between ${query || 'change management'} and ${focusAreaInfo.label.toLowerCase()} requires a balanced approach that considers both technical and human factors.
+• Successful implementation of ${query || 'change initiatives'} in the context of ${focusAreaInfo.label.toLowerCase()} demands strong leadership and clear communication strategies.
 
 Patterns & Implications
-• Organisations frequently underestimate cultural factors when implementing major changes, focusing on processes while neglecting the emotional and psychological impacts on employees.
-• Middle management plays a crucial role as a bridge between strategy and execution, with their commitment directly influencing overall implementation success.
-• Complex initiatives involving significant operational changes often present unique challenges requiring specialized expertise in change management practices.
-• Change fatigue becomes a significant barrier when organisations attempt multiple concurrent initiatives, reducing employee receptiveness and engagement over time.
+• Organisations frequently encounter ${focusAreaInfo.keywords.slice(0, 2).join(' and ')} when implementing ${query || 'change initiatives'}, requiring tailored approaches to address specific challenges.
+• The effectiveness of ${focusAreaInfo.label.toLowerCase()} strategies often depends on organisational context and the specific nature of the ${query || 'change initiative'}.
+• Complex ${query || 'change initiatives'} involving significant ${focusAreaInfo.label.toLowerCase()} often present unique challenges requiring specialized expertise.
+• The success of ${focusAreaInfo.label.toLowerCase()} in ${query || 'change management'} initiatives often correlates with stakeholder engagement and buy-in.
 
 Practical Applications
-• Develop comprehensive stakeholder mapping early in the planning process, categorizing key individuals and groups by influence, interest, and potential impact on the initiative.
-• Implement a multi-channel communication approach that addresses both rational and emotional aspects of change, repeating key messages through varied formats.
-• Establish a network of change champions drawn from different organisational levels to support peer-to-peer influence and localized adoption.
-• Create clear metrics for measuring both adoption rates and business outcomes, with regular review cycles to adjust your implementation approach based on real-time feedback.
+• Develop comprehensive ${focusAreaInfo.keywords.slice(0, 2).join(' and ')} strategies that align with organisational objectives and stakeholder needs.
+• Implement targeted approaches to address ${focusAreaInfo.keywords.slice(2, 4).join(' and ')} in the context of ${query || 'change initiatives'}.
+• Establish clear metrics for measuring ${focusAreaInfo.label.toLowerCase()} effectiveness in ${query || 'change management'} initiatives.
+• Create structured frameworks for managing ${focusAreaInfo.keywords.slice(4, 6).join(' and ')} throughout the change process.
 
 Follow-up Questions
-• What specific resistance patterns might emerge in different industry contexts when implementing these changes, and how might approaches need to be adapted?
-• How can organisations effectively balance the pace of implementation with the need for sustainable adoption and employee wellbeing?
-• Which leadership competencies prove most crucial for navigating complex, multi-faceted change initiatives in today's environment?
-• How should change management approaches differ between technology-driven transformations versus broader organisational restructuring?
+• How can organisations effectively balance ${focusAreaInfo.keywords.slice(0, 2).join(' and ')} in the context of ${query || 'change initiatives'}?
+• What specific strategies prove most effective for addressing ${focusAreaInfo.keywords.slice(2, 4).join(' and ')} in different organisational contexts?
+• How should ${focusAreaInfo.label.toLowerCase()} approaches be adapted for different types of ${query || 'change initiatives'}?
+• What role do ${focusAreaInfo.keywords.slice(4, 6).join(' and ')} play in the success of ${query || 'change management'} initiatives?
 
 References (with links)
-${formattedReferences}`;
+${originalTavilySources.map((s, i) => `• ${s.source || new URL(s.url).hostname.replace(/^www\./, '')} - ${s.url}`).join('\n')}`;
               resolve(fallbackSummary);
             }, 30000); // Increased from 20000 to 30000 ms for processing more sources
           })
@@ -664,14 +660,14 @@ ${formattedReferences}`;
             .join(', ');
           
           // Create a more helpful error fallback summary using the new format
-          const errorFallbackSummary = `${INSIGHT_FOCUS_AREAS[focusArea].label} and ${query || 'General Change Management'}: Key Insights
+          const errorFallbackSummary = `${focusAreaInfo.label} and ${query || 'General Change Management'}: Key Insights
 
 Context
-• This analysis explores ${query || 'general change management'} practices with a focus on ${INSIGHT_FOCUS_AREAS[focusArea].label}${industries.length ? ` in the ${industries.join(', ')} ${industries.length > 1 ? 'industries' : 'industry'}` : ''}.
+• This analysis explores ${query || 'general change management'} practices with a focus on ${focusAreaInfo.label}${industries.length ? ` in the ${industries.join(', ')} ${industries.length > 1 ? 'industries' : 'industry'}` : ''}.
 
 Key Findings
-• Understanding the relationship between ${query || 'change management'} and ${INSIGHT_FOCUS_AREAS[focusArea].label.toLowerCase()} is critical for organisations implementing successful transformations.
-• Change initiatives often encounter resistance at multiple organizational levels, which requires tailored approaches that address specific stakeholder concerns and motivations.
+• Understanding the relationship between ${query || 'change management'} and ${focusAreaInfo.label.toLowerCase()} is critical for organisations implementing successful transformations.
+• Change initiatives often encounter resistance at multiple organisational levels, which requires tailored approaches that address specific stakeholder concerns and motivations.
 • Effective communication strategies are essential when implementing significant changes, with organisations typically needing more touchpoints than initially anticipated to overcome resistance.
 • Successful transformation requires balancing technical solutions with people-focused approaches that acknowledge the human elements of change.
 • Conducting thorough readiness assessments before implementation significantly increases success rates, allowing organisations to identify and address potential issues proactively.
