@@ -4,9 +4,25 @@ import { useEffect, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { INSIGHT_SEARCH_FEATURE } from '@/lib/subscription-client'
 
-export default function InsightSearchUsageTracker({ onUsageUpdate }) {
+interface UsageTrackerProps {
+  onUsageUpdate?: (count: number, limit: number, limitReached: boolean, isPremium: boolean) => void;
+}
+
+interface UsageState {
+  count: number;
+  limit: number;
+  limitReached: boolean;
+  isPremium: boolean;
+}
+
+export default function InsightSearchUsageTracker({ onUsageUpdate }: UsageTrackerProps) {
   const { user } = useUser()
-  const [usage, setUsage] = useState({ count: 0, limit: 20, limitReached: false, isPremium: false })
+  const [usage, setUsage] = useState<UsageState>({ 
+    count: 0, 
+    limit: 20, 
+    limitReached: false, 
+    isPremium: false 
+  })
 
   useEffect(() => {
     if (user) {

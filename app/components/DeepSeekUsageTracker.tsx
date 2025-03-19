@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -8,8 +8,32 @@ import { Progress } from '@/components/ui/progress';
 import { AlertCircle } from 'lucide-react';
 import { DEEP_SEEK_FEATURE, DEEP_SEEK_LIMIT } from '@/lib/subscription-client';
 
+interface DeepSeekUsageProps {
+  children: (props: DeepSeekChildrenProps) => ReactNode | ReactNode;
+}
+
+interface DeepSeekChildrenProps {
+  incrementUsage: () => Promise<boolean>;
+  usageCount: number;
+  usageLimit: number;
+  remainingUses: number;
+  isLimitReached: boolean;
+  isNearLimit: boolean;
+}
+
+interface UsageResponse {
+  success: boolean;
+  usage: {
+    count: number;
+  };
+  canUseFeature?: boolean;
+}
+
 // Create a wrapper component to handle the function children
-const ChildrenRenderer = memo(({ render, props }) => {
+const ChildrenRenderer = memo<{
+  render: ((props: DeepSeekChildrenProps) => ReactNode) | ReactNode;
+  props: DeepSeekChildrenProps;
+}>(({ render, props }) => {
   if (typeof render === 'function') {
     return render(props);
   }
@@ -17,7 +41,7 @@ const ChildrenRenderer = memo(({ render, props }) => {
 });
 ChildrenRenderer.displayName = 'ChildrenRenderer';
 
-export default function DeepSeekUsageTracker({ children }) {
+export default function DeepSeekUsageTracker({ children }: DeepSeekUsageProps) {
   const router = useRouter();
   const [usageCount, setUsageCount] = useState(0);
   const [usageLimit, setUsageLimit] = useState(DEEP_SEEK_LIMIT);
@@ -41,7 +65,7 @@ export default function DeepSeekUsageTracker({ children }) {
     fetchUsage();
   }, []);
 
-  const fetchUsage = async () => {
+  const fetchUsage = async (): Promise<void> => {
     try {
       const response = await fetch('/api/subscription/get-usage', {
         method: 'POST',
@@ -57,7 +81,7 @@ export default function DeepSeekUsageTracker({ children }) {
         throw new Error('Failed to fetch usage data');
       }
       
-      const data = await response.json();
+      const data = await response.json() as UsageResponse;
       
       if (data.success) {
         // Update local state with server data
@@ -76,7 +100,7 @@ export default function DeepSeekUsageTracker({ children }) {
     }
   };
 
-  const incrementUsage = useCallback(async () => {
+  const incrementUsage = useCallback(async (): Promise<boolean> => {
     // First update local state for immediate feedback
     const newCount = usageCount + 1;
     setUsageCount(newCount);
@@ -113,7 +137,7 @@ export default function DeepSeekUsageTracker({ children }) {
         throw new Error(errorData.error || 'Failed to update usage');
       }
       
-      const data = await response.json();
+      const data = await response.json() as UsageResponse;
       
       if (data.success) {
         // Update with server data
