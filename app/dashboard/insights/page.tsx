@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Loader2, CalendarIcon, ChevronDown, ChevronUp, ExternalLink, BookmarkPlus, AlertCircle } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { SaveToProjectDialog } from '@/components/save-to-project-dialog'
 import InsightSearchUsageTracker from '@/app/components/InsightSearchUsageTracker'
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import type { UsageTrackerRef } from '@/app/components/InsightSearchUsageTracker'
 
 type TimeframeValue = 
   | 'last_day'
@@ -97,112 +98,10 @@ export default function InsightsPage() {
   const { toast } = useToast()
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [insightToSave, setInsightToSave] = useState<Insight | null>(null)
-  const [incrementUsageFunc, setIncrementUsageFunc] = useState<(() => Promise<boolean>) | null>(null)
   const [remainingSearchesCount, setRemainingSearchesCount] = useState<number>(0)
   const [isSearchLimitReached, setIsSearchLimitReached] = useState<boolean>(false)
+  const usageTrackerRef = useRef<UsageTrackerRef>(null)
   
-  // New state variables to store tracker values
-  const [trackerValues, setTrackerValues] = useState<{
-    incrementUsage: (() => Promise<boolean>) | null;
-    remainingSearches: number;
-    isLimitReached: boolean;
-  }>({
-    incrementUsage: null,
-    remainingSearches: 0,
-    isLimitReached: false
-  });
-
-  // Effect to update component state when tracker values change
-  useEffect(() => {
-    if (trackerValues.incrementUsage) {
-      setIncrementUsageFunc(() => trackerValues.incrementUsage);
-    }
-    setRemainingSearchesCount(trackerValues.remainingSearches);
-    setIsSearchLimitReached(trackerValues.isLimitReached);
-    
-    // Log the current usage state for debugging
-    console.log('Usage tracker updated:', {
-      remainingSearches: trackerValues.remainingSearches,
-      isLimitReached: trackerValues.isLimitReached
-    });
-  }, [trackerValues]);
-
-  // Add a more reliable event listener to update from DOM events triggered by the tracker
-  useEffect(() => {
-    const handleUsageUpdate = (event: CustomEvent) => {
-      console.log('Received usage update event:', event.detail);
-      
-      if (event.detail) {
-        // Update local state with the new values
-        setRemainingSearchesCount(event.detail.remainingSearches);
-        setIsSearchLimitReached(event.detail.isLimitReached);
-        
-        // Also update the tracker values for consistency
-        setTrackerValues(prevValues => ({
-          ...prevValues,
-          remainingSearches: event.detail.remainingSearches,
-          isLimitReached: event.detail.isLimitReached
-        }));
-        
-        // Force the UI to refresh with the latest count
-        console.log('Updated remaining searches to:', event.detail.remainingSearches);
-      }
-    };
-    
-    // Add event listener
-    document.addEventListener('insightUsageUpdated', handleUsageUpdate as EventListener);
-    
-    // Clean up event listener
-    return () => {
-      document.removeEventListener('insightUsageUpdated', handleUsageUpdate as EventListener);
-    };
-  }, []);
-
-  // Add a special effect to check for usage tracker data on page load/navigation
-  useEffect(() => {
-    // This runs when component mounts or after navigation
-    const checkTrackerData = () => {
-      const trackerElement = document.getElementById('usage-tracker-data');
-      if (trackerElement && trackerElement.dataset.values) {
-        try {
-          const trackerData = JSON.parse(trackerElement.dataset.values);
-          console.log('Found tracker data in DOM:', trackerData);
-          
-          // Update our local state to match the tracker data
-          if (trackerData.remainingSearches !== undefined) {
-            setRemainingSearchesCount(trackerData.remainingSearches);
-          }
-          
-          if (trackerData.isLimitReached !== undefined) {
-            setIsSearchLimitReached(trackerData.isLimitReached);
-          }
-          
-          // Update the tracker values for consistency
-          setTrackerValues(prevValues => ({
-            ...prevValues,
-            incrementUsage: prevValues.incrementUsage, // Keep the existing function
-            remainingSearches: trackerData.remainingSearches || prevValues.remainingSearches,
-            isLimitReached: trackerData.isLimitReached || prevValues.isLimitReached
-          }));
-          
-          console.log('Updated state from DOM tracker data');
-        } catch (error) {
-          console.error('Error parsing tracker data:', error);
-        }
-      }
-    };
-    
-    // Check immediately on mount
-    checkTrackerData();
-    
-    // Also check after a short delay to ensure the tracker component has initialized
-    const delayedCheck = setTimeout(checkTrackerData, 500);
-    
-    return () => {
-      clearTimeout(delayedCheck);
-    };
-  }, []);
-
   // Fetch projects when auth is ready
   useEffect(() => {
     let isMounted = true
@@ -274,59 +173,34 @@ export default function InsightsPage() {
     setResetKey(prev => prev + 1)
   }
 
+  const handleUsageUpdate = (count: number, limit: number, limitReached: boolean, isPremium: boolean) => {
+    setRemainingSearchesCount(limit - count)
+    setIsSearchLimitReached(limitReached)
+  }
+
   const fetchInsights = async () => {
-    if (!focusArea) {
-      setError('Please select an Insight Focus Area')
+    if (!query.trim()) return
+
+    if (!usageTrackerRef.current) {
+      console.error('Search functionality not available: usage tracker not initialized')
       return
     }
 
-    setError(null)
-    
-    // Check if user can perform the search
-    if (!incrementUsageFunc) {
-      console.error('Search functionality not available: incrementUsageFunc is null');
-      setError('Search functionality not available')
-      return
-    }
-    
+    setLoading(true)
+    setLoadingStage('Checking usage limits...')
+
     try {
-      // Store the previous state for debugging
-      const previousRemaining = remainingSearchesCount;
-      
-      // Important: This incrementUsageFunc call updates the usage counter
-      // We need to wait for its result before proceeding
-      console.log('Calling incrementUsage function...');
-      const canSearch = await incrementUsageFunc();
-      
-      // Log the result of the incrementUsage call for debugging
-      console.log('Increment usage result:', canSearch);
-      console.log('Previous remaining searches:', previousRemaining, 'New remaining:', remainingSearchesCount);
+      // Check if we can perform the search
+      const canSearch = await usageTrackerRef.current.incrementUsage()
       
       if (!canSearch) {
-        console.log('Search limit reached or increment failed');
-        return // The modal will be shown by the usage tracker
+        setError('You have reached your daily search limit. Please upgrade to continue searching.')
+        setLoading(false)
+        return
       }
-      
-      // Check if we're at the limit after incrementing
-      if (remainingSearchesCount <= 0 || isSearchLimitReached) {
-        console.log('No remaining searches after increment, stopping search');
-        return;
-      }
-      
-      // Double check usage tracker data from the DOM element
-      const trackerElement = document.getElementById('usage-tracker-data');
-      if (trackerElement) {
-        const trackerData = JSON.parse(trackerElement.dataset.values || '{}');
-        if (trackerData.remainingSearches !== undefined) {
-          if (trackerData.remainingSearches <= 0 || trackerData.isLimitReached) {
-            console.log('Usage tracker data indicates no remaining searches, stopping search');
-            return;
-          }
-          // Update our local state to match the tracker data
-          setRemainingSearchesCount(trackerData.remainingSearches);
-          setIsSearchLimitReached(trackerData.isLimitReached);
-        }
-      }
+
+      setLoadingStage('Searching insights...')
+      setError(null)
       
       setLoading(true)
       setSummary(null)
@@ -712,19 +586,8 @@ export default function InsightsPage() {
       />
 
       <InsightSearchUsageTracker
-        onUsageUpdate={(count, limit, limitReached, isPremium) => {
-          setIncrementUsageFunc(() => async () => {
-            const response = await fetch('/api/subscription/increment-usage', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ featureId: 'insight-search' })
-            });
-            const data = await response.json();
-            return data.success && !data.limitReached;
-          });
-          setRemainingSearchesCount(limit - count);
-          setIsSearchLimitReached(limitReached);
-        }}
+        ref={usageTrackerRef}
+        onUsageUpdate={handleUsageUpdate}
       />
     </div>
   )

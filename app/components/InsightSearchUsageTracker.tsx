@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useImperativeHandle, forwardRef } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { INSIGHT_SEARCH_FEATURE } from '@/lib/subscription-client'
 
@@ -15,7 +15,11 @@ interface UsageState {
   isPremium: boolean;
 }
 
-export default function InsightSearchUsageTracker({ onUsageUpdate }: UsageTrackerProps) {
+export interface UsageTrackerRef {
+  incrementUsage: () => Promise<boolean>;
+}
+
+const InsightSearchUsageTracker = forwardRef<UsageTrackerRef, UsageTrackerProps>(({ onUsageUpdate }, ref) => {
   const { user } = useUser()
   const [usage, setUsage] = useState<UsageState>({ 
     count: 0, 
@@ -32,15 +36,25 @@ export default function InsightSearchUsageTracker({ onUsageUpdate }: UsageTracke
 
   const fetchUsage = async () => {
     try {
-      const response = await fetch('/api/subscription/usage')
+      const response = await fetch('/api/subscription/get-usage', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ featureId: INSIGHT_SEARCH_FEATURE })
+      })
       const data = await response.json()
       if (data.success) {
         setUsage({
           count: data.usage.count,
           limit: data.usage.limit,
-          limitReached: data.usage.limitReached,
+          limitReached: data.usage.isLimitReached,
           isPremium: data.usage.isPremium
         })
+        
+        if (onUsageUpdate) {
+          onUsageUpdate(data.usage.count, data.usage.limit, data.usage.isLimitReached, data.usage.isPremium)
+        }
       }
     } catch (error) {
       console.error('Error fetching usage:', error)
@@ -61,17 +75,17 @@ export default function InsightSearchUsageTracker({ onUsageUpdate }: UsageTracke
       
       if (data.success) {
         setUsage({
-          count: data.count,
+          count: data.currentUsage,
           limit: data.limit,
-          limitReached: data.limitReached,
+          limitReached: !data.canUseFeature,
           isPremium: data.isPremium
         })
         
         if (onUsageUpdate) {
-          onUsageUpdate(data.count, data.limit, data.limitReached, data.isPremium)
+          onUsageUpdate(data.currentUsage, data.limit, !data.canUseFeature, data.isPremium)
         }
 
-        return !data.limitReached
+        return data.canUseFeature
       }
     } catch (error) {
       console.error('Error incrementing usage:', error)
@@ -80,5 +94,13 @@ export default function InsightSearchUsageTracker({ onUsageUpdate }: UsageTracke
     return false
   }
 
+  useImperativeHandle(ref, () => ({
+    incrementUsage
+  }))
+
   return null // This component doesn't render anything
-} 
+})
+
+InsightSearchUsageTracker.displayName = 'InsightSearchUsageTracker'
+
+export default InsightSearchUsageTracker 
