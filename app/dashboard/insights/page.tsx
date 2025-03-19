@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Loader2, CalendarIcon, ChevronDown, ChevronUp, ExternalLink, BookmarkPlus, AlertCircle } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
@@ -511,7 +511,7 @@ export default function InsightsPage() {
     const generatedTitle = summaryLines[0].trim()
     
     // Create the summary insight with the proper title and content
-    const summaryInsight: Insight = {
+    const summaryInsight: Insight & { notes?: string } = {
       id: 'summary',
       title: generatedTitle,
       summary: summary.substring(generatedTitle.length).trim(),
@@ -520,7 +520,8 @@ export default function InsightsPage() {
       readTime: '5 min',
       focus_area: focusArea,
       url: '', // Add empty url since it's a summary
-      source: 'Generated Summary' // Add source to clarify it's a generated summary
+      source: 'Generated Summary', // Add source to clarify it's a generated summary
+      notes: summaryNotes // Include the notes from the textarea
     }
 
     setInsightToSave(summaryInsight)
@@ -614,8 +615,7 @@ export default function InsightsPage() {
               </div>
 
               <Button
-                variant="outline"
-                className="w-full"
+                className={cn(buttonVariants({ variant: "outline" }), "w-full")}
                 onClick={resetFilters}
               >
                 Reset Filters
@@ -699,14 +699,36 @@ export default function InsightsPage() {
       <InsightModal
         isOpen={!!selectedInsight}
         onClose={closeModal}
-        insight={insights.find(i => i.id === selectedInsight) || undefined}
-        onSaveClick={handleSaveClick}
+        insight={insights.find(i => i.id === selectedInsight) || {
+          id: 'empty',
+          title: '',
+          summary: '',
+          content: [],
+          tags: [],
+          readTime: '0 min',
+          focus_area: 'challenges-barriers',
+          url: '',
+          source: '',
+          notes: ''
+        }}
+        isProjectsLoading={projectsLoading}
       />
 
       <SaveToProjectDialog
         open={showSaveDialog}
         onOpenChange={setShowSaveDialog}
-        insight={insightToSave || undefined}
+        insight={insightToSave || {
+          id: 'empty',
+          title: '',
+          summary: '',
+          content: [],
+          tags: [],
+          readTime: '0 min',
+          focus_area: 'challenges-barriers',
+          url: '',
+          source: '',
+          notes: ''
+        }}
         isLoading={projectsLoading}
       />
 
