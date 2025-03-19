@@ -5,8 +5,8 @@ import { INSIGHT_SEARCH_FEATURE } from '@/lib/subscription-client';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const { userId } = auth();
-    if (!userId) {
+    const authData = await auth();
+    if (!authData.userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -15,12 +15,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Feature ID is required' }, { status: 400 });
     }
 
-    // Get current usage
+    // Get current usage for today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     const currentUsage = await prisma.usageTracker.findFirst({
       where: {
-        userId,
+        userId: authData.userId,
         featureId,
-        date: new Date().toISOString().split('T')[0]
+        lastUsedAt: {
+          gte: today
+        }
       }
     });
 
@@ -28,22 +33,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!currentUsage) {
       await prisma.usageTracker.create({
         data: {
-          userId,
+          userId: authData.userId,
           featureId,
           count: 1,
-          date: new Date().toISOString().split('T')[0]
+          lastUsedAt: new Date()
         }
       });
       return NextResponse.json({ success: true, count: 1 });
     }
 
     // Check if user has reached their limit
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { subscription: true }
+    const userSubscription = await prisma.userSubscription.findFirst({
+      where: { 
+        userId: authData.userId,
+        status: 'active'
+      }
     });
 
-    const isPremium = user?.subscription?.tier === 'pro';
+    const isPremium = userSubscription?.plan === 'pro';
     const limit = isPremium ? 100 : 20; // Pro users get 100 searches, free users get 20
 
     if (currentUsage.count >= limit) {
@@ -61,7 +68,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         id: currentUsage.id
       },
       data: {
-        count: currentUsage.count + 1
+        count: currentUsage.count + 1,
+        lastUsedAt: new Date()
       }
     });
 
