@@ -538,146 +538,190 @@ export default function InsightsPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Usage Tracker */}
-      <InsightSearchUsageTracker
-        onUsageUpdate={(count, limit, limitReached, isPremium) => {
-          setTrackerValues({
-            incrementUsage: null,
-            remainingSearches: limit - count,
-            isLimitReached: limitReached
-          });
-        }}
-      />
+    <div className="container mx-auto p-4 space-y-4">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Insights</h1>
+        <CreateProjectDialog />
+      </div>
 
-      {/* Search Section */}
-      <div className="space-y-4">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end">
-          <div className="flex-1 space-y-4">
-            <div>
-              <Input
-                type="text"
-                placeholder="Enter your search query..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
+      <div className="grid grid-cols-12 gap-4">
+        {/* Left Column - Search and Filters */}
+        <div className="col-span-3 space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Search & Filters</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Search</label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Search insights..."
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="flex-1"
+                  />
+                  <Button 
+                    onClick={fetchInsights}
+                    disabled={loading || isSearchLimitReached}
+                  >
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Search"
+                    )}
+                  </Button>
+                </div>
+                {isSearchLimitReached && (
+                  <p className="text-sm text-red-500">
+                    Search limit reached. Please upgrade to premium for more searches.
+                  </p>
+                )}
+                {!isSearchLimitReached && remainingSearchesCount > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    {remainingSearchesCount} searches remaining
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Focus Area</label>
+                <Select
+                  value={focusArea}
+                  onValueChange={(value: InsightFocusArea) => setFocusArea(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select focus area" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(INSIGHT_FOCUS_AREAS).map(([key, { label }]) => (
+                      <SelectItem key={key} value={key}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Industries</label>
+                <MultiSelect
+                  options={INDUSTRIES}
+                  selected={selectedIndustries}
+                  onChange={setSelectedIndustries}
+                  placeholder="Select industries"
+                />
+              </div>
+
+              <Button
+                variant="outline"
                 className="w-full"
-              />
-            </div>
-
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <Select value={focusArea} onValueChange={(value: InsightFocusArea) => setFocusArea(value)}>
-                <SelectTrigger className="w-full sm:w-[200px]">
-                  <SelectValue placeholder="Select focus area" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(INSIGHT_FOCUS_AREAS).map(([key, { label }]) => (
-                    <SelectItem key={key} value={key}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <MultiSelect
-                options={INDUSTRIES.map(industry => ({
-                  label: industry,
-                  value: industry
-                }))}
-                selected={selectedIndustries}
-                onChange={setSelectedIndustries}
-                placeholder="Select industries (optional)"
-                className="w-full sm:w-[300px]"
-              />
-            </div>
-          </div>
-
-          <Button
-            onClick={fetchInsights}
-            disabled={loading || !focusArea || isSearchLimitReached}
-            className="w-full md:w-auto"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {loadingStage || 'Searching...'}
-              </>
-            ) : (
-              'Search'
-            )}
-          </Button>
+                onClick={resetFilters}
+              >
+                Reset Filters
+              </Button>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Usage Limit Warning */}
-        {isSearchLimitReached && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800 flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 flex-shrink-0" />
-            <div className="text-sm">
-              {remainingSearchesCount === 0 ? (
+        {/* Middle Column - Insights List */}
+        <div className="col-span-6 space-y-4">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center h-64 text-red-500">
+              {error}
+            </div>
+          ) : insights.length === 0 ? (
+            <div className="flex items-center justify-center h-64 text-muted-foreground">
+              No insights found. Try adjusting your search criteria.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {insights.map((insight) => (
+                <InsightCard
+                  key={insight.id}
+                  title={insight.title}
+                  description={insight.summary.split('\n')[0]}
+                  summary={insight.summary}
+                  url={insight.url}
+                  focusArea={insight.focus_area}
+                  insight={insight}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Right Column - Summary */}
+        <div className="col-span-3 space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Generated Summary</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {summary ? (
                 <>
-                  You&apos;ve reached your search limit. 
-                  <Button variant="link" className="h-auto p-0 text-yellow-800 underline ml-1">
-                    Upgrade to Pro
+                  <div className="prose prose-sm max-w-none">
+                    {summary.split('\n').map((paragraph, index) => (
+                      <p key={index}>{paragraph}</p>
+                    ))}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Notes</label>
+                    <Textarea
+                      value={summaryNotes}
+                      onChange={(e) => setSummaryNotes(e.target.value)}
+                      placeholder="Add your notes here..."
+                      className="min-h-[100px]"
+                    />
+                  </div>
+                  <Button
+                    className="w-full"
+                    onClick={handleSaveSummary}
+                    disabled={projectsLoading}
+                  >
+                    Save to Project
                   </Button>
-                  {' '}to continue searching.
                 </>
               ) : (
-                `You have ${remainingSearchesCount} searches remaining.`
+                <div className="text-center text-muted-foreground">
+                  <p>Generate a summary to see it here</p>
+                </div>
               )}
-            </div>
-          </div>
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
-            <p className="text-sm">{error}</p>
-          </div>
-        )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      {/* Results Section */}
-      <div className="space-y-4">
-        {insights.length > 0 ? (
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {insights.map((insight) => (
-              <InsightCard
-                key={insight.id}
-                title={insight.title}
-                description={insight.summary.split('\n')[0]}
-                summary={insight.summary}
-                url={insight.url}
-                focusArea={insight.focus_area}
-                insight={insight}
-              />
-            ))}
-          </div>
-        ) : !loading && query && (
-          <div className="text-center py-12 text-muted-foreground">
-            No insights found. Try adjusting your search criteria.
-          </div>
-        )}
-      </div>
+      <InsightModal
+        isOpen={!!selectedInsight}
+        onClose={closeModal}
+        insight={insights.find(i => i.id === selectedInsight) || undefined}
+        onSaveClick={handleSaveClick}
+      />
 
-      {/* Selected Insight Modal */}
-      {selectedInsight && (
-        <InsightModal
-          insight={insights.find(i => i.id === selectedInsight)!}
-          isOpen={!!selectedInsight}
-          onClose={closeModal}
-          isProjectsLoading={projectsLoading}
-        />
-      )}
+      <SaveToProjectDialog
+        open={showSaveDialog}
+        onOpenChange={setShowSaveDialog}
+        insight={insightToSave || undefined}
+        isLoading={projectsLoading}
+      />
 
-      {/* Save Dialog */}
-      {showSaveDialog && insightToSave && (
-        <SaveToProjectDialog
-          open={showSaveDialog}
-          onOpenChange={setShowSaveDialog}
-          insight={insightToSave}
-          isLoading={projectsLoading}
-        />
-      )}
+      <InsightSearchUsageTracker
+        onUsageUpdate={(count, limit, limitReached) => {
+          setIncrementUsageFunc(() => async () => {
+            setRemainingSearchesCount(limit - count);
+            setIsSearchLimitReached(limitReached);
+            return true;
+          });
+          setRemainingSearchesCount(limit - count);
+          setIsSearchLimitReached(limitReached);
+        }}
+      />
     </div>
   )
 } 
