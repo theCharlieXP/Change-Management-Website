@@ -90,4 +90,5 @@ model UsageTracker {
   @@index([userId])
   @@index([featureId])
   @@unique([userId, featureId], name: "userId_featureId") // Each user can have only one tracker per feature
+  @@map("usage_tracker") // Map to the snake_case table name in the database
 }
