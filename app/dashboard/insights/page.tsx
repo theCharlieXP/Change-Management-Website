@@ -544,14 +544,14 @@ export default function InsightsPage() {
         <CreateProjectDialog />
       </div>
 
-      <div className="grid grid-cols-12 gap-4">
+      <div className="grid grid-cols-12 gap-6">
         {/* Left Column - Search and Filters */}
-        <div className="col-span-3 space-y-4">
-          <Card>
+        <div className="col-span-4">
+          <Card className="sticky top-4">
             <CardHeader>
               <CardTitle>Search & Filters</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Search</label>
                 <div className="flex gap-2">
@@ -560,11 +560,12 @@ export default function InsightsPage() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    className="flex-1"
+                    className="flex-1 min-w-[200px]"
                   />
                   <Button 
                     onClick={fetchInsights}
                     disabled={loading || isSearchLimitReached}
+                    className="min-w-[100px]"
                   >
                     {loading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -591,7 +592,7 @@ export default function InsightsPage() {
                   value={focusArea}
                   onValueChange={(value: InsightFocusArea) => setFocusArea(value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select focus area" />
                   </SelectTrigger>
                   <SelectContent>
@@ -611,6 +612,7 @@ export default function InsightsPage() {
                   selected={selectedIndustries}
                   onChange={setSelectedIndustries}
                   placeholder="Select industries"
+                  className="w-full"
                 />
               </div>
 
@@ -624,45 +626,22 @@ export default function InsightsPage() {
           </Card>
         </div>
 
-        {/* Middle Column - Insights List */}
-        <div className="col-span-6 space-y-4">
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-          ) : error ? (
-            <div className="flex items-center justify-center h-64 text-red-500">
-              {error}
-            </div>
-          ) : insights.length === 0 ? (
-            <div className="flex items-center justify-center h-64 text-muted-foreground">
-              No insights found. Try adjusting your search criteria.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {insights.map((insight) => (
-                <InsightCard
-                  key={insight.id}
-                  title={insight.title}
-                  description={insight.summary.split('\n')[0]}
-                  summary={insight.summary}
-                  url={insight.url}
-                  focusArea={insight.focus_area}
-                  insight={insight}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* Right Column - Summary */}
-        <div className="col-span-3 space-y-4">
-          <Card>
+        <div className="col-span-8">
+          <Card className="sticky top-4">
             <CardHeader>
               <CardTitle>Generated Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {summary ? (
+              {loading ? (
+                <div className="flex items-center justify-center h-64">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              ) : error ? (
+                <div className="flex items-center justify-center h-64 text-red-500">
+                  {error}
+                </div>
+              ) : summary ? (
                 <>
                   <div className="prose prose-sm max-w-none">
                     {summary.split('\n').map((paragraph, index) => (
@@ -733,11 +712,15 @@ export default function InsightsPage() {
       />
 
       <InsightSearchUsageTracker
-        onUsageUpdate={(count, limit, limitReached) => {
+        onUsageUpdate={(count, limit, limitReached, isPremium) => {
           setIncrementUsageFunc(() => async () => {
-            setRemainingSearchesCount(limit - count);
-            setIsSearchLimitReached(limitReached);
-            return true;
+            const response = await fetch('/api/subscription/increment-usage', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ featureId: 'insight-search' })
+            });
+            const data = await response.json();
+            return data.success && !data.limitReached;
           });
           setRemainingSearchesCount(limit - count);
           setIsSearchLimitReached(limitReached);
