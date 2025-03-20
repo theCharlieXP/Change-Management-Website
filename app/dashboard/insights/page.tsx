@@ -180,6 +180,15 @@ export default function InsightsPage() {
 
   const fetchInsights = async () => {
     if (!query.trim()) return
+    
+    if (!focusArea) {
+      toast({
+        title: "Focus Area Required",
+        description: "Please select a focus area before searching.",
+        variant: "destructive"
+      })
+      return
+    }
 
     if (!usageTrackerRef.current) {
       console.error('Search functionality not available: usage tracker not initialized')
@@ -188,22 +197,20 @@ export default function InsightsPage() {
 
     setLoading(true)
     setLoadingStage('Checking usage limits...')
+    setError(null)
+    setSummary(null)
 
     try {
       // Check if we can perform the search
       const canSearch = await usageTrackerRef.current.incrementUsage()
       
-      if (!canSearch) {
+      if (!canSearch || isSearchLimitReached) {
         setError('You have reached your daily search limit. Please upgrade to continue searching.')
         setLoading(false)
         return
       }
 
       setLoadingStage('Searching insights...')
-      setError(null)
-      
-      setLoading(true)
-      setSummary(null)
       
       // Step 1: Initial search
       setLoadingStage("Initialising search...")
@@ -415,7 +422,6 @@ export default function InsightsPage() {
     <div className="container mx-auto p-4 space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Insights</h1>
-        <CreateProjectDialog />
       </div>
 
       <div className="grid grid-cols-12 gap-6">
@@ -438,7 +444,7 @@ export default function InsightsPage() {
                   />
                   <Button 
                     onClick={fetchInsights}
-                    disabled={loading || isSearchLimitReached}
+                    disabled={loading || isSearchLimitReached || !focusArea}
                     className="min-w-[100px]"
                   >
                     {loading ? (
@@ -491,7 +497,8 @@ export default function InsightsPage() {
               </div>
 
               <Button
-                className={cn(buttonVariants({ variant: "outline" }), "w-full")}
+                className="w-full bg-white hover:bg-gray-50"
+                variant="outline"
                 onClick={resetFilters}
               >
                 Reset Filters
