@@ -101,7 +101,7 @@ export async function GET() {
     console.log('Fetching projects for user:', userId)
     const { data: projects, error } = await supabase
       .from('projects')
-      .select('id, name, description, user_id, status, created_at, updated_at')
+      .select('id, title, description, user_id, status, created_at, updated_at')
       .eq('user_id', userId)
       .order('updated_at', { ascending: false })
 
@@ -130,7 +130,7 @@ export async function GET() {
       count: projects?.length,
       firstProject: projects?.[0] ? {
         id: projects[0].id,
-        title: projects[0].name,
+        title: projects[0].title,
         keys: Object.keys(projects[0])
       } : null,
       userId
@@ -241,7 +241,8 @@ export async function POST(request: Request) {
         {
           title,
           user_id: userId,
-          status: 'planning'
+          status: 'planning',
+          description: null
         }
       ])
       .select()
@@ -256,7 +257,17 @@ export async function POST(request: Request) {
         userId,
         title
       })
-      throw error
+      return new NextResponse(
+        JSON.stringify({ 
+          error: 'Failed to create project',
+          message: error.message,
+          details: error.details
+        }),
+        { 
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     console.log('Project created successfully:', {

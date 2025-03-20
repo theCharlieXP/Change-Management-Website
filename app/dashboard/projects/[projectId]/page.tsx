@@ -170,8 +170,7 @@ export default function ProjectPage() {
 
     try {
       const updatedProject = await updateProject(projectId, {
-        title: editTitle,
-        description: editDescription
+        title: editTitle
       })
       setProject(updatedProject)
       setIsEditing(false)
@@ -363,12 +362,6 @@ export default function ProjectPage() {
                   onChange={(e) => setEditTitle(e.target.value)}
                   className="text-2xl font-bold mb-2"
                 />
-                <Textarea
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  placeholder="Project description"
-                  className="resize-none"
-                />
                 <div className="flex items-center gap-2 mt-2">
                   <Button size="sm" onClick={handleSaveEdit}>
                     <Check className="h-4 w-4 mr-1" />
@@ -388,9 +381,6 @@ export default function ProjectPage() {
                     <Pencil className="h-4 w-4" />
                   </Button>
                 </div>
-                {projectDescription && (
-                  <p className="text-muted-foreground mt-1">{projectDescription}</p>
-                )}
               </div>
             )}
             <Select value={status} onValueChange={handleStatusChange}>
