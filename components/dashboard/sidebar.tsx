@@ -1,7 +1,7 @@
 'use client'
 
 import Link from "next/link"
-import { FolderKanban, Brain, Handshake, UserCircle, MessageSquare } from "lucide-react"
+import { FolderKanban, Brain, Handshake, UserCircle, MessageSquare, Sparkles } from "lucide-react"
 import { usePathname } from 'next/navigation'
 
 export default function Sidebar() {
@@ -25,6 +25,12 @@ export default function Sidebar() {
       href: "/dashboard/communications",
       icon: MessageSquare,
       matchPaths: ['/dashboard/communications']
+    },
+    {
+      name: "Mystery Feature",
+      href: "/dashboard/mystery-feature",
+      icon: Sparkles,
+      matchPaths: ['/dashboard/mystery-feature']
     },
     {
       name: "Account",
