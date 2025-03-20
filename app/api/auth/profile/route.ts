@@ -10,7 +10,7 @@ export async function GET() {
     
     // Get auth info from Clerk
     const authData = await auth();
-const { userId  } = authData;
+    const { userId } = authData;
     const headersList = headers();
     const headerUserId = headersList.get('x-user-id');
     const authHeader = headersList.get('authorization');
@@ -43,7 +43,7 @@ const { userId  } = authData;
       }, { status: 401 });
     }
 
-    // Create Supabase client
+    // Create Supabase client with service role
     const cookieStore = cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -68,6 +68,11 @@ const { userId  } = authData;
             }
           },
         },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false
+        }
       }
     );
 
