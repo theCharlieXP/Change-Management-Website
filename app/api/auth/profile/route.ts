@@ -118,7 +118,9 @@ export async function GET() {
     console.log('Profile check result:', { 
       hasProfile: !!profile, 
       errorCode: fetchError?.code,
-      errorMessage: fetchError?.message 
+      errorMessage: fetchError?.message,
+      errorDetails: fetchError?.details,
+      errorHint: fetchError?.hint
     });
 
     if (fetchError && fetchError.code !== 'PGRST116') {
@@ -126,7 +128,9 @@ export async function GET() {
       return NextResponse.json({ 
         error: 'Database error', 
         message: 'Error fetching profile',
-        details: fetchError.message
+        details: fetchError.message,
+        code: fetchError.code,
+        hint: fetchError.hint
       }, { status: 500 });
     }
 
@@ -147,6 +151,14 @@ export async function GET() {
         .select()
         .single();
 
+      console.log('Profile creation attempt result:', {
+        hasProfile: !!newProfile,
+        errorCode: insertError?.code,
+        errorMessage: insertError?.message,
+        errorDetails: insertError?.details,
+        errorHint: insertError?.hint
+      });
+
       if (insertError && insertError.code === '42703') {
         // If the credits column doesn't exist, try without it
         console.log('Credits column not found, creating profile without credits');
@@ -161,12 +173,22 @@ export async function GET() {
           .select()
           .single();
 
+        console.log('Fallback profile creation result:', {
+          hasProfile: !!fallbackProfile,
+          errorCode: fallbackError?.code,
+          errorMessage: fallbackError?.message,
+          errorDetails: fallbackError?.details,
+          errorHint: fallbackError?.hint
+        });
+
         if (fallbackError) {
           console.error('Error creating profile without credits:', fallbackError);
           return NextResponse.json({ 
             error: 'Database error', 
             message: 'Error creating profile',
-            details: fallbackError.message
+            details: fallbackError.message,
+            code: fallbackError.code,
+            hint: fallbackError.hint
           }, { status: 500 });
         }
 
@@ -180,7 +202,9 @@ export async function GET() {
         return NextResponse.json({ 
           error: 'Database error', 
           message: 'Error creating profile',
-          details: insertError.message
+          details: insertError.message,
+          code: insertError.code,
+          hint: insertError.hint
         }, { status: 500 });
       }
 
@@ -201,7 +225,8 @@ export async function GET() {
     console.error('Error in profile route:', error);
     return NextResponse.json({ 
       error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
     }, { status: 500 });
   }
 } 
