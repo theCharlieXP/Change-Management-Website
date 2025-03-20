@@ -17,7 +17,7 @@ export function CreateProjectDialog({ onProjectCreated }: CreateProjectDialogPro
   const [open, setOpen] = useState(false)
   const { user } = useUser()
 
-  const handleProjectCreated = async (name: string) => {
+  const handleProjectCreated = async (title: string) => {
     if (!user) {
       console.error('No user found when trying to create project')
       return
@@ -26,14 +26,14 @@ export function CreateProjectDialog({ onProjectCreated }: CreateProjectDialogPro
     try {
       console.log('Creating project with:', {
         userId: user.id,
-        name,
+        title,
         authState: {
           isAuthenticated: !!user,
           hasId: !!user?.id
         }
       })
 
-      const newProject = await createProject(user.id, name)
+      const newProject = await createProject(user.id, title)
       
       console.log('Project created successfully:', newProject)
       
@@ -43,7 +43,7 @@ export function CreateProjectDialog({ onProjectCreated }: CreateProjectDialogPro
       console.error('Error creating project:', {
         error,
         userId: user.id,
-        name
+        title
       })
       throw error
     }

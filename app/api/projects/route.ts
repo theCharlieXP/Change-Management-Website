@@ -202,15 +202,15 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { name } = body
+    const { title } = body
 
-    if (!name) {
-      console.error('Missing project name in request:', { userId })
+    if (!title) {
+      console.error('Missing project title in request:', { userId })
       return new NextResponse(
         JSON.stringify({ 
           error: 'Bad Request', 
-          message: 'Project name is required',
-          details: 'Name field is missing or empty'
+          message: 'Project title is required',
+          details: 'Title field is missing or empty'
         }),
         { 
           status: 400,
@@ -220,7 +220,7 @@ export async function POST(request: Request) {
     }
 
     console.log('Creating project:', {
-      name,
+      title,
       userId
     })
 
@@ -239,7 +239,7 @@ export async function POST(request: Request) {
       .from('projects')
       .insert([
         {
-          name,
+          title,
           user_id: userId,
           status: 'planning'
         }
@@ -254,14 +254,14 @@ export async function POST(request: Request) {
         details: error.details,
         hint: error.hint,
         userId,
-        name
+        title
       })
       throw error
     }
 
     console.log('Project created successfully:', {
       projectId: project.id,
-      title: project.name,
+      title: project.title,
       userId: project.user_id
     })
 

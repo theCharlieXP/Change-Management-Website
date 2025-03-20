@@ -152,11 +152,11 @@ export async function getProject(projectId: string) {
   }
 }
 
-export async function createProject(userId: string, name: string) {
+export async function createProject(userId: string, title: string) {
   try {
     console.log('Creating project:', {
       userId,
-      name,
+      title,
       supabaseConfig: {
         isConfigured: isSupabaseConfigured(),
         hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -169,7 +169,7 @@ export async function createProject(userId: string, name: string) {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ name })
+      body: JSON.stringify({ title })
     })
     
     const data = await response.json()
@@ -193,7 +193,7 @@ export async function createProject(userId: string, name: string) {
         stack: error.stack
       } : error,
       userId,
-      name
+      title
     })
     throw error
   }
