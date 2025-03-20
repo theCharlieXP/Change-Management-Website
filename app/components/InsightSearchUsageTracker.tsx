@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useImperativeHandle, forwardRef } from 'react'
+import { useEffect, useState, useImperativeHandle, forwardRef, useCallback } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { INSIGHT_SEARCH_FEATURE } from '@/lib/subscription-client'
 
@@ -28,13 +28,7 @@ const InsightSearchUsageTracker = forwardRef<UsageTrackerRef, UsageTrackerProps>
     isPremium: false 
   })
 
-  useEffect(() => {
-    if (user) {
-      fetchUsage()
-    }
-  }, [user])
-
-  const fetchUsage = async () => {
+  const fetchUsage = useCallback(async () => {
     try {
       const response = await fetch('/api/subscription/get-usage', {
         method: 'POST',
@@ -59,7 +53,13 @@ const InsightSearchUsageTracker = forwardRef<UsageTrackerRef, UsageTrackerProps>
     } catch (error) {
       console.error('Error fetching usage:', error)
     }
-  }
+  }, [onUsageUpdate])
+
+  useEffect(() => {
+    if (user) {
+      fetchUsage()
+    }
+  }, [user, fetchUsage])
 
   const incrementUsage = async () => {
     if (!user) return false

@@ -13,8 +13,8 @@ export default function MysteryFeaturePage() {
   const handleNotifyMe = (e: React.FormEvent) => {
     e.preventDefault();
     toast({
-      title: "You're on the list!",
-      description: "We'll notify you when this exciting feature launches.",
+      title: "You&apos;re on the list!",
+      description: "We&apos;ll notify you when this exciting feature launches.",
     });
     setEmail("");
   };
