@@ -125,9 +125,11 @@ export async function getProjects(userId: string) {
   try {
     const response = await fetch('/api/projects')
     if (!response.ok) {
-      throw new Error('Failed to fetch projects')
+      const errorData = await response.json()
+      throw new Error(errorData.details || 'Failed to fetch projects')
     }
-    return await response.json()
+    const data = await response.json()
+    return data
   } catch (error) {
     console.error('Error in getProjects:', error)
     throw error

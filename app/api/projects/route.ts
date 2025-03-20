@@ -58,15 +58,12 @@ export async function GET() {
   try {
     // Get the user ID from Clerk
     const authData = await auth();
-const { userId  } = authData
-    const headersList = headers()
-    const headerUserId = headersList.get('x-user-id')
+    const { userId } = authData
     
     // Log auth state
     console.log('Auth state in projects API:', {
       hasUserId: !!userId,
       userId,
-      headerUserId,
       supabaseConfig: {
         hasUrl: !!supabaseUrl,
         hasServiceKey: !!supabaseServiceKey
@@ -85,27 +82,19 @@ const { userId  } = authData
     }
 
     // Test database connection first
-    try {
-      console.log('Testing database connection...')
-      const { data: testData, error: testError } = await supabase
-        .from('projects')
-        .select('count')
-        .limit(1)
-
-      if (testError) {
-        console.error('Database connection test failed:', {
-          code: testError.code,
-          message: testError.message,
-          details: testError.details,
-          hint: testError.hint
-        })
-        throw new Error(`Database connection failed: ${testError.message}`)
-      }
-
-      console.log('Database connection test successful')
-    } catch (testError) {
-      console.error('Error testing database connection:', testError)
-      throw new Error('Failed to connect to database')
+    const connectionTest = await testDatabaseConnection()
+    if (!connectionTest.ok) {
+      console.error('Database connection test failed:', connectionTest.error)
+      return new NextResponse(
+        JSON.stringify({ 
+          error: 'Database connection failed',
+          details: connectionTest.error
+        }),
+        { 
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     // Fetch projects using the service role client
@@ -124,7 +113,16 @@ const { userId  } = authData
         hint: error.hint,
         userId
       })
-      throw error
+      return new NextResponse(
+        JSON.stringify({ 
+          error: 'Failed to fetch projects',
+          details: error.message
+        }),
+        { 
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     // Log the projects data for debugging
