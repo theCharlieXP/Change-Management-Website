@@ -18,14 +18,33 @@ export function CreateProjectDialog({ onProjectCreated }: CreateProjectDialogPro
   const { user } = useUser()
 
   const handleProjectCreated = async (title: string) => {
-    if (!user) return
+    if (!user) {
+      console.error('No user found when trying to create project')
+      return
+    }
 
     try {
+      console.log('Creating project with:', {
+        userId: user.id,
+        title,
+        authState: {
+          isAuthenticated: !!user,
+          hasId: !!user?.id
+        }
+      })
+
       const newProject = await createProject(user.id, title)
+      
+      console.log('Project created successfully:', newProject)
+      
       onProjectCreated?.(newProject)
       setOpen(false)
     } catch (error) {
-      console.error('Error creating project:', error)
+      console.error('Error creating project:', {
+        error,
+        userId: user.id,
+        title
+      })
       throw error
     }
   }

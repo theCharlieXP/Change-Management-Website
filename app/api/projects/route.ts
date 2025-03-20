@@ -174,10 +174,26 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const authData = await auth();
-const { userId  } = authData
+    const { userId } = authData
+
+    console.log('Project creation request:', {
+      hasUserId: !!userId,
+      userId,
+      headers: Object.fromEntries(request.headers),
+      supabaseConfig: {
+        hasUrl: !!supabaseUrl,
+        hasServiceKey: !!supabaseServiceKey
+      }
+    })
+
     if (!userId) {
+      console.error('No user ID found in session during project creation')
       return new NextResponse(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ 
+          error: 'Unauthorized', 
+          message: 'Please sign in to create a project',
+          details: 'No user ID found in session'
+        }),
         { 
           status: 401,
           headers: { 'Content-Type': 'application/json' }
@@ -189,8 +205,13 @@ const { userId  } = authData
     const { title } = body
 
     if (!title) {
+      console.error('Missing project title in request:', { userId })
       return new NextResponse(
-        JSON.stringify({ error: 'Project title is required' }),
+        JSON.stringify({ 
+          error: 'Bad Request', 
+          message: 'Project title is required',
+          details: 'Title field is missing or empty'
+        }),
         { 
           status: 400,
           headers: { 'Content-Type': 'application/json' }
@@ -206,6 +227,10 @@ const { userId  } = authData
     // Test database connection
     const connectionTest = await testDatabaseConnection()
     if (!connectionTest.ok) {
+      console.error('Database connection test failed during project creation:', {
+        error: connectionTest.error,
+        userId
+      })
       throw new Error(`Database connection failed: ${connectionTest.error}`)
     }
 
@@ -223,17 +248,22 @@ const { userId  } = authData
       .single()
 
     if (error) {
-      console.error('Error creating project:', {
+      console.error('Error creating project in Supabase:', {
         code: error.code,
         message: error.message,
         details: error.details,
         hint: error.hint,
-        userId
+        userId,
+        title
       })
       throw error
     }
 
-    console.log('Project created successfully:', project)
+    console.log('Project created successfully:', {
+      projectId: project.id,
+      title: project.title,
+      userId: project.user_id
+    })
 
     return new NextResponse(
       JSON.stringify(project),
@@ -243,18 +273,24 @@ const { userId  } = authData
       }
     )
   } catch (error) {
-    console.error('Error in create project:', {
+    console.error('Error in create project API:', {
       error: error instanceof Error ? {
         name: error.name,
         message: error.message,
         stack: error.stack
-      } : error
+      } : error,
+      supabaseConfig: {
+        hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+        hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+        urlPrefix: process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 20)
+      }
     })
 
     return new NextResponse(
       JSON.stringify({ 
         error: 'Failed to create project',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
+        details: error instanceof Error ? error.stack : undefined
       }),
       { 
         status: 500,

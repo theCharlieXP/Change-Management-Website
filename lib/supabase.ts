@@ -154,6 +154,16 @@ export async function getProject(projectId: string) {
 
 export async function createProject(userId: string, title: string) {
   try {
+    console.log('Creating project:', {
+      userId,
+      title,
+      supabaseConfig: {
+        isConfigured: isSupabaseConfigured(),
+        hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+        hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      }
+    })
+
     const response = await fetch('/api/projects', {
       method: 'POST',
       headers: {
@@ -162,13 +172,29 @@ export async function createProject(userId: string, title: string) {
       body: JSON.stringify({ title })
     })
     
+    const data = await response.json()
+    
     if (!response.ok) {
-      throw new Error('Failed to create project')
+      console.error('Failed to create project:', {
+        status: response.status,
+        statusText: response.statusText,
+        data
+      })
+      throw new Error(data.message || data.error || 'Failed to create project')
     }
     
-    return await response.json()
+    console.log('Project created successfully:', data)
+    return data
   } catch (error) {
-    console.error('Error in createProject:', error)
+    console.error('Error in createProject:', {
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      } : error,
+      userId,
+      title
+    })
     throw error
   }
 }
