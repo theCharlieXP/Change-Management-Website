@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { usePathname } from 'next/navigation'
-import { FolderKanban, Brain, MessageSquare, UserCircle } from "lucide-react"
+import { FolderKanban, Brain, MessageSquare, UserCircle, Sparkles } from "lucide-react"
 
 export default function MobileNav() {
   const pathname = usePathname()
@@ -23,6 +23,12 @@ export default function MobileNav() {
       href: "/dashboard/communications",
       icon: MessageSquare,
       matchPaths: ['/dashboard/communications']
+    },
+    {
+      name: "Mystery",
+      href: "/dashboard/mystery-feature",
+      icon: Sparkles,
+      matchPaths: ['/dashboard/mystery-feature']
     },
     {
       name: "Account",
