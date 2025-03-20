@@ -27,7 +27,7 @@ export default function MysteryFeaturePage() {
             Something Exciting is Coming
           </h1>
           <p className="text-xl text-muted-foreground">
-            We're working on something special that will revolutionize your change management experience.
+            We&apos;re working on something special that will revolutionize your change management experience.
           </p>
         </div>
 
