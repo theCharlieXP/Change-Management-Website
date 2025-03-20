@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,80 +31,39 @@ export default function MysteryFeaturePage() {
           </p>
         </div>
 
-        <Card className="border-2 border-dashed">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-center gap-2">
-              <Sparkles className="h-6 w-6 text-yellow-500" />
-              Mystery Feature
-            </CardTitle>
+            <div className="flex items-center justify-center mb-4">
+              <Sparkles className="h-12 w-12 text-primary" />
+            </div>
+            <CardTitle className="text-center text-2xl">Mystery Feature</CardTitle>
             <CardDescription className="text-center">
-              Stay tuned for an announcement that will transform your workflow
+              Be the first to know when we launch our groundbreaking new feature.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-center gap-2 text-muted-foreground">
-              <Lock className="h-4 w-4" />
-              <span>Coming Soon</span>
-            </div>
-
-            <form onSubmit={handleNotifyMe} className="space-y-4">
-              <div className="flex gap-2">
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 text-muted-foreground">
+                <Lock className="h-5 w-5" />
+                <p>Currently in development</p>
+              </div>
+              <div className="flex items-center gap-4 text-muted-foreground">
+                <Bell className="h-5 w-5" />
+                <p>Sign up for notifications</p>
+              </div>
+              <form onSubmit={handleNotifyMe} className="space-y-4">
                 <input
                   type="email"
-                  placeholder="Enter your email to be notified"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Enter your email"
+                  className="w-full p-2 border rounded-md"
+                  required
                 />
-                <Button type="submit" className="flex items-center gap-2">
-                  <Bell className="h-4 w-4" />
+                <Button type="submit" className="w-full">
                   Notify Me
                 </Button>
-              </div>
-            </form>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="bg-muted/50">
-                <CardContent className="pt-6">
-                  <div className="text-center space-y-2">
-                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                      <Sparkles className="h-6 w-6 text-primary" />
-                    </div>
-                    <h3 className="font-semibold">Innovative</h3>
-                    <p className="text-sm text-muted-foreground">
-                      A fresh approach to change management
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-muted/50">
-                <CardContent className="pt-6">
-                  <div className="text-center space-y-2">
-                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                      <Lock className="h-6 w-6 text-primary" />
-                    </div>
-                    <h3 className="font-semibold">Secure</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Enterprise-grade security
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-muted/50">
-                <CardContent className="pt-6">
-                  <div className="text-center space-y-2">
-                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                      <Bell className="h-6 w-6 text-primary" />
-                    </div>
-                    <h3 className="font-semibold">Intelligent</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Powered by cutting-edge technology
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              </form>
             </div>
           </CardContent>
         </Card>
