@@ -6,11 +6,11 @@ import { Input } from '@/components/ui/input'
 import { Loader2 } from 'lucide-react'
 
 interface CreateProjectFormProps {
-  onSubmit: (title: string) => Promise<void>
+  onSubmit: (name: string) => Promise<void>
 }
 
 export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
-  const [title, setTitle] = useState('')
+  const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -20,10 +20,10 @@ export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
     setError(null)
 
     try {
-      await onSubmit(title.trim())
+      await onSubmit(name.trim())
       
       // Reset form
-      setTitle('')
+      setName('')
     } catch (error) {
       console.error('Project creation error:', error)
       setError('Failed to create project. Please try again.')
@@ -35,13 +35,13 @@ export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <label htmlFor="title" className="text-sm font-medium">
+        <label htmlFor="name" className="text-sm font-medium">
           Project Name <span className="text-red-500">*</span>
         </label>
         <Input
-          id="title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          id="name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
           placeholder="Enter project name"
           required
           disabled={loading}
@@ -50,7 +50,7 @@ export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
           maxLength={40}
         />
         <p className="text-xs text-muted-foreground">
-          {title.length}/40 characters
+          {name.length}/40 characters
         </p>
       </div>
 
@@ -62,7 +62,7 @@ export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
 
       <Button
         type="submit"
-        disabled={loading || !title.trim()}
+        disabled={loading || !name.trim()}
         className="w-full"
       >
         {loading ? (
