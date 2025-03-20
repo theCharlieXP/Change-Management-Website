@@ -126,6 +126,7 @@ const { userId  } = authData
       .insert([
         {
           project_id: params.projectId,
+          user_id: userId,
           content,
         },
       ])
