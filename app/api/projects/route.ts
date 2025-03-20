@@ -101,7 +101,7 @@ export async function GET() {
     console.log('Fetching projects for user:', userId)
     const { data: projects, error } = await supabase
       .from('projects')
-      .select('id, title, description, user_id, status, created_at, updated_at')
+      .select('id, name, description, user_id, status, created_at, updated_at')
       .eq('user_id', userId)
       .order('updated_at', { ascending: false })
 
@@ -130,7 +130,7 @@ export async function GET() {
       count: projects?.length,
       firstProject: projects?.[0] ? {
         id: projects[0].id,
-        title: projects[0].title,
+        title: projects[0].name,
         keys: Object.keys(projects[0])
       } : null,
       userId
@@ -202,15 +202,15 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { title } = body
+    const { name } = body
 
-    if (!title) {
-      console.error('Missing project title in request:', { userId })
+    if (!name) {
+      console.error('Missing project name in request:', { userId })
       return new NextResponse(
         JSON.stringify({ 
           error: 'Bad Request', 
-          message: 'Project title is required',
-          details: 'Title field is missing or empty'
+          message: 'Project name is required',
+          details: 'Name field is missing or empty'
         }),
         { 
           status: 400,
@@ -220,7 +220,7 @@ export async function POST(request: Request) {
     }
 
     console.log('Creating project:', {
-      title,
+      name,
       userId
     })
 
@@ -239,7 +239,7 @@ export async function POST(request: Request) {
       .from('projects')
       .insert([
         {
-          title,
+          name,
           user_id: userId,
           status: 'planning'
         }
@@ -254,14 +254,14 @@ export async function POST(request: Request) {
         details: error.details,
         hint: error.hint,
         userId,
-        title
+        name
       })
       throw error
     }
 
     console.log('Project created successfully:', {
       projectId: project.id,
-      title: project.title,
+      title: project.name,
       userId: project.user_id
     })
 
