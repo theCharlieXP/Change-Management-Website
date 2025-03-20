@@ -42,8 +42,8 @@ export function ProfileCreator() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${sessionToken}`,
-          'X-User-Id': userId,
-          'X-Session-Id': session.id
+          'x-user-id': userId.toLowerCase(),
+          'x-session-id': session.id
         },
         cache: 'no-store'
       });
