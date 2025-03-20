@@ -133,6 +133,8 @@ export async function GET() {
     // Create new profile if it doesn't exist
     if (!profile) {
       console.log('Creating new profile for user:', userId);
+      
+      // First, try to create the profile with credits
       const { data: newProfile, error: insertError } = await supabase
         .from('profiles')
         .insert([{
@@ -145,7 +147,35 @@ export async function GET() {
         .select()
         .single();
 
-      if (insertError) {
+      if (insertError && insertError.code === '42703') {
+        // If the credits column doesn't exist, try without it
+        console.log('Credits column not found, creating profile without credits');
+        const { data: fallbackProfile, error: fallbackError } = await supabase
+          .from('profiles')
+          .insert([{
+            user_id: userId,
+            tier: 'free',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }])
+          .select()
+          .single();
+
+        if (fallbackError) {
+          console.error('Error creating profile without credits:', fallbackError);
+          return NextResponse.json({ 
+            error: 'Database error', 
+            message: 'Error creating profile',
+            details: fallbackError.message
+          }, { status: 500 });
+        }
+
+        console.log('Successfully created new profile without credits');
+        return NextResponse.json({ 
+          profile: fallbackProfile, 
+          created: true 
+        });
+      } else if (insertError) {
         console.error('Error creating profile:', insertError);
         return NextResponse.json({ 
           error: 'Database error', 
@@ -154,7 +184,7 @@ export async function GET() {
         }, { status: 500 });
       }
 
-      console.log('Successfully created new profile');
+      console.log('Successfully created new profile with credits');
       return NextResponse.json({ 
         profile: newProfile, 
         created: true 

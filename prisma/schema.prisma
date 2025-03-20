@@ -92,3 +92,14 @@ model UsageTracker {
   @@unique([userId, featureId], name: "userId_featureId") // Each user can have only one tracker per feature
   @@map("usage_tracker") // Map to the snake_case table name in the database
 }
+
+model Profile {
+  id        String   @id @default(cuid())
+  userId    String   @unique // Clerk user ID
+  tier      String   @default("free")
+  credits   Int      @default(100)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("profiles") // Map to the snake_case table name in the database
+}
