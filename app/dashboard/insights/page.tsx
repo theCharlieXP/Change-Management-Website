@@ -249,6 +249,9 @@ export default function InsightsPage() {
       // Create an AbortController to handle client-side timeouts
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // Increased from 35000 to 60000 ms
+
+      let useLocalData = false; // Set to true if the remote API fails
+      let searchResults: Insight[] = [];
       
       try {
         const response = await fetch(`/api/insights/search?${params.toString()}`, {
@@ -281,62 +284,146 @@ export default function InsightsPage() {
           } catch (e) {
             // If we can't parse the JSON, just use the default error message
           }
-          throw new Error(errorMessage);
+          
+          if (response.status === 500) {
+            // If there's a server error, use local data
+            useLocalData = true;
+            console.log('Using local data due to server error');
+          } else {
+            throw new Error(errorMessage);
+          }
         }
 
-        const data = await response.json();
-        
-        if ('error' in data) {
-          console.error('Search error in response data:', data);
-          throw new Error(data.error);
-        }
+        if (!useLocalData) {
+          const data = await response.json();
+          
+          if ('error' in data) {
+            console.error('Search error in response data:', data);
+            throw new Error(data.error);
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          setLoadingStage("Analysing findings and identifying patterns...");
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setLoadingStage("Analysing findings and identifying patterns...");
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          setLoadingStage("Synthesising insights and creating summary...");
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setLoadingStage("Synthesising insights and creating summary...");
-
-        // Extract results and summary from the response
-        const { results, summary } = data;
-        
-        // Update state with results and summary
-        setInsights(results || []);
-        setSummary(summary || null);
-
-        // Show success message if we got results
-        if (results.length > 0) {
-          toast({
-            title: "Search Complete",
-            description: `Found ${results.length} relevant sources`,
-          });
-        } else {
-          toast({
-            title: "No Results",
-            description: "Try adjusting your search criteria or selecting different filters",
-            variant: "destructive"
-          });
+          // Extract results and summary from the response
+          const { results, summary } = data;
+          
+          // Update state with results and summary
+          searchResults = results || [];
         }
       } catch (error: any) {
-        console.error('Search error:', error);
-        
-        // Provide more specific error messages based on the error
         if (error.name === 'AbortError') {
           setError('The search request was cancelled. Please try again with a more specific query.');
+          setLoading(false);
+          setLoadingStage(null);
+          return;
         } else if (error.message.includes('timed out')) {
           setError('The search request timed out. Please try a more specific query, fewer industries, or a different focus area.');
-        } else {
-          setError(error.message || 'An error occurred while searching. Please try again.');
+          setLoading(false);
+          setLoadingStage(null);
+          return;
         }
         
+        // Fall back to local data for testing
+        useLocalData = true;
+        console.log('Using local data due to error:', error.message);
+      }
+
+      // If the remote API failed, use local test data
+      if (useLocalData) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setLoadingStage("Using test data for demonstration...");
+        
+        // Show message about using test data
         toast({
-          title: "Search Error",
-          description: error.message || "An error occurred while searching",
+          title: "Using Demo Data",
+          description: "The search API is currently unavailable. Showing demo results instead.",
+          variant: "default"
+        });
+        
+        searchResults = [
+          {
+            id: '1',
+            title: 'Understanding Change Management Principles',
+            summary: 'This article explores the fundamental principles of change management and how they can be applied in various organizational contexts.',
+            content: [
+              'Change management is a structured approach to transitioning individuals, teams, and organizations from a current state to a desired future state.',
+              'Effective change management addresses the people side of change, helping individuals make successful personal transitions that result in the adoption and realization of change.',
+              'Key principles include active and visible executive sponsorship, dedicated change management resources, and a structured approach.'
+            ],
+            tags: ['Change Management', focusArea],
+            readTime: '5 min',
+            focus_area: focusArea,
+            url: 'https://example.com/change-management-principles',
+            source: 'Example Source'
+          },
+          {
+            id: '2',
+            title: 'Overcoming Resistance to Change',
+            summary: 'This resource discusses strategies for identifying and addressing resistance to change within organizations.',
+            content: [
+              'Resistance to change is a natural human reaction that can manifest in various ways, from open opposition to subtle undermining.',
+              'Understanding the root causes of resistance is essential for developing effective strategies to address it.',
+              'Common causes include fear of the unknown, concerns about competence, and a lack of clear communication about why the change is necessary.'
+            ],
+            tags: ['Resistance', 'Change Management', focusArea],
+            readTime: '7 min',
+            focus_area: focusArea,
+            url: 'https://example.com/overcoming-resistance',
+            source: 'Example Source'
+          },
+          {
+            id: '3',
+            title: `${query} in ${focusArea}`,
+            summary: `This is a sample result related to your search for "${query}" in the context of ${INSIGHT_FOCUS_AREAS[focusArea].label}.`,
+            content: [
+              `Your search for "${query}" in the context of ${INSIGHT_FOCUS_AREAS[focusArea].label} is important for understanding modern organizational challenges.`,
+              'This sample data is being shown because the actual API service is currently unavailable.',
+              'In a production environment, this would contain real search results from authoritative sources on change management.'
+            ],
+            tags: [query, focusArea],
+            readTime: '3 min',
+            focus_area: focusArea,
+            url: 'https://example.com/sample-result',
+            source: 'Sample Data'
+          }
+        ];
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      // Generate a summary based on the results
+      let autoSummary = "";
+      if (searchResults.length > 0) {
+        autoSummary = `Summary of Insights on ${INSIGHT_FOCUS_AREAS[focusArea].label}\n\n`;
+        autoSummary += `Based on the search for "${query}", here are the key insights:\n\n`;
+        
+        searchResults.forEach((result, index) => {
+          autoSummary += `${index + 1}. ${result.title}: ${result.summary}\n\n`;
+        });
+        
+        autoSummary += `These insights can help organizations address challenges related to ${INSIGHT_FOCUS_AREAS[focusArea].label} in their change management initiatives.`;
+      }
+
+      // Update state with results and summary
+      setInsights(searchResults);
+      setSummary(autoSummary);
+
+      // Show success message if we got results
+      if (searchResults.length > 0) {
+        toast({
+          title: "Search Complete",
+          description: `Found ${searchResults.length} relevant sources`,
+        });
+      } else {
+        toast({
+          title: "No Results",
+          description: "Try adjusting your search criteria or selecting different filters",
           variant: "destructive"
         });
-      } finally {
-        setLoading(false);
-        setLoadingStage(null);
       }
     } catch (err) {
       console.error('Search error:', err);
@@ -348,6 +435,7 @@ export default function InsightsPage() {
         description: errorMessage,
         variant: "destructive"
       });
+    } finally {
       setLoading(false);
       setLoadingStage(null);
     }
@@ -547,8 +635,16 @@ export default function InsightsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {loading ? (
-                <div className="flex items-center justify-center h-64">
+                <div className="flex flex-col items-center justify-center h-64 space-y-4">
                   <Loader2 className="h-8 w-8 animate-spin" />
+                  <div className="text-center">
+                    <p className="font-medium">{loadingStage || 'Loading...'}</p>
+                    {loadingStage && loadingStage.includes("test data") && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Using sample data because the search API is currently unavailable.
+                      </p>
+                    )}
+                  </div>
                 </div>
               ) : error ? (
                 <div className="flex items-center justify-center h-64 text-red-500">
