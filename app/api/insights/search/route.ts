@@ -205,31 +205,54 @@ export async function GET(request: Request): Promise<Response> {
 
         const data = await response.json();
         console.log('Tavily search returned results:', data.results?.length || 0);
+        
+        // Validate response structure
+        if (!data || !Array.isArray(data.results)) {
+          console.error('Invalid Tavily API response structure:', data);
+          throw new Error('Invalid response from Tavily API: results not found or not an array');
+        }
+        
         const results = data.results as SearchResult[];
 
         // Process and format the results
         const formattedResults = results.map(result => {
+          // Handle potentially missing or malformed data
+          if (!result) {
+            console.warn('Empty result found in Tavily response');
+            return null;
+          }
+          
           // Safely handle URLs
-          let source = '';
+          let source = 'Unknown Source';
+          let validUrl = result.url || '';
+          
           try {
-            source = result.source || new URL(result.url).hostname;
+            // Make sure URL is valid and properly formatted
+            if (validUrl && !validUrl.startsWith('http')) {
+              validUrl = 'https://' + validUrl;
+            }
+            
+            if (validUrl) {
+              const urlObj = new URL(validUrl);
+              source = result.source || urlObj.hostname;
+            }
           } catch (error) {
             console.error('Error parsing URL:', result.url, error);
-            source = 'Unknown Source';
+            // Keep default source
           }
           
           return {
             title: result.title || 'Untitled',
             summary: result.content || '',
             content: result.content || '',
-            url: result.url || '',
+            url: validUrl,
             source: source,
             focus_area: focusArea,
             readTime: Math.ceil((result.content?.split(' ').length || 0) / 200), // Approximate read time in minutes
             tags: [INSIGHT_FOCUS_AREAS[focusArea].label],
             created_at: new Date().toISOString()
           };
-        });
+        }).filter(Boolean); // Remove any null entries
 
         return NextResponse.json({
           query: searchQuery,
@@ -238,6 +261,21 @@ export async function GET(request: Request): Promise<Response> {
         });
       } catch (error) {
         console.error('Tavily API call error:', error);
+        
+        // Add more detailed logging
+        if (error instanceof Error) {
+          console.error('Tavily API error details:', {
+            message: error.message,
+            name: error.name,
+            stack: error.stack?.split('\n').slice(0, 3).join('\n')
+          });
+        }
+
+        // For network errors, provide a more specific message
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+          throw new Error(`Network error connecting to Tavily API: ${error.message}`);
+        }
+        
         throw error; // Re-throw to be handled by the outer catch
       }
     } catch (error) {
@@ -256,7 +294,11 @@ export async function GET(request: Request): Promise<Response> {
       ? { 
           message: error.message, 
           name: error.name,
-          stack: error.stack?.split('\n').slice(0, 3).join('\n')
+          stack: error.stack?.split('\n').slice(0, 3).join('\n'),
+          // Add more context for debugging
+          tavily_api_key_exists: !!TAVILY_API_KEY,
+          tavily_api_key_prefix: TAVILY_API_KEY ? TAVILY_API_KEY.substring(0, 4) + '...' : 'N/A',
+          environment: process.env.NODE_ENV
         } 
       : 'Unknown error';
       
