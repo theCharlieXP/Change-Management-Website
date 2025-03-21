@@ -1,12 +1,7 @@
 import { NextResponse } from 'next/server'
 
 // Add export config to bypass authentication middleware
-export const config = {
-  runtime: 'edge',
-  unstable_allowDynamic: [
-    '**/node_modules/lodash/**',
-  ],
-}
+export const runtime = 'edge'
 
 export async function GET(request: Request) {
   try {
