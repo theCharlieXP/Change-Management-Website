@@ -2,11 +2,19 @@ import { InsightFocusArea } from '@/types/insights'
 
 export async function summarizeWithDeepseek(content: string, focusArea: InsightFocusArea): Promise<string> {
   const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
+  
+  // Add debug logging for the API key
+  console.log('DeepSeek API Key available:', !!DEEPSEEK_API_KEY);
+  
   if (!DEEPSEEK_API_KEY) {
+    console.warn('WARNING: DEEPSEEK_API_KEY is not configured in environment variables');
     throw new Error('DEEPSEEK_API_KEY is not configured')
   }
 
   try {
+    // Log request information (without full content to avoid log pollution)
+    console.log('Calling DeepSeek API for focus area:', focusArea);
+    
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -46,13 +54,16 @@ Guidelines for creating summaries:
     })
 
     if (!response.ok) {
-      throw new Error(`Deepseek API error: ${response.statusText}`)
+      const errorText = await response.text().catch(() => 'Could not read error response');
+      console.error(`DeepSeek API error (${response.status}):`, errorText);
+      throw new Error(`Deepseek API error: ${response.statusText} (${response.status})`)
     }
 
     const data = await response.json()
+    console.log('DeepSeek API response received, length:', data.choices?.[0]?.message?.content?.length || 0);
     return data.choices[0].message.content
   } catch (error) {
-    console.error('Error calling Deepseek API:', error)
+    console.error('Error calling Deepseek API:', error instanceof Error ? error.message : error)
     throw new Error('Failed to generate summary with Deepseek')
   }
 } 

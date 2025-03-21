@@ -333,10 +333,16 @@ export default function InsightsPage() {
             // If we can't parse the JSON, just use the default error message
           }
           
-          if (response.status === 500) {
+          // Specifically check for missing API key
+          if (response.status === 500 && errorMessage.includes('TAVILY_API_KEY')) {
+            setError('Tavily API Key is missing. Please configure it in your .env.local file to enable real search results.');
+            // Use local data for demonstration
+            useLocalData = true;
+            console.log('Using local data due to missing Tavily API key');
+          } else if (response.status === 500) {
             // If there's a server error, use local data
             useLocalData = true;
-            console.log('Using local data due to server error');
+            console.log('Using local data due to server error:', errorMessage);
           } else {
             throw new Error(errorMessage);
           }
@@ -394,10 +400,14 @@ export default function InsightsPage() {
         await new Promise(resolve => setTimeout(resolve, 1000));
         setLoadingStage("Using test data for demonstration...");
         
-        // Show message about using test data
+        // Show appropriate message about using test data
+        const apiMessage = error && error.includes('Tavily API Key is missing') 
+          ? "The Tavily API key is missing. To enable real search, please configure it in your .env.local file."
+          : "The Tavily search API is currently unavailable. Showing demo results instead.";
+        
         toast({
           title: "Using Demo Data",
-          description: "The Tavily search API is currently unavailable. Showing demo results instead.",
+          description: apiMessage,
           variant: "default"
         });
         
