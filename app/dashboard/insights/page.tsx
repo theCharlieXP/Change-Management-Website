@@ -393,24 +393,77 @@ export default function InsightsPage() {
         ];
 
         await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Also generate a demo summary since the summarize endpoint might also be down
+        const autoSummary = `# Summary of Insights on ${INSIGHT_FOCUS_AREAS[focusArea].label}
+
+## Overview
+This is a sample summary of insights related to ${INSIGHT_FOCUS_AREAS[focusArea].label} in the context of change management, generated as test data.
+
+## Key Findings
+- Change management requires a structured approach with clear leadership and sponsorship
+- Understanding and addressing resistance is critical to successful change initiatives
+- Organizations should focus on the human aspects of change alongside technical implementation
+
+## Practical Applications
+- Establish clear communication channels throughout the change process
+- Provide adequate training and support for employees affected by the change
+- Create feedback mechanisms to identify and address issues early
+
+## Recommendations
+1. Develop a comprehensive change management plan that addresses both technical and people-related aspects
+2. Engage stakeholders early in the process to build buy-in and reduce resistance
+3. Monitor progress regularly and be prepared to adjust strategies as needed
+
+These insights can help organizations successfully navigate changes related to ${INSIGHT_FOCUS_AREAS[focusArea].label}.`;
+        
+        setSummary(autoSummary);
+      } else {
+        // Generate summary for real search results using the API
+        setLoadingStage("Generating comprehensive summary...");
+        try {
+          const summaryResponse = await fetch('/api/insights/summarize', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              insights: searchResults,
+              focusArea
+            })
+          });
+    
+          if (!summaryResponse.ok) {
+            console.error('Error generating summary:', summaryResponse.status);
+            // Fall back to basic summary if the API fails
+            let autoSummary = `# Summary of Insights on ${INSIGHT_FOCUS_AREAS[focusArea].label}\n\n`;
+            autoSummary += `Based on the search for "${query}", here are the key insights:\n\n`;
+            
+            searchResults.forEach((result, index) => {
+              autoSummary += `## ${result.title}\n${result.summary}\n\n`;
+            });
+            
+            setSummary(autoSummary);
+          } else {
+            const summaryData = await summaryResponse.json();
+            setSummary(summaryData.summary);
+          }
+        } catch (error) {
+          console.error('Error generating summary:', error);
+          // Fall back to basic summary if the API fails
+          let autoSummary = `# Summary of Insights on ${INSIGHT_FOCUS_AREAS[focusArea].label}\n\n`;
+          autoSummary += `Based on the search for "${query}", here are the key insights:\n\n`;
+          
+          searchResults.forEach((result, index) => {
+            autoSummary += `## ${result.title}\n${result.summary}\n\n`;
+          });
+          
+          setSummary(autoSummary);
+        }
       }
 
-      // Generate a summary based on the results
-      let autoSummary = "";
-      if (searchResults.length > 0) {
-        autoSummary = `Summary of Insights on ${INSIGHT_FOCUS_AREAS[focusArea].label}\n\n`;
-        autoSummary += `Based on the search for "${query}", here are the key insights:\n\n`;
-        
-        searchResults.forEach((result, index) => {
-          autoSummary += `${index + 1}. ${result.title}: ${result.summary}\n\n`;
-        });
-        
-        autoSummary += `These insights can help organizations address challenges related to ${INSIGHT_FOCUS_AREAS[focusArea].label} in their change management initiatives.`;
-      }
-
-      // Update state with results and summary
+      // Update state with results
       setInsights(searchResults);
-      setSummary(autoSummary);
 
       // Show success message if we got results
       if (searchResults.length > 0) {
@@ -503,17 +556,30 @@ export default function InsightsPage() {
   const handleSaveSummary = () => {
     if (!summary || !focusArea) return
 
-    // Get the title from the first line of the summary
+    // Extract the title from the markdown format
     const summaryLines = summary.split('\n')
-    const generatedTitle = summaryLines[0].trim()
+    let generatedTitle = ''
+    
+    // Try to find the first heading
+    for (const line of summaryLines) {
+      if (line.startsWith('# ')) {
+        generatedTitle = line.substring(2).trim()
+        break
+      }
+    }
+    
+    // Fallback if no title found
+    if (!generatedTitle) {
+      generatedTitle = `Summary on ${INSIGHT_FOCUS_AREAS[focusArea].label}`
+    }
     
     // Create the summary insight with the proper title and content
     const summaryInsight: Insight & { notes?: string } = {
       id: 'summary',
       title: generatedTitle,
-      summary: summary.substring(generatedTitle.length).trim(),
-      content: summary.substring(generatedTitle.length).trim().split('\n\n'),
-      tags: [],
+      summary: summary.replace(generatedTitle, '').trim(),
+      content: summary.split('\n\n'),
+      tags: [INSIGHT_FOCUS_AREAS[focusArea].label, 'Summary'],
       readTime: '5 min',
       focus_area: focusArea,
       url: '', // Add empty url since it's a summary
@@ -653,11 +719,28 @@ export default function InsightsPage() {
               ) : summary ? (
                 <>
                   <div className="prose prose-sm max-w-none">
-                    {summary.split('\n').map((paragraph, index) => (
-                      <p key={index}>{paragraph}</p>
-                    ))}
+                    {summary.split('\n').map((paragraph, index) => {
+                      // Format markdown headings properly
+                      if (paragraph.startsWith('# ')) {
+                        return <h1 key={index} className="text-2xl font-bold mt-4 mb-2">{paragraph.substring(2)}</h1>;
+                      } else if (paragraph.startsWith('## ')) {
+                        return <h2 key={index} className="text-xl font-bold mt-3 mb-2">{paragraph.substring(3)}</h2>;
+                      } else if (paragraph.startsWith('### ')) {
+                        return <h3 key={index} className="text-lg font-bold mt-3 mb-1">{paragraph.substring(4)}</h3>;
+                      } else if (paragraph.startsWith('- ')) {
+                        return <li key={index} className="ml-4">{paragraph.substring(2)}</li>;
+                      } else if (/^\d+\.\s/.test(paragraph)) {
+                        // Match numbered lists (e.g., "1. Item")
+                        const content = paragraph.replace(/^\d+\.\s/, '');
+                        return <li key={index} className="ml-4 list-decimal">{content}</li>;
+                      } else if (paragraph.trim() === '') {
+                        return <div key={index} className="h-2"></div>; // Space for empty lines
+                      } else {
+                        return <p key={index}>{paragraph}</p>;
+                      }
+                    })}
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 mt-6">
                     <label className="text-sm font-medium">Notes</label>
                     <Textarea
                       value={summaryNotes}
@@ -667,7 +750,7 @@ export default function InsightsPage() {
                     />
                   </div>
                   <Button
-                    className="w-full"
+                    className="w-full mt-4"
                     onClick={handleSaveSummary}
                     disabled={projectsLoading}
                   >
