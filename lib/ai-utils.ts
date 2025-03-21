@@ -19,22 +19,22 @@ export async function summarizeWithDeepseek(content: string, focusArea: InsightF
           {
             role: 'system',
             content: `You are an expert at analyzing change management content, specifically focusing on ${focusArea.replace('-', ' ')}.
-Your task is to extract insights that are SPECIFICALLY related to ${focusArea.replace('-', ' ')} from the content.
+Your task is to create a comprehensive and well-structured summary from search results provided via Tavily search engine.
 
 Guidelines for creating summaries:
-1. ONLY extract insights that directly relate to ${focusArea.replace('-', ' ')}
-2. Ignore information that doesn't specifically address ${focusArea.replace('-', ' ')}
-3. Each bullet point must contain concrete examples or specific details about ${focusArea.replace('-', ' ')}
-4. Include metrics, methodologies, or frameworks specific to ${focusArea.replace('-', ' ')} when present
-5. Focus on unique approaches or unconventional wisdom about ${focusArea.replace('-', ' ')}
-6. Emphasize the context and conditions that make these ${focusArea.replace('-', ' ')} insights valuable
-7. Avoid generic statements - each point should be specific to this source's perspective on ${focusArea.replace('-', ' ')}`
+1. Start with a descriptive title with a single # character
+2. Create clearly marked sections with ## headings
+3. Generate markdown-formatted content with proper headings, bullet points, and links
+4. Format references as markdown links to the original sources
+5. Focus specifically on ${focusArea.replace('-', ' ')} aspects of the content
+6. Combine knowledge from internet sources with your understanding of change management
+7. Present a balanced, evidence-based view that synthesizes multiple perspectives
+8. Follow exactly the format instructions provided in the user's prompt
+9. Include URLs in references as clickable markdown links`
           },
           {
             role: 'user',
-            content: `Analyze the following content and extract 3-5 specific insights about ${focusArea.replace('-', ' ')}. Only include information that directly relates to ${focusArea.replace('-', ' ')}:
-
-${content}`
+            content: content
           }
         ],
         temperature: 0.3,

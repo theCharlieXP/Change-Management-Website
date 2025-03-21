@@ -105,6 +105,54 @@ export default function InsightsPage() {
   // Enable this flag to bypass usage checks during development or if the backend is not ready
   const bypassUsageCheck = true // Temporarily enabled to fix search functionality
   
+  // Helper function to render markdown text with links
+  const renderMarkdownText = (text: string) => {
+    // Regular expression to find markdown links: [text](url)
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    
+    if (!linkRegex.test(text)) {
+      return text; // No links, return plain text
+    }
+    
+    // Reset regex lastIndex
+    linkRegex.lastIndex = 0;
+    
+    // Split the text into parts (links and non-links)
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match;
+    
+    while ((match = linkRegex.exec(text)) !== null) {
+      // Add text before the match
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+      
+      // Add the link
+      const [fullMatch, linkText, linkUrl] = match;
+      parts.push(
+        <a 
+          key={`link-${match.index}`}
+          href={linkUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:underline"
+        >
+          {linkText}
+        </a>
+      );
+      
+      lastIndex = match.index + fullMatch.length;
+    }
+    
+    // Add any remaining text after the last match
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+    
+    return <>{parts}</>;
+  };
+
   // Fetch projects when auth is ready
   useEffect(() => {
     let isMounted = true
@@ -397,30 +445,29 @@ export default function InsightsPage() {
         // Also generate a demo summary since the summarize endpoint might also be down
         const autoSummary = `# Summary of Insights on ${INSIGHT_FOCUS_AREAS[focusArea].label}
 
-## Overview
-This is a sample summary of insights related to ${INSIGHT_FOCUS_AREAS[focusArea].label} in the context of change management, generated as test data.
+## Context
+This summary presents insights related to "${query}" in the context of ${INSIGHT_FOCUS_AREAS[focusArea].label}. The search would normally be conducted using Tavily to find relevant sources, which would then be analyzed by DeepSeek to identify key findings and patterns. This is sample data as the actual search API is currently unavailable.
 
 ## Key Findings
-- Change management requires a structured approach with clear leadership and sponsorship
-- Understanding and addressing resistance is critical to successful change initiatives
-- Organizations should focus on the human aspects of change alongside technical implementation
+- Change management principles need to be tailored to specific organizational contexts to be effective
+- Resistance to change is a natural human reaction that can manifest in various ways, from open opposition to subtle undermining
+- Understanding the root causes of resistance is essential for developing effective strategies
+- Active and visible executive sponsorship is a critical success factor for change initiatives
+- Change management requires dedicated resources and a structured approach
+- Cultural factors significantly impact how change is perceived and adopted
+- Effective communication strategies are essential for successful change management
 
-## Practical Applications
-- Establish clear communication channels throughout the change process
-- Provide adequate training and support for employees affected by the change
-- Create feedback mechanisms to identify and address issues early
+## References
+- Example Source: [Understanding Change Management Principles](https://example.com/change-management-principles)
+- Example Source: [Overcoming Resistance to Change](https://example.com/overcoming-resistance)
+- Sample Data: [${query} in ${focusArea}](https://example.com/sample-result)
 
-## Recommendations
-1. Develop a comprehensive change management plan that addresses both technical and people-related aspects
-2. Engage stakeholders early in the process to build buy-in and reduce resistance
-3. Monitor progress regularly and be prepared to adjust strategies as needed
-
-These insights can help organizations successfully navigate changes related to ${INSIGHT_FOCUS_AREAS[focusArea].label}.`;
+*Note: These are sample results as the Tavily search API is currently unavailable. In production, this summary would incorporate real information from DeepSeek combined with sources found by Tavily.*`;
         
         setSummary(autoSummary);
       } else {
         // Generate summary for real search results using the API
-        setLoadingStage("Generating comprehensive summary...");
+        setLoadingStage("Generating comprehensive summary using Tavily search results...");
         try {
           const summaryResponse = await fetch('/api/insights/summarize', {
             method: 'POST',
@@ -429,18 +476,48 @@ These insights can help organizations successfully navigate changes related to $
             },
             body: JSON.stringify({
               insights: searchResults,
-              focusArea
+              focusArea,
+              format: {
+                sections: [
+                  {
+                    title: "Context",
+                    description: "Outline what was searched for and provide background information on the topic"
+                  },
+                  {
+                    title: "Key Findings",
+                    description: "The most important points from the Tavily search results (7-10 bullet points)"
+                  },
+                  {
+                    title: "References",
+                    description: "List of the sources found by Tavily with their original links"
+                  }
+                ],
+                style: "Use markdown format with headings and concise, informative bullet points under each heading"
+              }
             })
           });
     
           if (!summaryResponse.ok) {
             console.error('Error generating summary:', summaryResponse.status);
             // Fall back to basic summary if the API fails
-            let autoSummary = `# Summary of Insights on ${INSIGHT_FOCUS_AREAS[focusArea].label}\n\n`;
-            autoSummary += `Based on the search for "${query}", here are the key insights:\n\n`;
+            let autoSummary = `# Summary of Insights on ${INSIGHT_FOCUS_AREAS[focusArea].label}
+
+## Context
+This summary presents insights related to "${query}" in the context of ${INSIGHT_FOCUS_AREAS[focusArea].label}. The search was conducted using Tavily to find relevant sources, which were then analyzed to identify key findings and patterns.
+
+## Key Findings
+`;
             
-            searchResults.forEach((result, index) => {
-              autoSummary += `## ${result.title}\n${result.summary}\n\n`;
+            // Add bullet points for each insight
+            searchResults.forEach((result) => {
+              autoSummary += `- ${result.summary.split('.')[0]}.\n`;
+            });
+            
+            autoSummary += `\n## References\n`;
+            
+            // Add reference links
+            searchResults.forEach((result) => {
+              autoSummary += `- ${result.source}: [${result.title}](${result.url})\n`;
             });
             
             setSummary(autoSummary);
@@ -451,11 +528,24 @@ These insights can help organizations successfully navigate changes related to $
         } catch (error) {
           console.error('Error generating summary:', error);
           // Fall back to basic summary if the API fails
-          let autoSummary = `# Summary of Insights on ${INSIGHT_FOCUS_AREAS[focusArea].label}\n\n`;
-          autoSummary += `Based on the search for "${query}", here are the key insights:\n\n`;
+          let autoSummary = `# Summary of Insights on ${INSIGHT_FOCUS_AREAS[focusArea].label}
+
+## Context
+This summary presents insights related to "${query}" in the context of ${INSIGHT_FOCUS_AREAS[focusArea].label}. The search was conducted using Tavily to find relevant sources, which were then analyzed to identify key findings and patterns.
+
+## Key Findings
+`;
           
-          searchResults.forEach((result, index) => {
-            autoSummary += `## ${result.title}\n${result.summary}\n\n`;
+          // Add bullet points for each insight
+          searchResults.forEach((result) => {
+            autoSummary += `- ${result.summary.split('.')[0]}.\n`;
+          });
+          
+          autoSummary += `\n## References\n`;
+          
+          // Add reference links
+          searchResults.forEach((result) => {
+            autoSummary += `- ${result.source}: [${result.title}](${result.url})\n`;
           });
           
           setSummary(autoSummary);
@@ -728,15 +818,26 @@ These insights can help organizations successfully navigate changes related to $
                       } else if (paragraph.startsWith('### ')) {
                         return <h3 key={index} className="text-lg font-bold mt-3 mb-1">{paragraph.substring(4)}</h3>;
                       } else if (paragraph.startsWith('- ')) {
-                        return <li key={index} className="ml-4">{paragraph.substring(2)}</li>;
+                        // Handle bullet points, including those that might contain markdown links
+                        const content = paragraph.substring(2);
+                        return (
+                          <li key={index} className="ml-4">
+                            {renderMarkdownText(content)}
+                          </li>
+                        );
                       } else if (/^\d+\.\s/.test(paragraph)) {
                         // Match numbered lists (e.g., "1. Item")
                         const content = paragraph.replace(/^\d+\.\s/, '');
-                        return <li key={index} className="ml-4 list-decimal">{content}</li>;
+                        return (
+                          <li key={index} className="ml-4 list-decimal">
+                            {renderMarkdownText(content)}
+                          </li>
+                        );
                       } else if (paragraph.trim() === '') {
                         return <div key={index} className="h-2"></div>; // Space for empty lines
                       } else {
-                        return <p key={index}>{paragraph}</p>;
+                        // Handle regular paragraphs, including those that might contain markdown links
+                        return <p key={index}>{renderMarkdownText(paragraph)}</p>;
                       }
                     })}
                   </div>
