@@ -4,6 +4,10 @@ import { summarizeWithDeepseek } from '@/lib/ai-utils'
 import { INSIGHT_FOCUS_AREAS } from '@/types/insights'
 import type { InsightFocusArea } from '@/types/insights'
 
+// Set proper runtime for compatibility
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     // Check authentication

@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+// Set proper runtime for Prisma compatibility
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 async function searchTavily(query: string) {
   const apiKey = process.env.TAVILY_API_KEY
   if (!apiKey) {

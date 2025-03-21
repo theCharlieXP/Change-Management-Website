@@ -4,6 +4,10 @@ import { InsightFocusArea, INSIGHT_FOCUS_AREAS } from '@/types/insights'
 import { auth } from '@clerk/nextjs/server'
 import { INSIGHT_SEARCH_FEATURE } from '@/lib/subscription-client'
 
+// Set proper runtime for Prisma compatibility
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 // Debug environment variables to diagnose issues
 console.log('==== SEARCH API ENVIRONMENT DEBUG ====');
 console.log('NODE_ENV:', process.env.NODE_ENV);
@@ -55,6 +59,7 @@ export async function GET(request: Request): Promise<Response> {
           environment: process.env.NODE_ENV,
           tavily_key_exists: !!TAVILY_API_KEY,
           tavily_key_first_chars: TAVILY_API_KEY ? TAVILY_API_KEY.substring(0, 4) + '...' : 'N/A',
+          tavily_key_length: TAVILY_API_KEY ? TAVILY_API_KEY.length : 0,
           query,
           focusArea,
           industries
@@ -152,6 +157,11 @@ export async function GET(request: Request): Promise<Response> {
       if (!TAVILY_API_KEY) {
         console.error('TAVILY_API_KEY is missing');
         throw new Error('TAVILY_API_KEY is missing. Please configure it in your environment variables.');
+      }
+      
+      // Basic validation of API key format - Tavily API keys typically start with "tvly-"
+      if (!TAVILY_API_KEY.startsWith('tvly-')) {
+        console.warn('TAVILY_API_KEY may be invalid - does not start with expected prefix "tvly-"');
       }
       
       // Call the real Tavily API
