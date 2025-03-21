@@ -71,27 +71,41 @@ const InsightSearchUsageTracker = forwardRef<UsageTrackerRef, UsageTrackerProps>
         body: JSON.stringify({ featureId: INSIGHT_SEARCH_FEATURE })
       })
 
+      if (!response.ok) {
+        console.error('Error incrementing usage: Server returned', response.status)
+        return false
+      }
+
       const data = await response.json()
       
       if (data.success) {
+        // Handle different response formats
+        const count = data.count || data.currentUsage || 0
+        const limit = data.limit || 20
+        const limitReached = data.limitReached !== undefined 
+                            ? data.limitReached 
+                            : (data.canUseFeature !== undefined ? !data.canUseFeature : false)
+        const isPremium = data.isPremium || false
+        
         setUsage({
-          count: data.currentUsage,
-          limit: data.limit,
-          limitReached: !data.canUseFeature,
-          isPremium: data.isPremium
+          count,
+          limit,
+          limitReached,
+          isPremium
         })
         
         if (onUsageUpdate) {
-          onUsageUpdate(data.currentUsage, data.limit, !data.canUseFeature, data.isPremium)
+          onUsageUpdate(count, limit, limitReached, isPremium)
         }
 
-        return data.canUseFeature
+        return !limitReached
       }
+      
+      return false
     } catch (error) {
       console.error('Error incrementing usage:', error)
+      return false
     }
-    
-    return false
   }
 
   useImperativeHandle(ref, () => ({

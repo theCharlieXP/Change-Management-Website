@@ -92,8 +92,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ 
       success: true, 
       count: updatedUsage.count,
+      currentUsage: updatedUsage.count,
       limitReached: updatedUsage.count >= limit,
-      limit
+      canUseFeature: updatedUsage.count < limit,
+      limit,
+      isPremium
     });
 
   } catch (error: any) {

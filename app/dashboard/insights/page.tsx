@@ -101,6 +101,8 @@ export default function InsightsPage() {
   const [remainingSearchesCount, setRemainingSearchesCount] = useState<number>(0)
   const [isSearchLimitReached, setIsSearchLimitReached] = useState<boolean>(false)
   const usageTrackerRef = useRef<UsageTrackerRef>(null)
+  // Enable this flag to bypass usage checks during development or if the backend is not ready
+  const bypassUsageCheck = false
   
   // Fetch projects when auth is ready
   useEffect(() => {
@@ -190,7 +192,7 @@ export default function InsightsPage() {
       return
     }
 
-    if (!usageTrackerRef.current) {
+    if (!usageTrackerRef.current && !bypassUsageCheck) {
       console.error('Search functionality not available: usage tracker not initialized')
       return
     }
@@ -203,10 +205,28 @@ export default function InsightsPage() {
 
     try {
       // Check if we can perform the search
-      const canSearch = await usageTrackerRef.current.incrementUsage()
+      let canSearch = true
       
-      if (!canSearch || isSearchLimitReached) {
-        setError('You have reached your daily search limit. Please upgrade to continue searching.')
+      if (!bypassUsageCheck) {
+        canSearch = await usageTrackerRef.current.incrementUsage()
+          .catch(err => {
+            console.error('Error checking usage limits:', err)
+            toast({
+              title: "Error",
+              description: "Failed to check usage limits. Please try again.",
+              variant: "destructive"
+            })
+            return false
+          })
+      }
+      
+      if (!canSearch) {
+        // If we can't search, it could be due to API error or limit reached
+        if (isSearchLimitReached) {
+          setError('You have reached your daily search limit. Please upgrade to continue searching.')
+        } else {
+          setError('Unable to verify search quota. Please try again.')
+        }
         setLoading(false)
         return
       }
