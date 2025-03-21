@@ -199,6 +199,7 @@ export default function InsightsPage() {
     setLoadingStage('Checking usage limits...')
     setError(null)
     setSummary(null)
+    setInsights([]) // Reset insights to prevent stale data
 
     try {
       // Check if we can perform the search
@@ -245,6 +246,10 @@ export default function InsightsPage() {
         // Handle specific HTTP status codes
         if (response.status === 504) {
           throw new Error('The search request timed out. Please try a more specific query, fewer industries, or a different focus area.');
+        }
+
+        if (response.status === 404) {
+          throw new Error('The search service is currently unavailable. Please try again later.');
         }
 
         if (!response.ok) {
@@ -322,6 +327,8 @@ export default function InsightsPage() {
         description: errorMessage,
         variant: "destructive"
       });
+      setLoading(false);
+      setLoadingStage(null);
     }
   }
 
@@ -456,12 +463,12 @@ export default function InsightsPage() {
                 </div>
                 {isSearchLimitReached && (
                   <p className="text-sm text-red-500">
-                    Search limit reached. Please upgrade to premium for more searches.
+                    You have reached your daily search limit. Please upgrade to continue searching.
                   </p>
                 )}
                 {!isSearchLimitReached && remainingSearchesCount > 0 && (
                   <p className="text-sm text-muted-foreground">
-                    {remainingSearchesCount} searches remaining
+                    {remainingSearchesCount} searches remaining today
                   </p>
                 )}
               </div>
