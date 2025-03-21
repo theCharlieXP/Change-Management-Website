@@ -78,6 +78,63 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+// Above the main component function, add the generateFallbackSummary function
+const generateFallbackSummary = (searchResults: Insight[], searchQuery: string, focusArea: InsightFocusArea): string => {
+  // Extract the focus area label
+  const focusAreaLabel = INSIGHT_FOCUS_AREAS[focusArea].label;
+  
+  // Create a title for the summary
+  const title = `# Insights on ${focusAreaLabel}`;
+  
+  // Create the context section
+  const context = `## Context
+This summary provides key information related to your search for "${searchQuery}" in the area of ${focusAreaLabel}.`;
+  
+  // Create the key findings section with bullet points from result summaries
+  let keyFindings = `## Key Findings`;
+  
+  // Extract key points from each result's summary
+  const allPoints: string[] = [];
+  searchResults.forEach(result => {
+    // Extract sentences from the content/summary
+    const content = result.content || result.summary;
+    if (typeof content === 'string') {
+      // Split content into sentences and clean them up
+      const sentences = content.split(/[.!?]+/)
+        .map(s => s.trim())
+        .filter(s => s.length > 30 && s.length < 200); // Only keep reasonable length sentences
+      
+      // Add up to 2 sentences from each result
+      if (sentences.length > 0) {
+        allPoints.push(...sentences.slice(0, 2).map(s => s.endsWith('.') ? s : `${s}.`));
+      }
+    }
+  });
+  
+  // Create bullet points from the collected sentences (limit to 10 points)
+  const uniquePoints = [...new Set(allPoints)].slice(0, 10);
+  uniquePoints.forEach(point => {
+    keyFindings += `\n* ${point}`;
+  });
+  
+  // Add a message if no points were found
+  if (uniquePoints.length === 0) {
+    keyFindings += `\n* No specific insights could be extracted from the search results.`;
+  }
+  
+  // Create the references section with links to sources
+  let references = `## References`;
+  searchResults.forEach(result => {
+    if (result.title && result.url) {
+      const source = result.source || new URL(result.url).hostname;
+      references += `\n* [${result.title}](${result.url}) - ${source}`;
+    }
+  });
+  
+  // Combine all sections
+  return `${title}\n\n${context}\n\n${keyFindings}\n\n${references}`;
+};
+
 export default function InsightsPage() {
   const { isLoaded, isSignedIn } = useAuth()
   const [query, setQuery] = useState("")
@@ -291,6 +348,9 @@ export default function InsightsPage() {
       if (query) params.append('query', query)
       if (focusArea) params.append('focusArea', focusArea)
       if (selectedIndustries.length > 0) params.append('industries', selectedIndustries.join(','))
+      
+      // Add debug parameter if needed
+      // params.append('debug', 'true') // Uncomment to enable detailed debugging
 
       await new Promise(resolve => setTimeout(resolve, 800))
 
@@ -299,12 +359,12 @@ export default function InsightsPage() {
       
       // Create an AbortController to handle client-side timeouts
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // Increased from 35000 to 60000 ms
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
-      let useLocalData = false; // Set to true if the remote API fails
       let searchResults: Insight[] = [];
       
       try {
+        console.log(`Fetching from: /api/insights/search?${params.toString()}`);
         const response = await fetch(`/api/insights/search?${params.toString()}`, {
           method: 'GET',
           headers: {
@@ -323,8 +383,8 @@ export default function InsightsPage() {
         try {
           const debugData = JSON.parse(responseText);
           console.log('Debug - Search response data:', debugData);
-          if (debugData.error && debugData.error.includes('TAVILY_API_KEY')) {
-            console.error('TAVILY API KEY ISSUE DETECTED:', debugData.error);
+          if (debugData.error) {
+            console.error('API ERROR DETAILS:', debugData.details || 'No detailed error information');
           }
         } catch (e) {
           console.log('Debug - Could not parse response as JSON:', responseText.substring(0, 500));
@@ -424,7 +484,19 @@ export default function InsightsPage() {
           setSummary(summaryData.summary);
         } catch (error) {
           console.error('Error generating summary:', error);
-          throw new Error('Failed to generate summary. Please try again.');
+          // Generate a fallback summary from search results when DeepSeek API fails
+          const fallbackSummary = generateFallbackSummary(
+            searchResults, 
+            searchContext.query || query, 
+            searchContext.focusArea as InsightFocusArea || focusArea as InsightFocusArea
+          );
+          setSummary(fallbackSummary);
+          
+          toast({
+            title: "Notice",
+            description: "Generated a simple summary due to an error with the advanced summarization service.",
+            variant: "default"
+          });
         }
       } catch (error: any) {
         if (error.name === 'AbortError') {

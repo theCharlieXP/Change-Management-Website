@@ -13,6 +13,7 @@ export default clerkMiddleware(async (auth, req) => {
     "/sign-up",       // Sign up page
     "/communications-amigo", // Communications Amigo page
     "/api/stripe-config-check", // Stripe configuration check endpoint
+    "/api/test-tavily", // Test Tavily API endpoint
   ];
   
   // Check if the request is for an ignored route

@@ -28,11 +28,27 @@ interface SearchResult {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  // Add a URL parameter to enable detailed debugging
   const { searchParams } = new URL(request.url)
   const query = searchParams.get('query') || ''
   const focusArea = searchParams.get('focusArea') as InsightFocusArea || 'challenges-barriers'
   const industriesParam = searchParams.get('industries') || ''
   const industries = industriesParam ? industriesParam.split(',') : []
+  const debug = searchParams.get('debug') === 'true'
+  
+  // Debug output if requested
+  if (debug) {
+    return NextResponse.json({
+      debug: {
+        environment: process.env.NODE_ENV,
+        tavily_key_exists: !!TAVILY_API_KEY,
+        tavily_key_first_chars: TAVILY_API_KEY ? TAVILY_API_KEY.substring(0, 4) + '...' : 'N/A',
+        query,
+        focusArea,
+        industries
+      }
+    })
+  }
   
   // Validate required parameters
   if (!focusArea || !Object.keys(INSIGHT_FOCUS_AREAS).includes(focusArea)) {
@@ -127,13 +143,11 @@ export async function GET(request: Request): Promise<Response> {
       // Call the real Tavily API
       console.log('Calling Tavily API with key:', TAVILY_API_KEY ? 'Key exists' : 'No key found');
       
-      const response = await fetch('https://api.tavily.com/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${TAVILY_API_KEY}`
-        },
-        body: JSON.stringify({
+      try {
+        const tavilyApiUrl = 'https://api.tavily.com/search';
+        console.log('Calling Tavily API at URL:', tavilyApiUrl);
+        
+        const tavilyRequestBody = {
           query: searchQuery,
           search_depth: 'advanced',
           max_results: 10,
@@ -169,37 +183,63 @@ export async function GET(request: Request): Promise<Response> {
             'pinterest.com',
             'linkedin.com'
           ]
-        }),
-        signal: controller.signal
-      });
+        };
+        
+        const response = await fetch(tavilyApiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${TAVILY_API_KEY}`
+          },
+          body: JSON.stringify(tavilyRequestBody),
+          signal: controller.signal
+        });
 
-      clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => 'Could not read error response');
-        console.error(`Tavily API error: Status ${response.status}, Response:`, errorText);
-        throw new Error(`Tavily Search API returned ${response.status}: ${errorText}`);
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Could not read error response');
+          console.error(`Tavily API error: Status ${response.status}, Response:`, errorText);
+          throw new Error(`Tavily Search API returned ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log('Tavily search returned results:', data.results?.length || 0);
+        const results = data.results as SearchResult[];
+
+        // Process and format the results
+        const formattedResults = results.map(result => {
+          // Safely handle URLs
+          let source = '';
+          try {
+            source = result.source || new URL(result.url).hostname;
+          } catch (error) {
+            console.error('Error parsing URL:', result.url, error);
+            source = 'Unknown Source';
+          }
+          
+          return {
+            title: result.title || 'Untitled',
+            summary: result.content || '',
+            content: result.content || '',
+            url: result.url || '',
+            source: source,
+            focus_area: focusArea,
+            readTime: Math.ceil((result.content?.split(' ').length || 0) / 200), // Approximate read time in minutes
+            tags: [INSIGHT_FOCUS_AREAS[focusArea].label],
+            created_at: new Date().toISOString()
+          };
+        });
+
+        return NextResponse.json({
+          query: searchQuery,
+          focusArea: focusArea,
+          results: formattedResults
+        });
+      } catch (error) {
+        console.error('Tavily API call error:', error);
+        throw error; // Re-throw to be handled by the outer catch
       }
-
-      const data = await response.json();
-      console.log('Tavily search returned results:', data.results?.length || 0);
-      const results = data.results as SearchResult[];
-
-      return NextResponse.json({
-        query: searchQuery,
-        focusArea: focusArea,
-        results: results.map(result => ({
-          title: result.title,
-          summary: result.content,
-          content: result.content,
-          url: result.url,
-          source: result.source || new URL(result.url).hostname,
-          focus_area: focusArea,
-          readTime: Math.ceil(result.content.split(' ').length / 200), // Approximate read time in minutes
-          tags: [INSIGHT_FOCUS_AREAS[focusArea].label],
-          created_at: new Date().toISOString()
-        }))
-      });
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         return NextResponse.json(
@@ -211,10 +251,19 @@ export async function GET(request: Request): Promise<Response> {
     }
   } catch (error) {
     console.error('Error processing search request:', error)
+    // Enhanced error reporting
+    const errorDetails = error instanceof Error 
+      ? { 
+          message: error.message, 
+          name: error.name,
+          stack: error.stack?.split('\n').slice(0, 3).join('\n')
+        } 
+      : 'Unknown error';
+      
     return NextResponse.json(
       { 
         error: 'An error occurred while processing your request',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: errorDetails
       },
       { status: 500 }
     )
