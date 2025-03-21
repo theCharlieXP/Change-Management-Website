@@ -98,11 +98,12 @@ export default function InsightsPage() {
   const { toast } = useToast()
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [insightToSave, setInsightToSave] = useState<Insight | null>(null)
-  const [remainingSearchesCount, setRemainingSearchesCount] = useState<number>(0)
+  const [remainingSearchesCount, setRemainingSearchesCount] = useState<number>(20)
   const [isSearchLimitReached, setIsSearchLimitReached] = useState<boolean>(false)
   const usageTrackerRef = useRef<UsageTrackerRef>(null)
+  // TODO: Set this back to false once the usage tracking API issues are resolved
   // Enable this flag to bypass usage checks during development or if the backend is not ready
-  const bypassUsageCheck = false
+  const bypassUsageCheck = true // Temporarily enabled to fix search functionality
   
   // Fetch projects when auth is ready
   useEffect(() => {
@@ -208,7 +209,7 @@ export default function InsightsPage() {
       let canSearch = true
       
       if (!bypassUsageCheck) {
-        canSearch = await usageTrackerRef.current.incrementUsage()
+        canSearch = await usageTrackerRef.current!.incrementUsage()
           .catch(err => {
             console.error('Error checking usage limits:', err)
             toast({
@@ -471,7 +472,7 @@ export default function InsightsPage() {
                   />
                   <Button 
                     onClick={fetchInsights}
-                    disabled={loading || isSearchLimitReached || !focusArea}
+                    disabled={loading || (!bypassUsageCheck && isSearchLimitReached) || !focusArea}
                     className="min-w-[100px]"
                   >
                     {loading ? (
@@ -481,12 +482,16 @@ export default function InsightsPage() {
                     )}
                   </Button>
                 </div>
-                {isSearchLimitReached && (
+                {!bypassUsageCheck && isSearchLimitReached && (
                   <p className="text-sm text-red-500">
                     You have reached your daily search limit. Please upgrade to continue searching.
                   </p>
                 )}
-                {!isSearchLimitReached && remainingSearchesCount > 0 && (
+                {bypassUsageCheck ? (
+                  <p className="text-sm text-muted-foreground">
+                    Usage tracking temporarily disabled
+                  </p>
+                ) : !isSearchLimitReached && remainingSearchesCount > 0 && (
                   <p className="text-sm text-muted-foreground">
                     {remainingSearchesCount} searches remaining today
                   </p>
