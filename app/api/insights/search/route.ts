@@ -8,6 +8,8 @@ import { INSIGHT_SEARCH_FEATURE } from '@/lib/subscription-client'
 console.log('==== SEARCH API ENVIRONMENT DEBUG ====');
 console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('TAVILY_API_KEY available (masked):', process.env.TAVILY_API_KEY ? '***-exists-***' : 'NOT FOUND');
+console.log('TAVILY_API_KEY length:', process.env.TAVILY_API_KEY ? process.env.TAVILY_API_KEY.length : 0);
+console.log('TAVILY_API_KEY prefix:', process.env.TAVILY_API_KEY ? process.env.TAVILY_API_KEY.substring(0, 8) : 'N/A');
 console.log('======================================');
 
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY
@@ -28,107 +30,118 @@ interface SearchResult {
 }
 
 export async function GET(request: Request): Promise<Response> {
-  // Add a URL parameter to enable detailed debugging
-  const { searchParams } = new URL(request.url)
-  const query = searchParams.get('query') || ''
-  const focusArea = searchParams.get('focusArea') as InsightFocusArea || 'challenges-barriers'
-  const industriesParam = searchParams.get('industries') || ''
-  const industries = industriesParam ? industriesParam.split(',') : []
-  const debug = searchParams.get('debug') === 'true'
-  
-  // Debug output if requested
-  if (debug) {
-    return NextResponse.json({
-      debug: {
-        environment: process.env.NODE_ENV,
-        tavily_key_exists: !!TAVILY_API_KEY,
-        tavily_key_first_chars: TAVILY_API_KEY ? TAVILY_API_KEY.substring(0, 4) + '...' : 'N/A',
-        query,
-        focusArea,
-        industries
-      }
-    })
-  }
-  
-  // Validate required parameters
-  if (!focusArea || !Object.keys(INSIGHT_FOCUS_AREAS).includes(focusArea)) {
-    return NextResponse.json(
-      { error: 'Invalid or missing focus area' },
-      { status: 400 }
-    )
-  }
-
-  // Check user's usage before proceeding
-  const authData = await auth()
-  const userId = authData.userId
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
+  // Add more detailed error handling and logging
   try {
-    // Get user's subscription status first
-    const userSubscription = await prisma.userSubscription.findFirst({
-      where: { 
-        userId,
-        status: 'active'
-      }
-    })
-
-    const isPremium = userSubscription?.plan === 'pro'
-    const limit = isPremium ? 100 : 20 // Pro users get 100 searches per day, free users get 20 total
-
-    // Check current usage
-    const currentUsage = await prisma.usageTracker.findFirst({
-      where: {
-        userId,
-        featureId: INSIGHT_SEARCH_FEATURE,
-        ...(isPremium ? {
-          lastUsedAt: {
-            gte: new Date(new Date().setHours(0, 0, 0, 0))
-          }
-        } : {})
-      }
-    })
-
-    // If no usage record exists, create one
-    if (!currentUsage) {
-      await prisma.usageTracker.create({
-        data: {
-          userId,
-          featureId: INSIGHT_SEARCH_FEATURE,
-          count: 1,
-          lastUsedAt: new Date()
-        }
-      })
-    } else if (currentUsage.count >= limit) {
-      return NextResponse.json(
-        { 
-          error: isPremium ? 'Daily usage limit reached' : 'Total usage limit reached. Please upgrade to Pro to continue searching.',
-          limitReached: true,
-          limit,
-          isPremium
-        },
-        { status: 403 }
-      )
-    } else {
-      // Increment usage
-      await prisma.usageTracker.update({
-        where: { id: currentUsage.id },
-        data: { 
-          count: currentUsage.count + 1,
-          lastUsedAt: new Date()
+    // Add a URL parameter to enable detailed debugging
+    const { searchParams } = new URL(request.url)
+    const query = searchParams.get('query') || ''
+    const focusArea = searchParams.get('focusArea') as InsightFocusArea || 'challenges-barriers'
+    const industriesParam = searchParams.get('industries') || ''
+    const industries = industriesParam ? industriesParam.split(',') : []
+    const debug = searchParams.get('debug') === 'true'
+    
+    console.log('Search API request received:', {
+      url: request.url,
+      query,
+      focusArea,
+      industries,
+      debug
+    });
+    
+    // Debug output if requested
+    if (debug) {
+      return NextResponse.json({
+        debug: {
+          environment: process.env.NODE_ENV,
+          tavily_key_exists: !!TAVILY_API_KEY,
+          tavily_key_first_chars: TAVILY_API_KEY ? TAVILY_API_KEY.substring(0, 4) + '...' : 'N/A',
+          query,
+          focusArea,
+          industries
         }
       })
     }
+    
+    // Validate required parameters
+    if (!focusArea || !Object.keys(INSIGHT_FOCUS_AREAS).includes(focusArea)) {
+      console.warn('Invalid focus area provided:', focusArea);
+      return NextResponse.json(
+        { error: 'Invalid or missing focus area' },
+        { status: 400 }
+      )
+    }
 
-    // Continue with the search...
-    const searchQuery = `${query} ${INSIGHT_FOCUS_AREAS[focusArea].description}`
-    const searchTimeout = 30000 // 30 seconds timeout
-
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), searchTimeout)
-
+    // Check user's usage before proceeding
     try {
+      const authData = await auth()
+      const userId = authData.userId
+      if (!userId) {
+        console.warn('User not authenticated');
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+
+      // Get user's subscription status first
+      const userSubscription = await prisma.userSubscription.findFirst({
+        where: { 
+          userId,
+          status: 'active'
+        }
+      })
+
+      const isPremium = userSubscription?.plan === 'pro'
+      const limit = isPremium ? 100 : 20 // Pro users get 100 searches per day, free users get 20 total
+
+      // Check current usage
+      const currentUsage = await prisma.usageTracker.findFirst({
+        where: {
+          userId,
+          featureId: INSIGHT_SEARCH_FEATURE,
+          ...(isPremium ? {
+            lastUsedAt: {
+              gte: new Date(new Date().setHours(0, 0, 0, 0))
+            }
+          } : {})
+        }
+      })
+
+      // If no usage record exists, create one
+      if (!currentUsage) {
+        await prisma.usageTracker.create({
+          data: {
+            userId,
+            featureId: INSIGHT_SEARCH_FEATURE,
+            count: 1,
+            lastUsedAt: new Date()
+          }
+        })
+      } else if (currentUsage.count >= limit) {
+        return NextResponse.json(
+          { 
+            error: isPremium ? 'Daily usage limit reached' : 'Total usage limit reached. Please upgrade to Pro to continue searching.',
+            limitReached: true,
+            limit,
+            isPremium
+          },
+          { status: 403 }
+        )
+      } else {
+        // Increment usage
+        await prisma.usageTracker.update({
+          where: { id: currentUsage.id },
+          data: { 
+            count: currentUsage.count + 1,
+            lastUsedAt: new Date()
+          }
+        })
+      }
+
+      // Continue with the search...
+      const searchQuery = `${query} ${INSIGHT_FOCUS_AREAS[focusArea].description}`
+      const searchTimeout = 30000 // 30 seconds timeout
+
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), searchTimeout)
+
       // Log the search query and parameters
       console.log('Search request:', {
         query: searchQuery,
@@ -137,11 +150,13 @@ export async function GET(request: Request): Promise<Response> {
       });
       
       if (!TAVILY_API_KEY) {
+        console.error('TAVILY_API_KEY is missing');
         throw new Error('TAVILY_API_KEY is missing. Please configure it in your environment variables.');
       }
       
       // Call the real Tavily API
       console.log('Calling Tavily API with key:', TAVILY_API_KEY ? 'Key exists' : 'No key found');
+      console.log('Tavily API key prefix:', TAVILY_API_KEY ? TAVILY_API_KEY.substring(0, 8) : 'N/A');
       
       try {
         const tavilyApiUrl = 'https://api.tavily.com/search';
@@ -184,6 +199,8 @@ export async function GET(request: Request): Promise<Response> {
             'linkedin.com'
           ]
         };
+
+        console.log('Tavily request body:', JSON.stringify(tavilyRequestBody, null, 2));
         
         const response = await fetch(tavilyApiUrl, {
           method: 'POST',
@@ -196,6 +213,8 @@ export async function GET(request: Request): Promise<Response> {
         });
 
         clearTimeout(timeoutId);
+
+        console.log('Tavily API response status:', response.status);
 
         if (!response.ok) {
           const errorText = await response.text().catch(() => 'Could not read error response');
@@ -254,6 +273,8 @@ export async function GET(request: Request): Promise<Response> {
           };
         }).filter(Boolean); // Remove any null entries
 
+        console.log('Formatted results count:', formattedResults.length);
+
         return NextResponse.json({
           query: searchQuery,
           focusArea: focusArea,
@@ -279,16 +300,19 @@ export async function GET(request: Request): Promise<Response> {
         throw error; // Re-throw to be handled by the outer catch
       }
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        return NextResponse.json(
-          { error: 'Search request timed out' },
-          { status: 504 }
-        )
-      }
-      throw error
+      console.error('Error in auth or usage tracking:', error);
+      throw error; // Re-throw to be handled by the outer try/catch
     }
   } catch (error) {
-    console.error('Error processing search request:', error)
+    console.error('Top-level error in search API:', error);
+    
+    if (error instanceof Error && error.name === 'AbortError') {
+      return NextResponse.json(
+        { error: 'Search request timed out' },
+        { status: 504 }
+      )
+    }
+    
     // Enhanced error reporting
     const errorDetails = error instanceof Error 
       ? { 
@@ -297,7 +321,7 @@ export async function GET(request: Request): Promise<Response> {
           stack: error.stack?.split('\n').slice(0, 3).join('\n'),
           // Add more context for debugging
           tavily_api_key_exists: !!TAVILY_API_KEY,
-          tavily_api_key_prefix: TAVILY_API_KEY ? TAVILY_API_KEY.substring(0, 4) + '...' : 'N/A',
+          tavily_api_key_prefix: TAVILY_API_KEY ? TAVILY_API_KEY.substring(0, 8) + '...' : 'N/A',
           environment: process.env.NODE_ENV
         } 
       : 'Unknown error';

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 
-// Add export config to bypass authentication middleware
-export const runtime = 'edge'
+// Remove the edge runtime to avoid compatibility issues with Prisma
+// export const runtime = 'edge'
 
 export async function GET(request: Request) {
   try {
@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     console.log('Test endpoint environment:');
     console.log('NODE_ENV:', process.env.NODE_ENV);
     console.log('TAVILY_API_KEY available:', !!process.env.TAVILY_API_KEY);
+    console.log('TAVILY_API_KEY length:', process.env.TAVILY_API_KEY ? process.env.TAVILY_API_KEY.length : 0);
     console.log('TAVILY_API_KEY mask:', process.env.TAVILY_API_KEY?.substring(0, 4) + '...');
     
     const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
