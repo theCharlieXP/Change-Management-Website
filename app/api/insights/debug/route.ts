@@ -11,12 +11,15 @@ interface TavilyTestResult {
   stack?: string | null;
 }
 
-// Skip authentication for this debug endpoint
-export const config = {
-  api: {
-    bodyParser: true,
-  },
-}
+// Use the modern route segment config approach instead of the deprecated "export const config"
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+// Remove the deprecated config
+// export const config = {
+//   api: {
+//     bodyParser: true,
+//   },
+// }
 
 // A simple debug endpoint to check environment variables
 export async function GET(request: Request) {
