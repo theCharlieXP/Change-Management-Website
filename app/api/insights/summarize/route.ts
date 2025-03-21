@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
     // Parse request body
     const body = await request.json()
-    const { insights, focusArea, format } = body
+    const { insights, focusArea, format, searchInfo } = body
 
     if (!insights || !Array.isArray(insights) || insights.length === 0) {
       return new NextResponse(
@@ -46,6 +46,12 @@ ${insight.content ? `Content: ${Array.isArray(insight.content) ? insight.content
     // Generate the summary prompt based on the focus area
     const focusAreaInfo = INSIGHT_FOCUS_AREAS[focusArea as InsightFocusArea]
     
+    // Extract search context
+    const searchQuery = searchInfo?.query || '';
+    const industryContext = searchInfo?.industries?.length > 0 
+      ? `in the ${searchInfo.industries.join(', ')} ${searchInfo.industries.length > 1 ? 'industries' : 'industry'}`
+      : '';
+    
     // Use the format from the request if provided, otherwise use default
     const summaryFormat = format || {
       sections: [
@@ -67,6 +73,11 @@ ${insight.content ? `Content: ${Array.isArray(insight.content) ? insight.content
     
     const prompt = `Please analyze the following insights related to ${focusAreaInfo.label} and create a comprehensive summary. Start with a clear, descriptive title that captures the main theme or key finding of the analysis preceded by a single # character (e.g., "# Key Strategies for Change Management").
 
+SEARCH CONTEXT:
+The user searched for: "${searchQuery}"
+Focus area: ${focusAreaInfo.label} ${industryContext}
+These results were found by the Tavily search engine based on this query.
+
 The summary should have the following sections and formatting:
 
 ${summaryFormat.sections.map((section: { title: string, description: string }) => `## ${section.title}
@@ -82,6 +93,7 @@ IMPORTANT INSTRUCTIONS:
 5. Be specific, factual, and evidence-based in your analysis
 6. Focus particularly on aspects related to ${focusAreaInfo.label} and ${focusAreaInfo.description}
 7. Use the information from the sources found by Tavily search engine
+8. Make explicit reference to the search query "${searchQuery}" in your Context section
 
 Here are the insights to analyze (these were found via Tavily search API):
 

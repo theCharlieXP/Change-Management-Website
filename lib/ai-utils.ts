@@ -27,10 +27,13 @@ Guidelines for creating summaries:
 3. Generate markdown-formatted content with proper headings, bullet points, and links
 4. Format references as markdown links to the original sources
 5. Focus specifically on ${focusArea.replace('-', ' ')} aspects of the content
-6. Combine knowledge from internet sources with your understanding of change management
+6. Combine information from Tavily search results with your understanding of change management
 7. Present a balanced, evidence-based view that synthesizes multiple perspectives
 8. Follow exactly the format instructions provided in the user's prompt
-9. Include URLs in references as clickable markdown links`
+9. Include URLs in references as clickable markdown links
+10. Pay special attention to the search context provided in the prompt
+11. Make explicit references to the original search query in your summary
+12. When analyzing Tavily search results, give priority to factual information from the sources`
           },
           {
             role: 'user',

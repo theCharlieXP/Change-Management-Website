@@ -351,16 +351,25 @@ export default function InsightsPage() {
           }
           
           await new Promise(resolve => setTimeout(resolve, 1000));
-          setLoadingStage("Analysing findings and identifying patterns...");
+          setLoadingStage("Analysing findings from Tavily search...");
 
           await new Promise(resolve => setTimeout(resolve, 1000));
-          setLoadingStage("Synthesising insights and creating summary...");
+          setLoadingStage("Synthesising insights and creating summary with DeepSeek...");
 
           // Extract results and summary from the response
-          const { results, summary } = data;
+          const { results, query: searchQuery, focusArea: searchFocusArea } = data;
           
           // Update state with results and summary
           searchResults = results || [];
+
+          // Store the search query and focus area for the summary generation
+          const searchContext = {
+            query: searchQuery || query,
+            focusArea: searchFocusArea || focusArea
+          };
+
+          // Store search context for summary generation
+          sessionStorage.setItem('lastSearchContext', JSON.stringify(searchContext));
         }
       } catch (error: any) {
         if (error.name === 'AbortError') {
@@ -388,10 +397,11 @@ export default function InsightsPage() {
         // Show message about using test data
         toast({
           title: "Using Demo Data",
-          description: "The search API is currently unavailable. Showing demo results instead.",
+          description: "The Tavily search API is currently unavailable. Showing demo results instead.",
           variant: "default"
         });
         
+        // Create demo searchResults with more detailed content
         searchResults = [
           {
             id: '1',
@@ -429,8 +439,8 @@ export default function InsightsPage() {
             summary: `This is a sample result related to your search for "${query}" in the context of ${INSIGHT_FOCUS_AREAS[focusArea].label}.`,
             content: [
               `Your search for "${query}" in the context of ${INSIGHT_FOCUS_AREAS[focusArea].label} is important for understanding modern organizational challenges.`,
-              'This sample data is being shown because the actual API service is currently unavailable.',
-              'In a production environment, this would contain real search results from authoritative sources on change management.'
+              'This sample data is being shown because the actual Tavily API service is currently unavailable.',
+              'In a production environment, this would contain real search results from authoritative sources found by Tavily.'
             ],
             tags: [query, focusArea],
             readTime: '3 min',
@@ -446,7 +456,7 @@ export default function InsightsPage() {
         const autoSummary = `# Summary of Insights on ${INSIGHT_FOCUS_AREAS[focusArea].label}
 
 ## Context
-This summary presents insights related to "${query}" in the context of ${INSIGHT_FOCUS_AREAS[focusArea].label}. The search would normally be conducted using Tavily to find relevant sources, which would then be analyzed by DeepSeek to identify key findings and patterns. This is sample data as the actual search API is currently unavailable.
+This summary presents insights related to "${query}" in the context of ${INSIGHT_FOCUS_AREAS[focusArea].label}. The search would normally be conducted using Tavily to find relevant sources, which would then be analyzed by DeepSeek to identify key findings and patterns. This is sample data as the actual Tavily search API is currently unavailable.
 
 ## Key Findings
 - Change management principles need to be tailored to specific organizational contexts to be effective
@@ -462,13 +472,17 @@ This summary presents insights related to "${query}" in the context of ${INSIGHT
 - Example Source: [Overcoming Resistance to Change](https://example.com/overcoming-resistance)
 - Sample Data: [${query} in ${focusArea}](https://example.com/sample-result)
 
-*Note: These are sample results as the Tavily search API is currently unavailable. In production, this summary would incorporate real information from DeepSeek combined with sources found by Tavily.*`;
+*Note: These are sample results as the Tavily search API is currently unavailable. In production, this summary would incorporate real information from DeepSeek based on sources found by Tavily.*`;
         
         setSummary(autoSummary);
       } else {
         // Generate summary for real search results using the API
-        setLoadingStage("Generating comprehensive summary using Tavily search results...");
+        setLoadingStage("Generating comprehensive summary using Tavily search results with DeepSeek...");
         try {
+          // Get the search context if available
+          const searchContextString = sessionStorage.getItem('lastSearchContext');
+          const searchContext = searchContextString ? JSON.parse(searchContextString) : { query, focusArea };
+
           const summaryResponse = await fetch('/api/insights/summarize', {
             method: 'POST',
             headers: {
@@ -477,6 +491,11 @@ This summary presents insights related to "${query}" in the context of ${INSIGHT
             body: JSON.stringify({
               insights: searchResults,
               focusArea,
+              searchInfo: {
+                query: searchContext.query || query,
+                focusArea: searchContext.focusArea || focusArea,
+                industries: selectedIndustries
+              },
               format: {
                 sections: [
                   {

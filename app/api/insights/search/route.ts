@@ -156,6 +156,8 @@ export async function GET(request: Request): Promise<Response> {
       const results = data.results as SearchResult[]
 
       return NextResponse.json({
+        query: searchQuery,
+        focusArea: focusArea,
         results: results.map(result => ({
           title: result.title,
           summary: result.content,
