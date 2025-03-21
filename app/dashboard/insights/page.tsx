@@ -241,6 +241,9 @@ export default function InsightsPage() {
       return
     }
 
+    // TEMPORARY: Force bypass usage check for debugging
+    const bypassUsageCheck = true;
+    
     if (!usageTrackerRef.current && !bypassUsageCheck) {
       console.error('Search functionality not available: usage tracker not initialized')
       return
@@ -314,6 +317,18 @@ export default function InsightsPage() {
         });
 
         console.log('Search response status:', response.status);
+        
+        // Add diagnostic logging
+        const responseText = await response.clone().text();
+        try {
+          const debugData = JSON.parse(responseText);
+          console.log('Debug - Search response data:', debugData);
+          if (debugData.error && debugData.error.includes('TAVILY_API_KEY')) {
+            console.error('TAVILY API KEY ISSUE DETECTED:', debugData.error);
+          }
+        } catch (e) {
+          console.log('Debug - Could not parse response as JSON:', responseText.substring(0, 500));
+        }
 
         // Handle specific HTTP status codes
         if (response.status === 504) {
@@ -333,166 +348,40 @@ export default function InsightsPage() {
             // If we can't parse the JSON, just use the default error message
           }
           
-          // Specifically check for missing API key
-          if (response.status === 500 && errorMessage.includes('TAVILY_API_KEY')) {
-            setError('Tavily API Key is missing. Please configure it in your .env.local file to enable real search results.');
-            // Use local data for demonstration
-            useLocalData = true;
-            console.log('Using local data due to missing Tavily API key');
-          } else if (response.status === 500) {
-            // If there's a server error, use local data
-            useLocalData = true;
-            console.log('Using local data due to server error:', errorMessage);
-          } else {
-            throw new Error(errorMessage);
-          }
+          throw new Error(errorMessage);
         }
 
-        if (!useLocalData) {
-          const data = await response.json();
-          
-          if ('error' in data) {
-            console.error('Search error in response data:', data);
-            throw new Error(data.error);
-          }
-          
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          setLoadingStage("Analysing findings from Tavily search...");
-
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          setLoadingStage("Synthesising insights and creating summary with DeepSeek...");
-
-          // Extract results and summary from the response
-          const { results, query: searchQuery, focusArea: searchFocusArea } = data;
-          
-          // Update state with results and summary
-          searchResults = results || [];
-
-          // Store the search query and focus area for the summary generation
-          const searchContext = {
-            query: searchQuery || query,
-            focusArea: searchFocusArea || focusArea
-          };
-
-          // Store search context for summary generation
-          sessionStorage.setItem('lastSearchContext', JSON.stringify(searchContext));
-        }
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
-          setError('The search request was cancelled. Please try again with a more specific query.');
-          setLoading(false);
-          setLoadingStage(null);
-          return;
-        } else if (error.message.includes('timed out')) {
-          setError('The search request timed out. Please try a more specific query, fewer industries, or a different focus area.');
-          setLoading(false);
-          setLoadingStage(null);
-          return;
+        const data = await response.json();
+        
+        if ('error' in data) {
+          console.error('Search error in response data:', data);
+          throw new Error(data.error);
         }
         
-        // Fall back to local data for testing
-        useLocalData = true;
-        console.log('Using local data due to error:', error.message);
-      }
-
-      // If the remote API failed, use local test data
-      if (useLocalData) {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        setLoadingStage("Using test data for demonstration...");
-        
-        // Show appropriate message about using test data
-        const apiMessage = error && error.includes('Tavily API Key is missing') 
-          ? "The Tavily API key is missing. To enable real search, please configure it in your .env.local file."
-          : "The Tavily search API is currently unavailable. Showing demo results instead.";
-        
-        toast({
-          title: "Using Demo Data",
-          description: apiMessage,
-          variant: "default"
-        });
-        
-        // Create demo searchResults with more detailed content
-        searchResults = [
-          {
-            id: '1',
-            title: 'Understanding Change Management Principles',
-            summary: 'This article explores the fundamental principles of change management and how they can be applied in various organizational contexts.',
-            content: [
-              'Change management is a structured approach to transitioning individuals, teams, and organizations from a current state to a desired future state.',
-              'Effective change management addresses the people side of change, helping individuals make successful personal transitions that result in the adoption and realization of change.',
-              'Key principles include active and visible executive sponsorship, dedicated change management resources, and a structured approach.'
-            ],
-            tags: ['Change Management', focusArea],
-            readTime: '5 min',
-            focus_area: focusArea,
-            url: 'https://example.com/change-management-principles',
-            source: 'Example Source'
-          },
-          {
-            id: '2',
-            title: 'Overcoming Resistance to Change',
-            summary: 'This resource discusses strategies for identifying and addressing resistance to change within organizations.',
-            content: [
-              'Resistance to change is a natural human reaction that can manifest in various ways, from open opposition to subtle undermining.',
-              'Understanding the root causes of resistance is essential for developing effective strategies to address it.',
-              'Common causes include fear of the unknown, concerns about competence, and a lack of clear communication about why the change is necessary.'
-            ],
-            tags: ['Resistance', 'Change Management', focusArea],
-            readTime: '7 min',
-            focus_area: focusArea,
-            url: 'https://example.com/overcoming-resistance',
-            source: 'Example Source'
-          },
-          {
-            id: '3',
-            title: `${query} in ${focusArea}`,
-            summary: `This is a sample result related to your search for "${query}" in the context of ${INSIGHT_FOCUS_AREAS[focusArea].label}.`,
-            content: [
-              `Your search for "${query}" in the context of ${INSIGHT_FOCUS_AREAS[focusArea].label} is important for understanding modern organizational challenges.`,
-              'This sample data is being shown because the actual Tavily API service is currently unavailable.',
-              'In a production environment, this would contain real search results from authoritative sources found by Tavily.'
-            ],
-            tags: [query, focusArea],
-            readTime: '3 min',
-            focus_area: focusArea,
-            url: 'https://example.com/sample-result',
-            source: 'Sample Data'
-          }
-        ];
+        setLoadingStage("Analysing findings from Tavily search...");
 
         await new Promise(resolve => setTimeout(resolve, 1000));
+        setLoadingStage("Synthesising insights and creating summary with DeepSeek...");
+
+        // Extract results and summary from the response
+        const { results, query: searchQuery, focusArea: searchFocusArea } = data;
         
-        // Also generate a demo summary since the summarize endpoint might also be down
-        const autoSummary = `# Summary of Insights on ${INSIGHT_FOCUS_AREAS[focusArea].label}
+        // Update state with results
+        searchResults = results || [];
 
-## Context
-This summary presents insights related to "${query}" in the context of ${INSIGHT_FOCUS_AREAS[focusArea].label}. The search would normally be conducted using Tavily to find relevant sources, which would then be analyzed by DeepSeek to identify key findings and patterns. This is sample data as the actual Tavily search API is currently unavailable.
+        // Store the search query and focus area for the summary generation
+        const searchContext = {
+          query: searchQuery || query,
+          focusArea: searchFocusArea || focusArea
+        };
 
-## Key Findings
-- Change management principles need to be tailored to specific organizational contexts to be effective
-- Resistance to change is a natural human reaction that can manifest in various ways, from open opposition to subtle undermining
-- Understanding the root causes of resistance is essential for developing effective strategies
-- Active and visible executive sponsorship is a critical success factor for change initiatives
-- Change management requires dedicated resources and a structured approach
-- Cultural factors significantly impact how change is perceived and adopted
-- Effective communication strategies are essential for successful change management
-
-## References
-- Example Source: [Understanding Change Management Principles](https://example.com/change-management-principles)
-- Example Source: [Overcoming Resistance to Change](https://example.com/overcoming-resistance)
-- Sample Data: [${query} in ${focusArea}](https://example.com/sample-result)
-
-*Note: These are sample results as the Tavily search API is currently unavailable. In production, this summary would incorporate real information from DeepSeek based on sources found by Tavily.*`;
+        // Store search context for summary generation
+        sessionStorage.setItem('lastSearchContext', JSON.stringify(searchContext));
         
-        setSummary(autoSummary);
-      } else {
-        // Generate summary for real search results using the API
+        // Generate summary for the search results
         setLoadingStage("Generating comprehensive summary using Tavily search results with DeepSeek...");
         try {
-          // Get the search context if available
-          const searchContextString = sessionStorage.getItem('lastSearchContext');
-          const searchContext = searchContextString ? JSON.parse(searchContextString) : { query, focusArea };
-
           const summaryResponse = await fetch('/api/insights/summarize', {
             method: 'POST',
             headers: {
@@ -502,8 +391,8 @@ This summary presents insights related to "${query}" in the context of ${INSIGHT
               insights: searchResults,
               focusArea,
               searchInfo: {
-                query: searchContext.query || query,
-                focusArea: searchContext.focusArea || focusArea,
+                query: searchContext.query,
+                focusArea: searchContext.focusArea,
                 industries: selectedIndustries
               },
               format: {
@@ -528,57 +417,30 @@ This summary presents insights related to "${query}" in the context of ${INSIGHT
     
           if (!summaryResponse.ok) {
             console.error('Error generating summary:', summaryResponse.status);
-            // Fall back to basic summary if the API fails
-            let autoSummary = `# Summary of Insights on ${INSIGHT_FOCUS_AREAS[focusArea].label}
-
-## Context
-This summary presents insights related to "${query}" in the context of ${INSIGHT_FOCUS_AREAS[focusArea].label}. The search was conducted using Tavily to find relevant sources, which were then analyzed to identify key findings and patterns.
-
-## Key Findings
-`;
-            
-            // Add bullet points for each insight
-            searchResults.forEach((result) => {
-              autoSummary += `- ${result.summary.split('.')[0]}.\n`;
-            });
-            
-            autoSummary += `\n## References\n`;
-            
-            // Add reference links
-            searchResults.forEach((result) => {
-              autoSummary += `- ${result.source}: [${result.title}](${result.url})\n`;
-            });
-            
-            setSummary(autoSummary);
-          } else {
-            const summaryData = await summaryResponse.json();
-            setSummary(summaryData.summary);
+            throw new Error('Failed to generate summary. The summarize API returned an error.');
           }
+
+          const summaryData = await summaryResponse.json();
+          setSummary(summaryData.summary);
         } catch (error) {
           console.error('Error generating summary:', error);
-          // Fall back to basic summary if the API fails
-          let autoSummary = `# Summary of Insights on ${INSIGHT_FOCUS_AREAS[focusArea].label}
-
-## Context
-This summary presents insights related to "${query}" in the context of ${INSIGHT_FOCUS_AREAS[focusArea].label}. The search was conducted using Tavily to find relevant sources, which were then analyzed to identify key findings and patterns.
-
-## Key Findings
-`;
-          
-          // Add bullet points for each insight
-          searchResults.forEach((result) => {
-            autoSummary += `- ${result.summary.split('.')[0]}.\n`;
-          });
-          
-          autoSummary += `\n## References\n`;
-          
-          // Add reference links
-          searchResults.forEach((result) => {
-            autoSummary += `- ${result.source}: [${result.title}](${result.url})\n`;
-          });
-          
-          setSummary(autoSummary);
+          throw new Error('Failed to generate summary. Please try again.');
         }
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          setError('The search request was cancelled. Please try again with a more specific query.');
+          setLoading(false);
+          setLoadingStage(null);
+          return;
+        } else if (error.message.includes('timed out')) {
+          setError('The search request timed out. Please try a more specific query, fewer industries, or a different focus area.');
+          setLoading(false);
+          setLoadingStage(null);
+          return;
+        }
+        
+        // Pass the error up to be handled by the outer catch block
+        throw error;
       }
 
       // Update state with results
