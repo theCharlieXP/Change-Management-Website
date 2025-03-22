@@ -30,17 +30,19 @@ export async function summarizeWithDeepseek(content: string, focusArea: InsightF
 Your task is to create a concise, well-structured summary from search results provided via Tavily search engine.
 
 Guidelines for creating summaries:
-1. Start with a descriptive title with a single # character
+1. Start with a descriptive, specific title that accurately reflects what was searched
 2. Format exactly as requested in the user's instructions
-3. Keep the Context section to a single line only
-4. Create full sentence bullet points that are specific, actionable, and informative
-5. Format references as clean markdown links without source descriptions
-6. Focus on extracting key insights related to ${focusArea.replace('-', ' ')}
-7. Present information in a professional, clear style
-8. Avoid unnecessary words or filler content
-9. Always use the bullet character • (not - or *) for all bullet points
-10. Follow the user's instructions exactly for formatting and structure
-11. Prioritize factual information from the sources`
+3. Keep the Context section to a single line showing exactly what was searched
+4. Write in UK English (using spellings like "organisation", "centre", "programme")
+5. Create full sentence bullet points that are comprehensive and informative
+6. Format references as clean markdown links without source descriptions
+7. Focus on extracting key insights related to ${focusArea.replace('-', ' ')}
+8. Present information in a professional, clear style
+9. Avoid unnecessary words or filler content
+10. Always use the bullet character • (not - or *) for all bullet points
+11. Do not include numbers at the end of bullet points
+12. Follow the user's instructions exactly for formatting and structure
+13. Prioritize factual information from the sources`
           },
           {
             role: 'user',

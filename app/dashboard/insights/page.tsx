@@ -83,15 +83,15 @@ const generateFallbackSummary = (searchResults: Insight[], searchQuery: string, 
   // Extract the focus area label
   const focusAreaLabel = INSIGHT_FOCUS_AREAS[focusArea].label;
   
-  // Create a title for the summary
-  const title = `# Insights on ${focusAreaLabel}`;
+  // Create a more descriptive title based on search query
+  const title = `# ${searchQuery} - ${focusAreaLabel} Insights`;
   
   // Create the context section (as a single line)
   const context = `## Context
 Search query: "${searchQuery}" | Focus area: ${focusAreaLabel}`;
   
-  // Create the key findings section with bullet points from result summaries
-  let keyFindings = `## Key Findings`;
+  // Create the insights section with bullet points from result summaries
+  let insights = `## Insights`;
   
   // Extract key points from each result's summary
   const allPoints: string[] = [];
@@ -114,12 +114,14 @@ Search query: "${searchQuery}" | Focus area: ${focusAreaLabel}`;
   // Create bullet points from the collected sentences (limit to 10 points)
   const uniquePoints = [...new Set(allPoints)].slice(0, 10);
   uniquePoints.forEach(point => {
-    keyFindings += `\n• ${point}`;
+    // Remove any trailing numbers that might be in the text
+    const cleanedPoint = point.replace(/\s+\d+\s*\.?$/, '.');
+    insights += `\n• ${cleanedPoint}`;
   });
   
   // Add a message if no points were found
   if (uniquePoints.length === 0) {
-    keyFindings += `\n• No specific insights could be extracted from the search results.`;
+    insights += `\n• No specific insights could be extracted from the search results.`;
   }
   
   // Create the references section with links to sources (without source description)
@@ -131,7 +133,7 @@ Search query: "${searchQuery}" | Focus area: ${focusAreaLabel}`;
   });
   
   // Combine all sections
-  return `${title}\n\n${context}\n\n${keyFindings}\n\n${references}`;
+  return `${title}\n\n${context}\n\n${insights}\n\n${references}`;
 };
 
 export default function InsightsPage() {
@@ -598,18 +600,18 @@ export default function InsightsPage() {
                 sections: [
                   {
                     title: "Context",
-                    description: "A single line outlining the search query, focus area, and industry (if applicable)"
+                    description: "A single line showing exactly what was searched, which focus area was selected, and which industries were selected (if applicable)"
                   },
                   {
-                    title: "Key Findings",
-                    description: "7-10 informative bullet points in full sentences that provide actionable insights"
+                    title: "Insights",
+                    description: "7-10 informative bullet points in full sentences that provide valuable information"
                   },
                   {
                     title: "References",
                     description: "List of all sources with markdown links"
                   }
                 ],
-                style: "Use clean markdown formatting with minimal excess text. Use bullet points (•) for Key Findings."
+                style: "Use clean markdown formatting with minimal excess text. Use bullet points (•) for Insights. Write in UK English."
               }
             })
           });

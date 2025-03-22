@@ -59,37 +59,41 @@ ${insight.content ? `Content: ${Array.isArray(insight.content) ? insight.content
       sections: [
         {
           title: "Context",
-          description: "A single line outlining the search query, focus area, and industry (if applicable)"
+          description: "A single line showing exactly what was searched, which focus area was selected, and which industries were selected (if applicable)"
         },
         {
-          title: "Key Findings",
-          description: "7-10 informative bullet points in full sentences that provide actionable insights"
+          title: "Insights",
+          description: "7-10 informative bullet points in full sentences that provide valuable information"
         },
         {
           title: "References",
           description: "List of all sources with markdown links"
         }
       ],
-      style: "Use clean markdown formatting with minimal excess text. Use bullet points (•) for Key Findings."
+      style: "Use clean markdown formatting with minimal excess text. Use bullet points (•) for Insights."
     }
     
-    const prompt = `Analyze the following insights related to ${focusAreaInfo.label} and create a concise, well-structured summary. Start with a clear, descriptive title that captures the main theme (e.g., "# Key Strategies for Change Management").
+    const prompt = `Analyze the following information related to ${focusAreaInfo.label} and create a concise, well-structured summary. 
+
+Start with a clear, descriptive title that accurately represents what was searched. The title should give the reader a good understanding of the topic and focus area. Format it with a single # character (e.g., "# Effective Change Management Strategies for Digital Transformation").
 
 SEARCH CONTEXT:
 Search query: "${searchQuery}"
-Focus area: ${focusAreaInfo.label}${industryContext ? ` | Industry: ${industryContext}` : ''}
+Focus area: ${focusAreaInfo.label}${industryContext ? ` | Industries: ${industryContext}` : ''}
 
 Your summary should follow this exact structure:
 
 ## Context
-A single line that states what was searched, which focus area was selected, and what industry was selected (if applicable).
+A single line that states exactly what was searched in the search bar, which focus area was selected, and which industries were selected (if applicable).
 
-## Key Findings
-• Create 7-10 informative bullet points in full sentences
-• Focus on actionable insights tailored to the search query and focus area
-• Ensure each bullet point is complete, clear, and valuable
+## Insights
+• Create 7-10 informative bullet points in full sentences using UK English spelling
+• Ensure each bullet point provides comprehensive, valuable information
+• Incorporate your knowledge of change management to make insights more informative and complete
+• Each bullet point should be a complete, well-formed sentence ending with proper punctuation
+• Do NOT include numbers at the end of bullet points
 • Extract and synthesize the most relevant information from the sources
-• Avoid redundancy between points
+• Focus on actionable insights tailored to the search query and focus area
 
 ## References
 • List all sources as markdown links
@@ -98,12 +102,13 @@ A single line that states what was searched, which focus area was selected, and 
 • Include ALL sources from the provided insights
 
 CRITICAL REQUIREMENTS:
-1. Write in a professional, clear style
-2. Keep the Context section to a SINGLE line only
-3. Ensure all bullet points are FULL SENTENCES
-4. Make bullet points SPECIFIC and INFORMATIVE
+1. Generate a specific, descriptive title that accurately reflects the search topic
+2. Write in professional UK English (using spellings like "organisation", "centre", "programme")
+3. Keep the Context section to a SINGLE line showing exactly what was searched
+4. Ensure all bullet points are FULL, COMPLETE sentences with proper punctuation
 5. The References section should contain ONLY the links, no additional descriptions
 6. Focus specifically on ${focusAreaInfo.label} aspects of content
+7. Do not include numbers at the end of bullet points
 
 Here are the insights to analyze (found via Tavily search):
 
