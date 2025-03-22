@@ -16,6 +16,7 @@ export default clerkMiddleware(async (auth, req) => {
     "/api/test-tavily", // Test Tavily API endpoint
     "/api/insights/debug", // Debug endpoint for environment variables
     "/api/insights/search", // Search API endpoint
+    "/api/insights/search-basic", // Simplified search API for debugging
   ];
   
   // Check if the request is for an ignored route

@@ -195,139 +195,67 @@ export async function GET(request: Request): Promise<Response> {
         const tavilyApiUrl = 'https://api.tavily.com/search';
         console.log('Calling Tavily API at URL:', tavilyApiUrl);
         
-        // Add a timeout to the fetch request
-        const fetchTimeoutMs = 15000; // 15 seconds
-        const fetchWithTimeout = (url: string, options: RequestInit): Promise<Response> => {
-          const controller = new AbortController();
-          const signal = controller.signal;
-          
-          const timeout = setTimeout(() => {
-            controller.abort();
-            console.error(`Fetch request to ${url} timed out after ${fetchTimeoutMs}ms`);
-          }, fetchTimeoutMs);
-          
-          return fetch(url, { ...options, signal })
-            .finally(() => clearTimeout(timeout));
-        };
+        // SIMPLIFIED TAVILY CALL - reducing complexity for troubleshooting
+        console.log('Using simplified Tavily API call for troubleshooting');
         
-        const tavilyRequestBody = {
+        const searchQuery = `${query} ${INSIGHT_FOCUS_AREAS[focusArea].description}`;
+        console.log('Final search query:', searchQuery);
+        
+        const requestBody = {
           query: searchQuery,
           search_depth: 'advanced',
-          max_results: 10,
-          include_domains: [
-            'hbr.org',
-            'mckinsey.com',
-            'bcg.com',
-            'prosci.com',
-            'strategy-business.com',
-            'deloitte.com',
-            'accenture.com',
-            'pwc.com',
-            'kpmg.com',
-            'ey.com',
-            'gartner.com',
-            'forrester.com',
-            'forbes.com',
-            'harvard.edu',
-            'mit.edu',
-            'stanford.edu',
-            'change-management.com',
-            'apm.org.uk',
-            'pmi.org',
-            'shrm.org'
-          ],
-          exclude_domains: [
-            'youtube.com',
-            'facebook.com',
-            'twitter.com',
-            'instagram.com',
-            'tiktok.com',
-            'reddit.com',
-            'pinterest.com',
-            'linkedin.com'
-          ]
+          max_results: 10
         };
-
-        console.log('Tavily request body:', JSON.stringify(tavilyRequestBody, null, 2));
         
-        const response = await fetchWithTimeout(tavilyApiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${TAVILY_API_KEY}`
-          },
-          body: JSON.stringify(tavilyRequestBody),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        console.log('Tavily API response status:', response.status);
-
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => 'Could not read error response');
-          console.error(`Tavily API error: Status ${response.status}, Response:`, errorText);
-          throw new Error(`Tavily Search API returned ${response.status}: ${errorText}`);
-        }
-
-        const data = await response.json();
-        console.log('Tavily search returned results:', data.results?.length || 0);
+        console.log('Simplified request body:', JSON.stringify(requestBody));
         
-        // Validate response structure
-        if (!data || !Array.isArray(data.results)) {
-          console.error('Invalid Tavily API response structure:', data);
-          throw new Error('Invalid response from Tavily API: results not found or not an array');
-        }
-        
-        const results = data.results as SearchResult[];
-
-        // Process and format the results
-        const formattedResults = results.map(result => {
-          // Handle potentially missing or malformed data
-          if (!result) {
-            console.warn('Empty result found in Tavily response');
-            return null;
+        try {
+          const response = await fetch(tavilyApiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${TAVILY_API_KEY}`
+            },
+            body: JSON.stringify(requestBody)
+          });
+          
+          console.log('Simplified Tavily response status:', response.status);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Simplified Tavily API error: Status ${response.status}, Response:`, errorText);
+            throw new Error(`Tavily Search API returned ${response.status}: ${errorText}`);
           }
           
-          // Safely handle URLs
-          let source = 'Unknown Source';
-          let validUrl = result.url || '';
+          const data = await response.json();
+          console.log('Simplified Tavily search returned results:', data.results?.length || 0);
           
-          try {
-            // Make sure URL is valid and properly formatted
-            if (validUrl && !validUrl.startsWith('http')) {
-              validUrl = 'https://' + validUrl;
-            }
-            
-            if (validUrl) {
-              const urlObj = new URL(validUrl);
-              source = result.source || urlObj.hostname;
-            }
-          } catch (error) {
-            console.error('Error parsing URL:', result.url, error);
-            // Keep default source
+          if (!data || !Array.isArray(data.results)) {
+            console.error('Invalid Tavily API response structure:', data);
+            throw new Error('Invalid response from Tavily API: results not found or not an array');
           }
           
-          return {
+          const results = data.results.map(result => ({
             title: result.title || 'Untitled',
             summary: result.content || '',
             content: result.content || '',
-            url: validUrl,
-            source: source,
+            url: result.url || '',
+            source: result.source || 'Unknown Source',
             focus_area: focusArea,
-            readTime: Math.ceil((result.content?.split(' ').length || 0) / 200), // Approximate read time in minutes
+            readTime: Math.ceil((result.content?.split(' ').length || 0) / 200),
             tags: [INSIGHT_FOCUS_AREAS[focusArea].label],
             created_at: new Date().toISOString()
-          };
-        }).filter(Boolean); // Remove any null entries
-
-        console.log('Formatted results count:', formattedResults.length);
-
-        return NextResponse.json({
-          query: searchQuery,
-          focusArea: focusArea,
-          results: formattedResults
-        });
+          }));
+          
+          return NextResponse.json({
+            query: searchQuery,
+            focusArea: focusArea,
+            results: results
+          });
+        } catch (error) {
+          console.error('Simplified Tavily API call error:', error);
+          throw error;
+        }
       } catch (error) {
         console.error('Tavily API call error:', error);
         

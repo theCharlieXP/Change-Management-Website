@@ -974,6 +974,51 @@ export default function InsightsPage() {
         ref={usageTrackerRef}
         onUsageUpdate={handleUsageUpdate}
       />
+
+      {loading && (
+        <div className="w-full my-8 py-4 flex flex-col items-center justify-center">
+          <div className="relative flex flex-col items-center">
+            <div className="absolute -top-10 right-0">
+              {process.env.NODE_ENV === 'development' && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-xs text-muted-foreground"
+                  onClick={() => {
+                    // Force a search with debug mode
+                    const params = new URLSearchParams(window.location.search);
+                    params.set('debug', 'true');
+                    params.set('bypass', 'true');
+                    window.location.search = params.toString();
+                  }}
+                >
+                  Debug
+                </Button>
+              )}
+            </div>
+            
+            <Loader2 className="h-16 w-16 animate-spin text-emerald-600 mb-4" />
+            <h3 className="text-lg font-medium mb-2">{loadingStage || 'Searching...'}</h3>
+            
+            {/* Show debug info in URL contains debug=true */}
+            {new URLSearchParams(window.location.search).get('debug') === 'true' && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-md border text-xs text-left w-full max-w-2xl">
+                <h4 className="font-semibold mb-2">Debug Info:</h4>
+                <pre className="whitespace-pre-wrap break-all">
+                  {JSON.stringify({
+                    env: process.env.NODE_ENV,
+                    time: new Date().toISOString(),
+                    query: query,
+                    focusArea: focusArea,
+                    industries: selectedIndustries,
+                    loadingStage: loadingStage
+                  }, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 } 
