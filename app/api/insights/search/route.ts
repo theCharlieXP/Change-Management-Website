@@ -195,6 +195,21 @@ export async function GET(request: Request): Promise<Response> {
         const tavilyApiUrl = 'https://api.tavily.com/search';
         console.log('Calling Tavily API at URL:', tavilyApiUrl);
         
+        // Add a timeout to the fetch request
+        const fetchTimeoutMs = 15000; // 15 seconds
+        const fetchWithTimeout = (url: string, options: RequestInit): Promise<Response> => {
+          const controller = new AbortController();
+          const signal = controller.signal;
+          
+          const timeout = setTimeout(() => {
+            controller.abort();
+            console.error(`Fetch request to ${url} timed out after ${fetchTimeoutMs}ms`);
+          }, fetchTimeoutMs);
+          
+          return fetch(url, { ...options, signal })
+            .finally(() => clearTimeout(timeout));
+        };
+        
         const tavilyRequestBody = {
           query: searchQuery,
           search_depth: 'advanced',
@@ -235,7 +250,7 @@ export async function GET(request: Request): Promise<Response> {
 
         console.log('Tavily request body:', JSON.stringify(tavilyRequestBody, null, 2));
         
-        const response = await fetch(tavilyApiUrl, {
+        const response = await fetchWithTimeout(tavilyApiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

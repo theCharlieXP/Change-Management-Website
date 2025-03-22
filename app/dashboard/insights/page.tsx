@@ -286,6 +286,58 @@ export default function InsightsPage() {
     setIsSearchLimitReached(limitReached)
   }
 
+  // Add a function to check Tavily API connectivity before search
+  const checkTavilyConnection = async (): Promise<boolean> => {
+    try {
+      console.log('Testing Tavily API connectivity...');
+      const response = await fetch('/api/test-tavily', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+      
+      console.log('Tavily API test response status:', response.status);
+      
+      const responseData = await response.json();
+      console.log('Tavily API test result:', responseData);
+      
+      if (!response.ok || !responseData.success) {
+        console.error('Tavily API connection test failed:', responseData);
+        
+        // Detailed error message based on failure type
+        let errorMessage = 'Could not connect to the search service. ';
+        
+        if (responseData.error?.includes('timed out')) {
+          errorMessage += 'The connection timed out. This may be due to network issues or the service being temporarily unavailable.';
+        } else if (responseData.error?.includes('API key')) {
+          errorMessage += 'The API key is missing or invalid. Please contact support.';
+        } else {
+          errorMessage += 'Please try again later or contact support if the issue persists.';
+        }
+        
+        toast({
+          title: "Search Service Issue",
+          description: errorMessage,
+          variant: "destructive"
+        });
+        
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error testing Tavily API connection:', error);
+      toast({
+        title: "Connection Error",
+        description: "Could not verify search service connectivity. Please check your internet connection and try again.",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
   const fetchInsights = async () => {
     if (!query.trim()) return
     
@@ -307,12 +359,23 @@ export default function InsightsPage() {
     }
 
     setLoading(true)
-    setLoadingStage('Checking usage limits...')
+    setLoadingStage('Checking search service availability...')
     setError(null)
     setSummary(null)
     setInsights([]) // Reset insights to prevent stale data
 
     try {
+      // First check Tavily API connectivity
+      const tavilyConnected = await checkTavilyConnection();
+      if (!tavilyConnected) {
+        setError('Search service is unavailable. Please try again later.');
+        setLoading(false);
+        setLoadingStage(null);
+        return;
+      }
+      
+      setLoadingStage('Checking usage limits...')
+      
       // Check if we can perform the search
       let canSearch = true
       
@@ -408,9 +471,33 @@ export default function InsightsPage() {
           let errorMessage = `HTTP error! status: ${response.status}`;
           try {
             const errorData = await response.json();
-            errorMessage = errorData.error || errorData.details || errorMessage;
+            console.error('Search API error details:', errorData);
+            
+            // Extract API key information for better error reporting
+            if (errorData.details && typeof errorData.details === 'object') {
+              const keyInfo = {
+                exists: errorData.details.tavily_api_key_exists,
+                prefix: errorData.details.tavily_api_key_prefix,
+                env: errorData.details.environment
+              };
+              console.log('API key diagnostic info:', keyInfo);
+              
+              // Special handling for common errors
+              if (keyInfo.exists === false) {
+                errorMessage = 'The search service API key is missing. Please contact support.';
+              } else if (errorData.details.message && errorData.details.message.includes('Network error')) {
+                errorMessage = 'Could not connect to the search service. Please check your internet connection or try again later.';
+              } else if (errorData.details.name === 'AbortError') {
+                errorMessage = 'The search request timed out. Please try a more specific query or try again later.';
+              } else {
+                errorMessage = errorData.error || errorData.details?.message || errorMessage;
+              }
+            } else {
+              errorMessage = errorData.error || errorData.details || errorMessage;
+            }
           } catch (e) {
             // If we can't parse the JSON, just use the default error message
+            console.error('Error parsing error response:', e);
           }
           
           throw new Error(errorMessage);
@@ -662,6 +749,17 @@ export default function InsightsPage() {
     <div className="container mx-auto p-4 space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Insights</h1>
+        
+        {process.env.NODE_ENV === 'development' && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={checkTavilyConnection}
+            className="text-xs"
+          >
+            Test Search API
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-12 gap-6">
