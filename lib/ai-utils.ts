@@ -27,21 +27,20 @@ export async function summarizeWithDeepseek(content: string, focusArea: InsightF
           {
             role: 'system',
             content: `You are an expert at analyzing change management content, specifically focusing on ${focusArea.replace('-', ' ')}.
-Your task is to create a comprehensive and well-structured summary from search results provided via Tavily search engine.
+Your task is to create a concise, well-structured summary from search results provided via Tavily search engine.
 
 Guidelines for creating summaries:
 1. Start with a descriptive title with a single # character
-2. Create clearly marked sections with ## headings
-3. Generate markdown-formatted content with proper headings, bullet points, and links
-4. Format references as markdown links to the original sources
-5. Focus specifically on ${focusArea.replace('-', ' ')} aspects of the content
-6. Combine information from Tavily search results with your understanding of change management
-7. Present a balanced, evidence-based view that synthesizes multiple perspectives
-8. Follow exactly the format instructions provided in the user's prompt
-9. Include URLs in references as clickable markdown links
-10. Pay special attention to the search context provided in the prompt
-11. Make explicit references to the original search query in your summary
-12. When analyzing Tavily search results, give priority to factual information from the sources`
+2. Format exactly as requested in the user's instructions
+3. Keep the Context section to a single line only
+4. Create full sentence bullet points that are specific, actionable, and informative
+5. Format references as clean markdown links without source descriptions
+6. Focus on extracting key insights related to ${focusArea.replace('-', ' ')}
+7. Present information in a professional, clear style
+8. Avoid unnecessary words or filler content
+9. Always use the bullet character • (not - or *) for all bullet points
+10. Follow the user's instructions exactly for formatting and structure
+11. Prioritize factual information from the sources`
           },
           {
             role: 'user',

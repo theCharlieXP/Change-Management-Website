@@ -42,9 +42,7 @@ export async function POST(request: Request) {
     const content = insights.map(insight => `
 Title: ${insight.title}
 URL: ${insight.url}
-Source: ${insight.source}
-Summary: ${insight.summary}
-${insight.content ? `Content: ${Array.isArray(insight.content) ? insight.content.join('\n') : insight.content}` : ''}
+${insight.content ? `Content: ${Array.isArray(insight.content) ? insight.content.join('\n') : insight.content}` : insight.summary ? `Content: ${insight.summary}` : ''}
 `).join('\n---\n')
 
     // Generate the summary prompt based on the focus area
@@ -61,45 +59,53 @@ ${insight.content ? `Content: ${Array.isArray(insight.content) ? insight.content
       sections: [
         {
           title: "Context",
-          description: "Outline what was searched for future reference"
+          description: "A single line outlining the search query, focus area, and industry (if applicable)"
         },
         {
           title: "Key Findings",
-          description: "The most important points for the user to takeaway from their search (7-10 bullet points)"
+          description: "7-10 informative bullet points in full sentences that provide actionable insights"
         },
         {
           title: "References",
-          description: "List of the sources used in the summary with their original links"
+          description: "List of all sources with markdown links"
         }
       ],
-      style: "Use markdown format with headings and concise, informative bullet points under each heading"
+      style: "Use clean markdown formatting with minimal excess text. Use bullet points (•) for Key Findings."
     }
     
-    const prompt = `Please analyze the following insights related to ${focusAreaInfo.label} and create a comprehensive summary. Start with a clear, descriptive title that captures the main theme or key finding of the analysis preceded by a single # character (e.g., "# Key Strategies for Change Management").
+    const prompt = `Analyze the following insights related to ${focusAreaInfo.label} and create a concise, well-structured summary. Start with a clear, descriptive title that captures the main theme (e.g., "# Key Strategies for Change Management").
 
 SEARCH CONTEXT:
-The user searched for: "${searchQuery}"
-Focus area: ${focusAreaInfo.label} ${industryContext}
-These results were found by the Tavily search engine based on this query.
+Search query: "${searchQuery}"
+Focus area: ${focusAreaInfo.label}${industryContext ? ` | Industry: ${industryContext}` : ''}
 
-The summary should have the following sections and formatting:
+Your summary should follow this exact structure:
 
-${summaryFormat.sections.map((section: { title: string, description: string }) => `## ${section.title}
-${section.description}`).join('\n\n')}
+## Context
+A single line that states what was searched, which focus area was selected, and what industry was selected (if applicable).
 
-${summaryFormat.style}
+## Key Findings
+• Create 7-10 informative bullet points in full sentences
+• Focus on actionable insights tailored to the search query and focus area
+• Ensure each bullet point is complete, clear, and valuable
+• Extract and synthesize the most relevant information from the sources
+• Avoid redundancy between points
 
-IMPORTANT INSTRUCTIONS:
-1. The summary MUST include a title starting with a single # character
-2. Each section MUST start with ## followed by the section title
-3. In the References section, use markdown links in the format [Title](URL)
-4. Include ALL sources from the provided insights in the References section
-5. Be specific, factual, and evidence-based in your analysis
-6. Focus particularly on aspects related to ${focusAreaInfo.label} and ${focusAreaInfo.description}
-7. Use the information from the sources found by Tavily search engine
-8. Make explicit reference to the search query "${searchQuery}" in your Context section
+## References
+• List all sources as markdown links
+• Format: [Title](URL)
+• Do NOT include "Unknown Source" or any source description after the link
+• Include ALL sources from the provided insights
 
-Here are the insights to analyze (these were found via Tavily search API):
+CRITICAL REQUIREMENTS:
+1. Write in a professional, clear style
+2. Keep the Context section to a SINGLE line only
+3. Ensure all bullet points are FULL SENTENCES
+4. Make bullet points SPECIFIC and INFORMATIVE
+5. The References section should contain ONLY the links, no additional descriptions
+6. Focus specifically on ${focusAreaInfo.label} aspects of content
+
+Here are the insights to analyze (found via Tavily search):
 
 ${content}`
 

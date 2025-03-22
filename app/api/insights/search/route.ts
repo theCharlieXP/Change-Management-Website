@@ -296,7 +296,7 @@ export async function GET(request: Request): Promise<Response> {
           summary: result.content || '',
           content: result.content || '',
           url: result.url || '',
-          source: result.source || 'Unknown Source',
+          source: result.source || '',
           focus_area: focusArea,
           readTime: Math.ceil((result.content?.split(' ')?.length || 0) / 200),
           tags: [INSIGHT_FOCUS_AREAS[focusArea].label],

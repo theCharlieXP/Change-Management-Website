@@ -86,9 +86,9 @@ const generateFallbackSummary = (searchResults: Insight[], searchQuery: string, 
   // Create a title for the summary
   const title = `# Insights on ${focusAreaLabel}`;
   
-  // Create the context section
+  // Create the context section (as a single line)
   const context = `## Context
-This summary provides key information related to your search for "${searchQuery}" in the area of ${focusAreaLabel}.`;
+Search query: "${searchQuery}" | Focus area: ${focusAreaLabel}`;
   
   // Create the key findings section with bullet points from result summaries
   let keyFindings = `## Key Findings`;
@@ -114,20 +114,19 @@ This summary provides key information related to your search for "${searchQuery}
   // Create bullet points from the collected sentences (limit to 10 points)
   const uniquePoints = [...new Set(allPoints)].slice(0, 10);
   uniquePoints.forEach(point => {
-    keyFindings += `\n* ${point}`;
+    keyFindings += `\n• ${point}`;
   });
   
   // Add a message if no points were found
   if (uniquePoints.length === 0) {
-    keyFindings += `\n* No specific insights could be extracted from the search results.`;
+    keyFindings += `\n• No specific insights could be extracted from the search results.`;
   }
   
-  // Create the references section with links to sources
+  // Create the references section with links to sources (without source description)
   let references = `## References`;
   searchResults.forEach(result => {
     if (result.title && result.url) {
-      const source = result.source || new URL(result.url).hostname;
-      references += `\n* [${result.title}](${result.url}) - ${source}`;
+      references += `\n• [${result.title}](${result.url})`;
     }
   });
   
@@ -599,18 +598,18 @@ export default function InsightsPage() {
                 sections: [
                   {
                     title: "Context",
-                    description: "Outline what was searched for and provide background information on the topic"
+                    description: "A single line outlining the search query, focus area, and industry (if applicable)"
                   },
                   {
                     title: "Key Findings",
-                    description: "The most important points from the Tavily search results (7-10 bullet points)"
+                    description: "7-10 informative bullet points in full sentences that provide actionable insights"
                   },
                   {
                     title: "References",
-                    description: "List of the sources found by Tavily with their original links"
+                    description: "List of all sources with markdown links"
                   }
                 ],
-                style: "Use markdown format with headings and concise, informative bullet points under each heading"
+                style: "Use clean markdown formatting with minimal excess text. Use bullet points (•) for Key Findings."
               }
             })
           });
