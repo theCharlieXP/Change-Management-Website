@@ -536,7 +536,7 @@ export default function InsightsPage() {
                   
                   // Skip throwing the error since we recovered
                   // but continue with summary generation
-                  break;
+                  return; // Early return to prevent the error being thrown below
                 }
               } else {
                 console.log('Backup search also failed:', backupResponse.status);
