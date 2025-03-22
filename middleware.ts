@@ -15,6 +15,7 @@ export default clerkMiddleware(async (auth, req) => {
     "/api/stripe-config-check", // Stripe configuration check endpoint
     "/api/test-tavily", // Test Tavily API endpoint
     "/api/insights/debug", // Debug endpoint for environment variables
+    "/api/insights/search", // Search API endpoint
   ];
   
   // Check if the request is for an ignored route

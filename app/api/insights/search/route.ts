@@ -19,11 +19,20 @@ console.log('======================================');
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY
 
 // Add debug logging for the API key
-console.log('Tavily API Key available:', !!TAVILY_API_KEY);
+console.log('Tavily API Key status:', {
+  exists: !!TAVILY_API_KEY,
+  validFormat: TAVILY_API_KEY?.startsWith('tvly-'),
+  keyLength: TAVILY_API_KEY?.length,
+  environment: process.env.NODE_ENV,
+  prefix: TAVILY_API_KEY ? TAVILY_API_KEY.substring(0, 8) : 'N/A'
+});
 
 if (!TAVILY_API_KEY) {
   console.warn('WARNING: TAVILY_API_KEY is not configured in environment variables');
 }
+
+// IMPORTANT: For production deployment, ensure TAVILY_API_KEY is set in your environment variables
+// In Vercel, set this in your project's environment variables settings
 
 interface SearchResult {
   title: string
@@ -36,6 +45,23 @@ interface SearchResult {
 export async function GET(request: Request): Promise<Response> {
   // Add more detailed error handling and logging
   try {
+    // Check for the Tavily API key early
+    if (!TAVILY_API_KEY) {
+      console.error('FATAL ERROR: TAVILY_API_KEY is not configured in environment variables');
+      return NextResponse.json(
+        { 
+          error: 'Search service configuration error', 
+          details: 'The search service API key is missing. Please contact the administrator.'
+        },
+        { status: 500 }
+      );
+    }
+    
+    // Basic validation of API key format - Tavily API keys typically start with "tvly-"
+    if (!TAVILY_API_KEY.startsWith('tvly-')) {
+      console.warn('TAVILY_API_KEY may be invalid - does not start with expected prefix "tvly-"');
+    }
+    
     // Add a URL parameter to enable detailed debugging
     const { searchParams } = new URL(request.url)
     const query = searchParams.get('query') || ''
@@ -78,66 +104,73 @@ export async function GET(request: Request): Promise<Response> {
 
     // Check user's usage before proceeding
     try {
-      const authData = await auth()
-      const userId = authData.userId
-      if (!userId) {
-        console.warn('User not authenticated');
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      // Try to get authentication data, but handle failure gracefully
+      let userId = null;
+      try {
+        const authData = await auth();
+        userId = authData.userId;
+      } catch (authError) {
+        console.warn('Auth error (continuing as anonymous user):', authError instanceof Error ? authError.message : authError);
       }
+      
+      // Allow unauthenticated requests, but track usage for authenticated users
+      if (userId) {
+        // Get user's subscription status first
+        const userSubscription = await prisma.userSubscription.findFirst({
+          where: { 
+            userId,
+            status: 'active'
+          }
+        })
 
-      // Get user's subscription status first
-      const userSubscription = await prisma.userSubscription.findFirst({
-        where: { 
-          userId,
-          status: 'active'
-        }
-      })
+        const isPremium = userSubscription?.plan === 'pro'
+        const limit = isPremium ? 100 : 20 // Pro users get 100 searches per day, free users get 20 total
 
-      const isPremium = userSubscription?.plan === 'pro'
-      const limit = isPremium ? 100 : 20 // Pro users get 100 searches per day, free users get 20 total
-
-      // Check current usage
-      const currentUsage = await prisma.usageTracker.findFirst({
-        where: {
-          userId,
-          featureId: INSIGHT_SEARCH_FEATURE,
-          ...(isPremium ? {
-            lastUsedAt: {
-              gte: new Date(new Date().setHours(0, 0, 0, 0))
-            }
-          } : {})
-        }
-      })
-
-      // If no usage record exists, create one
-      if (!currentUsage) {
-        await prisma.usageTracker.create({
-          data: {
+        // Check current usage
+        const currentUsage = await prisma.usageTracker.findFirst({
+          where: {
             userId,
             featureId: INSIGHT_SEARCH_FEATURE,
-            count: 1,
-            lastUsedAt: new Date()
+            ...(isPremium ? {
+              lastUsedAt: {
+                gte: new Date(new Date().setHours(0, 0, 0, 0))
+              }
+            } : {})
           }
         })
-      } else if (currentUsage.count >= limit) {
-        return NextResponse.json(
-          { 
-            error: isPremium ? 'Daily usage limit reached' : 'Total usage limit reached. Please upgrade to Pro to continue searching.',
-            limitReached: true,
-            limit,
-            isPremium
-          },
-          { status: 403 }
-        )
+
+        // If no usage record exists, create one
+        if (!currentUsage) {
+          await prisma.usageTracker.create({
+            data: {
+              userId,
+              featureId: INSIGHT_SEARCH_FEATURE,
+              count: 1,
+              lastUsedAt: new Date()
+            }
+          })
+        } else if (currentUsage.count >= limit) {
+          return NextResponse.json(
+            { 
+              error: isPremium ? 'Daily usage limit reached' : 'Total usage limit reached. Please upgrade to Pro to continue searching.',
+              limitReached: true,
+              limit,
+              isPremium
+            },
+            { status: 403 }
+          )
+        } else {
+          // Increment usage
+          await prisma.usageTracker.update({
+            where: { id: currentUsage.id },
+            data: { 
+              count: currentUsage.count + 1,
+              lastUsedAt: new Date()
+            }
+          })
+        }
       } else {
-        // Increment usage
-        await prisma.usageTracker.update({
-          where: { id: currentUsage.id },
-          data: { 
-            count: currentUsage.count + 1,
-            lastUsedAt: new Date()
-          }
-        })
+        console.log('Anonymous user accessing search API');
       }
 
       // Continue with the search...
@@ -153,16 +186,6 @@ export async function GET(request: Request): Promise<Response> {
         focusArea,
         includeIndustries: industries
       });
-      
-      if (!TAVILY_API_KEY) {
-        console.error('TAVILY_API_KEY is missing');
-        throw new Error('TAVILY_API_KEY is missing. Please configure it in your environment variables.');
-      }
-      
-      // Basic validation of API key format - Tavily API keys typically start with "tvly-"
-      if (!TAVILY_API_KEY.startsWith('tvly-')) {
-        console.warn('TAVILY_API_KEY may be invalid - does not start with expected prefix "tvly-"');
-      }
       
       // Call the real Tavily API
       console.log('Calling Tavily API with key:', TAVILY_API_KEY ? 'Key exists' : 'No key found');

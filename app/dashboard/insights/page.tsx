@@ -385,6 +385,11 @@ export default function InsightsPage() {
           console.log('Debug - Search response data:', debugData);
           if (debugData.error) {
             console.error('API ERROR DETAILS:', debugData.details || 'No detailed error information');
+            
+            // Check for specific error types we can handle
+            if (debugData.details && debugData.details.tavily_api_key_exists === false) {
+              throw new Error('The search service API key is missing or invalid. Please contact support.');
+            }
           }
         } catch (e) {
           console.log('Debug - Could not parse response as JSON:', responseText.substring(0, 500));
