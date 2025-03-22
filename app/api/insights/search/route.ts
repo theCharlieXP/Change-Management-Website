@@ -235,14 +235,23 @@ export async function GET(request: Request): Promise<Response> {
             throw new Error('Invalid response from Tavily API: results not found or not an array');
           }
           
-          const results = data.results.map(result => ({
+          // Define a type for Tavily search results
+          interface TavilyResult {
+            title?: string;
+            content?: string;
+            url?: string;
+            source?: string;
+            score?: number;
+          }
+          
+          const results = data.results.map((result: TavilyResult) => ({
             title: result.title || 'Untitled',
             summary: result.content || '',
             content: result.content || '',
             url: result.url || '',
             source: result.source || 'Unknown Source',
             focus_area: focusArea,
-            readTime: Math.ceil((result.content?.split(' ').length || 0) / 200),
+            readTime: Math.ceil((result.content?.split(' ')?.length || 0) / 200),
             tags: [INSIGHT_FOCUS_AREAS[focusArea].label],
             created_at: new Date().toISOString()
           }));

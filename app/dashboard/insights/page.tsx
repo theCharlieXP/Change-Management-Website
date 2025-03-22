@@ -495,6 +495,54 @@ export default function InsightsPage() {
             } else {
               errorMessage = errorData.error || errorData.details || errorMessage;
             }
+            
+            // Try fallback to basic search if main search fails with 500
+            if (response.status === 500) {
+              console.log('Main search endpoint failed with 500, trying simplified endpoint...');
+              setLoadingStage("Trying alternative search method...");
+              
+              // Try the simplified search endpoint
+              const basicParams = new URLSearchParams();
+              basicParams.append('query', query);
+              
+              const backupResponse = await fetch(`/api/insights/search-basic?${basicParams.toString()}`, {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                credentials: 'include'
+              });
+              
+              if (backupResponse.ok) {
+                console.log('Backup search succeeded!');
+                const backupData = await backupResponse.json();
+                
+                if (backupData.results && backupData.results.length > 0) {
+                  // Transform the basic results to match the expected format
+                  const transformedResults = backupData.results.map((result: any) => ({
+                    id: Math.random().toString(36).substring(2, 9),
+                    title: result.title || 'Untitled',
+                    summary: result.content || '',
+                    content: result.content || '',
+                    url: result.url || '',
+                    source: result.source || new URL(result.url || 'https://example.com').hostname,
+                    focus_area: focusArea,
+                    readTime: Math.ceil((result.content?.split(' ')?.length || 0) / 200) || '5 min',
+                    tags: focusArea ? [INSIGHT_FOCUS_AREAS[focusArea].label] : ['General'],
+                    created_at: new Date().toISOString()
+                  }));
+                  
+                  searchResults = transformedResults;
+                  
+                  // Skip throwing the error since we recovered
+                  // but continue with summary generation
+                  break;
+                }
+              } else {
+                console.log('Backup search also failed:', backupResponse.status);
+              }
+            }
+            
           } catch (e) {
             // If we can't parse the JSON, just use the default error message
             console.error('Error parsing error response:', e);
