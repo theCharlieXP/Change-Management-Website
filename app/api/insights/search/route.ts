@@ -113,61 +113,70 @@ export async function GET(request: Request): Promise<Response> {
         console.warn('Auth error (continuing as anonymous user):', authError instanceof Error ? authError.message : authError);
       }
       
-      // Allow unauthenticated requests, but track usage for authenticated users
+      // Allow unauthenticated requests, but track usage for authenticated users if database connection is available
       if (userId) {
-        // Get user's subscription status first
-        const userSubscription = await prisma.userSubscription.findFirst({
-          where: { 
-            userId,
-            status: 'active'
-          }
-        })
+        try {
+          // Get user's subscription status first
+          const userSubscription = await prisma.userSubscription.findFirst({
+            where: { 
+              userId: userId as string,
+              status: 'active'
+            }
+          });
 
-        const isPremium = userSubscription?.plan === 'pro'
-        const limit = isPremium ? 100 : 20 // Pro users get 100 searches per day, free users get 20 total
+          const isPremium = userSubscription?.plan === 'pro';
+          const limit = isPremium ? 100 : 20; // Pro users get 100 searches per day, free users get 20 total
 
-        // Check current usage
-        const currentUsage = await prisma.usageTracker.findFirst({
-          where: {
-            userId,
-            featureId: INSIGHT_SEARCH_FEATURE,
-            ...(isPremium ? {
-              lastUsedAt: {
-                gte: new Date(new Date().setHours(0, 0, 0, 0))
-              }
-            } : {})
-          }
-        })
-
-        // If no usage record exists, create one
-        if (!currentUsage) {
-          await prisma.usageTracker.create({
-            data: {
-              userId,
+          // Check current usage
+          const currentUsage = await prisma.usageTracker.findFirst({
+            where: {
+              userId: userId as string,
               featureId: INSIGHT_SEARCH_FEATURE,
-              count: 1,
-              lastUsedAt: new Date()
+              ...(isPremium ? {
+                lastUsedAt: {
+                  gte: new Date(new Date().setHours(0, 0, 0, 0))
+                }
+              } : {})
             }
-          })
-        } else if (currentUsage.count >= limit) {
-          return NextResponse.json(
-            { 
-              error: isPremium ? 'Daily usage limit reached' : 'Total usage limit reached. Please upgrade to Pro to continue searching.',
-              limitReached: true,
-              limit,
-              isPremium
-            },
-            { status: 403 }
-          )
-        } else {
-          // Increment usage
-          await prisma.usageTracker.update({
-            where: { id: currentUsage.id },
-            data: { 
-              count: currentUsage.count + 1,
-              lastUsedAt: new Date()
-            }
-          })
+          });
+
+          // If no usage record exists, create one
+          if (!currentUsage) {
+            await prisma.usageTracker.create({
+              data: {
+                userId: userId as string,
+                featureId: INSIGHT_SEARCH_FEATURE,
+                count: 1,
+                lastUsedAt: new Date()
+              }
+            });
+          } else if (currentUsage.count >= limit) {
+            return NextResponse.json(
+              { 
+                error: isPremium ? 'Daily usage limit reached' : 'Total usage limit reached. Please upgrade to Pro to continue searching.',
+                limitReached: true,
+                limit,
+                isPremium
+              },
+              { status: 403 }
+            );
+          } else {
+            // Increment usage
+            await prisma.usageTracker.update({
+              where: { id: currentUsage.id },
+              data: { 
+                count: currentUsage.count + 1,
+                lastUsedAt: new Date()
+              }
+            });
+          }
+        } catch (dbError) {
+          // Log database error but continue with search
+          console.error('Database error when checking usage (continuing with search):', dbError instanceof Error ? dbError.message : dbError);
+          // If there's a PrismaClientInitializationError, it means the database connection failed
+          if (dbError instanceof Error && dbError.name === 'PrismaClientInitializationError') {
+            console.warn('Database connection error - skipping usage tracking');
+          }
         }
       } else {
         console.log('Anonymous user accessing search API');
@@ -191,80 +200,114 @@ export async function GET(request: Request): Promise<Response> {
       console.log('Calling Tavily API with key:', TAVILY_API_KEY ? 'Key exists' : 'No key found');
       console.log('Tavily API key prefix:', TAVILY_API_KEY ? TAVILY_API_KEY.substring(0, 8) : 'N/A');
       
+      // Wrap the API call in a more resilient function to handle errors
+      const callTavilyWithRetry = async (query: string): Promise<any> => {
+        const maxRetries = 2;
+        const baseDelay = 500; // 500ms base delay
+        
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          try {
+            console.log(`Tavily API call attempt ${attempt + 1}/${maxRetries + 1}`);
+            
+            // Use a simpler request body for more reliability
+            const requestBody = {
+              query: query,
+              search_depth: 'advanced',
+              max_results: 10,
+              // Only include critical parameters to reduce chances of error
+            };
+            
+            console.log('Tavily request body:', JSON.stringify(requestBody, null, 2));
+            
+            const response = await fetch('https://api.tavily.com/search', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${TAVILY_API_KEY}`
+              },
+              body: JSON.stringify(requestBody)
+            });
+            
+            console.log('Tavily API response status:', response.status);
+            
+            if (!response.ok) {
+              const errorText = await response.text().catch(() => 'Could not read error response');
+              console.error(`Tavily API error: Status ${response.status}, Response:`, errorText);
+              
+              // If we got a 429 (too many requests), wait and retry
+              if (response.status === 429 && attempt < maxRetries) {
+                const delay = baseDelay * Math.pow(2, attempt); // Exponential backoff
+                console.log(`Rate limited, retrying in ${delay}ms`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+              }
+              
+              throw new Error(`Tavily Search API returned ${response.status}: ${errorText}`);
+            }
+            
+            const data = await response.json();
+            console.log('Tavily search returned results:', data.results?.length || 0);
+            return data;
+            
+          } catch (error) {
+            console.error(`Attempt ${attempt + 1} failed:`, error);
+            
+            // Re-throw on final attempt
+            if (attempt === maxRetries) throw error;
+            
+            // Otherwise wait and retry
+            const delay = baseDelay * Math.pow(2, attempt);
+            console.log(`Retrying in ${delay}ms`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        }
+        
+        // This shouldn't be reached due to the throw in the loop, but TypeScript needs it
+        throw new Error('Failed to call Tavily API after retries');
+      };
+      
       try {
         const tavilyApiUrl = 'https://api.tavily.com/search';
         console.log('Calling Tavily API at URL:', tavilyApiUrl);
         
-        // SIMPLIFIED TAVILY CALL - reducing complexity for troubleshooting
-        console.log('Using simplified Tavily API call for troubleshooting');
-        
         const searchQuery = `${query} ${INSIGHT_FOCUS_AREAS[focusArea].description}`;
         console.log('Final search query:', searchQuery);
         
-        const requestBody = {
-          query: searchQuery,
-          search_depth: 'advanced',
-          max_results: 10
-        };
+        // Call Tavily with retry logic
+        const data = await callTavilyWithRetry(searchQuery);
         
-        console.log('Simplified request body:', JSON.stringify(requestBody));
-        
-        try {
-          const response = await fetch(tavilyApiUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${TAVILY_API_KEY}`
-            },
-            body: JSON.stringify(requestBody)
-          });
-          
-          console.log('Simplified Tavily response status:', response.status);
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Simplified Tavily API error: Status ${response.status}, Response:`, errorText);
-            throw new Error(`Tavily Search API returned ${response.status}: ${errorText}`);
-          }
-          
-          const data = await response.json();
-          console.log('Simplified Tavily search returned results:', data.results?.length || 0);
-          
-          if (!data || !Array.isArray(data.results)) {
-            console.error('Invalid Tavily API response structure:', data);
-            throw new Error('Invalid response from Tavily API: results not found or not an array');
-          }
-          
-          // Define a type for Tavily search results
-          interface TavilyResult {
-            title?: string;
-            content?: string;
-            url?: string;
-            source?: string;
-            score?: number;
-          }
-          
-          const results = data.results.map((result: TavilyResult) => ({
-            title: result.title || 'Untitled',
-            summary: result.content || '',
-            content: result.content || '',
-            url: result.url || '',
-            source: result.source || 'Unknown Source',
-            focus_area: focusArea,
-            readTime: Math.ceil((result.content?.split(' ')?.length || 0) / 200),
-            tags: [INSIGHT_FOCUS_AREAS[focusArea].label],
-            created_at: new Date().toISOString()
-          }));
-          
-          return NextResponse.json({
-            query: searchQuery,
-            focusArea: focusArea,
-            results: results
-          });
-        } catch (error) {
-          console.error('Simplified Tavily API call error:', error);
-          throw error;
+        // Validate response structure
+        if (!data || !Array.isArray(data.results)) {
+          console.error('Invalid Tavily API response structure:', data);
+          throw new Error('Invalid response from Tavily API: results not found or not an array');
         }
+        
+        // Define a type for Tavily search results
+        interface TavilyResult {
+          title?: string;
+          content?: string;
+          url?: string;
+          source?: string;
+          score?: number;
+        }
+        
+        const results = data.results.map((result: TavilyResult) => ({
+          title: result.title || 'Untitled',
+          summary: result.content || '',
+          content: result.content || '',
+          url: result.url || '',
+          source: result.source || 'Unknown Source',
+          focus_area: focusArea,
+          readTime: Math.ceil((result.content?.split(' ')?.length || 0) / 200),
+          tags: [INSIGHT_FOCUS_AREAS[focusArea].label],
+          created_at: new Date().toISOString()
+        }));
+        
+        return NextResponse.json({
+          query: searchQuery,
+          focusArea: focusArea,
+          results: results
+        });
       } catch (error) {
         console.error('Tavily API call error:', error);
         
