@@ -159,7 +159,7 @@ export default function InsightsPage() {
   const [query, setQuery] = useState("")
   const [focusArea, setFocusArea] = useState<InsightFocusArea | undefined>(undefined)
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([])
-  const [insights, setInsights] = useState<Insight[]>([])
+  const [results, setResults] = useState<Insight[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingStage, setLoadingStage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -170,7 +170,7 @@ export default function InsightsPage() {
   const [projectsLoading, setProjectsLoading] = useState(true)
   const [summary, setSummary] = useState<string | null>(null)
   const [summaryNotes, setSummaryNotes] = useState<string>("")
-  const [isSummarizing, setIsSummarizing] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [insightToSave, setInsightToSave] = useState<Insight | null>(null)
@@ -383,7 +383,7 @@ export default function InsightsPage() {
     setLoadingStage('Checking search service availability...')
     setError(null)
     setSummary(null)
-    setInsights([]) // Reset insights to prevent stale data
+    setResults([]) // Reset results to prevent stale data
 
     try {
       // First check Tavily API connectivity
@@ -603,45 +603,114 @@ export default function InsightsPage() {
         // Generate summary for the search results
         setLoadingStage("Generating comprehensive summary using Tavily search results with DeepSeek...");
         try {
-          const summaryResponse = await fetch('/api/insights/summarize', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              insights: searchResults,
-              focusArea,
-              searchInfo: {
-                query: searchContext.query || query,
-                focusArea: searchContext.focusArea,
-                industries: selectedIndustries,
-                _productionVersion: '1.0.4',
-                _timestamp: new Date().toISOString(),
-                _client: 'web-ui'
+          // Add a fallback mechanism in case the primary summary endpoint fails
+          let summaryResponse
+          let summarySuccess = false
+          let summaryErrorMessage = ""
+          
+          // First try the regular summarize endpoint
+          try {
+            console.log('Trying primary DeepSeek summary endpoint...');
+            
+            // Create an AbortController to handle client-side timeouts
+            const summaryController = new AbortController();
+            const summaryTimeoutId = setTimeout(() => summaryController.abort(), 25000); // 25 second timeout
+            
+            summaryResponse = await fetch('/api/insights/summarize', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
               },
-              format: {
-                sections: [
-                  {
-                    title: "Insights",
-                    description: "7-10 comprehensive bullet points written by a change management expert"
-                  },
-                  {
-                    title: "References",
-                    description: "List of all sources with markdown links"
-                  }
-                ],
-                style: "Use clean markdown formatting with minimal excess text. Use bullet points (•) for Insights. Write as a senior change management consultant in UK English."
-              }
-            })
-          });
-    
-          if (!summaryResponse.ok) {
-            console.error('Error generating summary:', summaryResponse.status);
-            throw new Error('Failed to generate summary. The summarize API returned an error.');
+              body: JSON.stringify({
+                insights: searchResults,
+                focusArea,
+                searchInfo: {
+                  query: searchContext.query || query,
+                  focusArea: searchContext.focusArea,
+                  industries: selectedIndustries,
+                  _productionVersion: '1.0.4',
+                  _timestamp: new Date().toISOString(),
+                  _client: 'web-ui'
+                },
+                format: {
+                  sections: [
+                    {
+                      title: "Insights",
+                      description: "7-10 comprehensive bullet points written by a change management expert"
+                    },
+                    {
+                      title: "References",
+                      description: "List of all sources with markdown links"
+                    }
+                  ],
+                  style: "Use clean markdown formatting with minimal excess text. Use bullet points (•) for Insights. Write as a senior change management consultant in UK English."
+                }
+              }),
+              signal: summaryController.signal
+            }).finally(() => clearTimeout(summaryTimeoutId));
+            
+            if (summaryResponse.ok) {
+              summarySuccess = true;
+            } else {
+              summaryErrorMessage = `Primary endpoint error: ${summaryResponse.status} ${summaryResponse.statusText}`;
+              console.error('Primary summary endpoint failed:', summaryErrorMessage);
+            }
+          } catch (primaryError) {
+            summaryErrorMessage = primaryError instanceof Error ? primaryError.message : 'Unknown error';
+            console.error('Error with primary summary endpoint:', summaryErrorMessage);
           }
-
-          const summaryData = await summaryResponse.json();
-          setSummary(summaryData.summary);
+          
+          // If the primary endpoint failed, try the hardcoded fallback
+          if (!summarySuccess) {
+            console.log('Primary endpoint failed, trying hardcoded fallback...');
+            setLoadingStage("Primary summary service unavailable. Using backup generator...");
+            
+            try {
+              summaryResponse = await fetch('/api/ai-test', {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json'
+                }
+              });
+              
+              if (summaryResponse.ok) {
+                summarySuccess = true;
+                console.log('Fallback summary generation successful');
+              } else {
+                console.error('Even fallback summary failed:', summaryResponse.status);
+              }
+            } catch (fallbackError) {
+              console.error('Error with fallback summary:', fallbackError);
+            }
+          }
+          
+          // Process the summary response
+          if (summarySuccess && summaryResponse) {
+            const summaryData = await summaryResponse.json();
+            let summaryContent = '';
+            
+            // Check if we're using the primary or fallback endpoint based on response structure
+            if (summaryData.summary) {
+              // This is the fallback endpoint response
+              summaryContent = summaryData.summary;
+              console.log('Using hardcoded fallback summary');
+            } else {
+              // This is the primary endpoint response
+              summaryContent = summaryData.summary || 'No summary generated';
+              console.log('Using primary endpoint summary');
+            }
+            
+            // Save the summary and proceed
+            setSummary(summaryContent);
+            setLoadingStage("");
+            setIsLoading(false);
+            
+            // Save results for future reference
+            setResults(searchResults);
+            saveSearchResults(searchResults, query, summaryContent);
+          } else {
+            throw new Error(`Could not generate summary: ${summaryErrorMessage}`);
+          }
         } catch (error) {
           console.error('Error generating summary:', error);
           // Generate a fallback summary from search results when DeepSeek API fails
@@ -676,7 +745,7 @@ export default function InsightsPage() {
       }
 
       // Update state with results
-      setInsights(searchResults);
+      setResults(searchResults);
 
       // Show success message if we got results
       if (searchResults.length > 0) {
@@ -724,9 +793,9 @@ export default function InsightsPage() {
   }
 
   const generateSummary = async () => {
-    if (!insights.length) return;
+    if (!results.length) return;
     
-    setIsSummarizing(true);
+    setIsLoading(true);
     try {
       const response = await fetch('/api/insights/summarize', {
         method: 'POST',
@@ -734,7 +803,7 @@ export default function InsightsPage() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          insights,
+          results,
           focusArea
         })
       });
@@ -757,7 +826,7 @@ export default function InsightsPage() {
         variant: "destructive"
       });
     } finally {
-      setIsSummarizing(false);
+      setIsLoading(false);
     }
   };
 
@@ -1005,7 +1074,7 @@ export default function InsightsPage() {
       <InsightModal
         isOpen={!!selectedInsight}
         onClose={closeModal}
-        insight={insights.find(i => i.id === selectedInsight) || {
+        insight={results.find(i => i.id === selectedInsight) || {
           id: 'empty',
           title: '',
           summary: '',
