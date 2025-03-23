@@ -28,7 +28,7 @@ import { SaveToProjectDialog } from '@/components/save-to-project-dialog'
 import InsightSearchUsageTracker from '@/app/components/InsightSearchUsageTracker'
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import type { UsageTrackerRef } from '@/app/components/InsightSearchUsageTracker'
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 
 type TimeframeValue = 
   | 'last_day'

@@ -1,7 +1,15 @@
 {
-  "buildCommand": "prisma generate && next build",
-  "framework": "nextjs",
+  "git": {
+    "cleanRepo": true
+  },
+  "devCommand": "next dev",
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
   "outputDirectory": ".next",
+  "framework": "nextjs",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" }
+  ],
   "regions": ["iad1"],
   "headers": [
     {
@@ -15,7 +23,7 @@
     }
   ],
   "functions": {
-    "app/api/insights/search/route.ts": {
+    "app/api/insights/search-and-summarize/route.ts": {
       "maxDuration": 60
     }
   }
