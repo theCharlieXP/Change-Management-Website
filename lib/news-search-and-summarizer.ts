@@ -158,7 +158,7 @@ export class NewsSearchAndSummarizer {
     
     // Create the prompt for DeepSeek - reduce the size to help prevent timeouts
     const prompt = `
-You are a senior change management expert creating a summary about "${search_results.query}".
+You are a senior change management expert creating a summary about "${search_results.query}" in the context of ${search_results.focusArea || 'change management'}.
 
 Analyze these search results:
 ${tavilyAnswer}
@@ -167,10 +167,11 @@ ${context}
 ${summary_instructions}
 
 Remember:
-1. Create a concise title about ${search_results.query}
-2. Each insight should start with "•" and be actionable for change managers
-3. Write in professional UK English
-4. Include references to sources
+1. Create a concise title that MUST explicitly mention both "${search_results.query}" and "${search_results.focusArea || 'change management'}"
+2. Each insight should start with "•" and be actionable for ${search_results.focusArea || 'change management'} professionals
+3. Every insight must specifically relate to ${search_results.focusArea || 'change management'} - do not include generic points
+4. Write in professional UK English
+5. Include references to sources
 `;
     
     let attempts = 0;
@@ -188,7 +189,10 @@ Remember:
           const timeout = setTimeout(() => controller.abort(), timeoutMs);
           
           // Create a system message to control the output format - shorter for performance
-          const systemMessage = `You are a change management expert. Create a summary with a title, bulleted insights (using •), and references.`;
+          const systemMessage = `You are a change management expert. Create a summary with:
+1. A title that explicitly mentions both "${search_results.query}" and "${search_results.focusArea || 'change management'}"
+2. Bulleted insights (using •) that are specifically relevant to ${search_results.focusArea || 'change management'}
+3. References to sources`;
           
           try {
             const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -273,12 +277,13 @@ Remember:
   // Generate a fallback summary using only Tavily data when DeepSeek fails
   private generateFallbackSummary(search_results: TavilySearchResults): string {
     try {
-      const title = `# Change Management Insights: ${search_results.query}`;
+      const focusArea = search_results.focusArea || 'Change Management';
+      const title = `# ${search_results.query} in ${focusArea}: Key Insights`;
       
       // Use Tavily's answer if available, otherwise create basic insights
       const insightsSection = search_results.answer 
         ? `\n\n## Insights\n• ${search_results.answer.split('. ').join('\n• ')}`
-        : `\n\n## Insights\n• Change management requires thorough planning and stakeholder engagement to ensure successful implementation.\n• Clear communication is essential throughout the change process to maintain transparency and build trust.\n• Resistance to change should be anticipated and addressed proactively to increase acceptance.\n• Leadership support significantly improves the likelihood of successful change initiatives.\n• Regular monitoring and measurement helps track progress and demonstrate value.`;
+        : `\n\n## Insights in ${focusArea}\n• ${focusArea} requires thorough planning and stakeholder engagement when implementing ${search_results.query} to ensure successful implementation.\n• Clear communication about ${search_results.query} is essential throughout the ${focusArea.toLowerCase()} process to maintain transparency and build trust.\n• Resistance to changes related to ${search_results.query} should be anticipated and addressed proactively to increase acceptance.\n• Leadership support significantly improves the likelihood of successful ${search_results.query} initiatives in ${focusArea.toLowerCase()}.\n• Regular monitoring and measurement helps track progress of ${search_results.query} implementations and demonstrate value.`;
       
       // Add references to all sources
       const referencesSection = `\n\n## References\n${search_results.results.map(result => 
@@ -290,7 +295,7 @@ Remember:
       console.error('Error generating fallback summary:', error);
       
       // Ultra simple fallback if even that fails
-      return `# Change Management Insights\n\n## Insights\n• Change management is a structured approach to transitioning individuals, teams, and organizations from a current state to a desired future state.\n\n## References\n[Search results available but summary generation failed]`;
+      return `# ${search_results.query} in Change Management\n\n## Insights\n• Change management is a structured approach to transitioning individuals, teams, and organizations from a current state to a desired future state when implementing ${search_results.query}.\n\n## References\n[Search results available but summary generation failed]`;
     }
   }
   

@@ -110,22 +110,24 @@ export async function POST(request: Request) {
       const formattedSummaryInstructions = `
 Create a comprehensive summary using the following template:
 
-# [Insert Descriptive Title About ${query}]
+# [Create a Descriptive Title About ${query} in ${tavilyAreaFilter || 'Change Management'} Context]
 
 ## Insights
-• [First key insight about change management with specific details]
-• [Second key insight with practical applications]
-• [Add 6-8 additional bullet points with substantive insights about change management]
+• [First key insight about ${tavilyAreaFilter || 'change management'} with specific details related to ${query}]
+• [Second key insight about ${tavilyAreaFilter || 'change management'} that focuses on practical applications of ${query}]
+• [Add 6-8 additional bullet points with substantive insights specifically relating ${query} to ${tavilyAreaFilter || 'change management'}]
 
 ## References
 [Include links to all sources in markdown format]
 
 IMPORTANT FORMATTING REQUIREMENTS:
-1. Each bullet point must be a complete, detailed sentence with substantive information
-2. Begin each bullet with the • character (not a dash or asterisk)
-3. Write in professional, clear UK English
-4. Focus on practical, action-oriented insights for change management professionals
-5. Maintain a formal, expert tone throughout
+1. The title MUST explicitly mention both ${query} and ${tavilyAreaFilter || 'change management'}
+2. Each bullet point must be a complete, detailed sentence with substantive information
+3. Begin each bullet with the • character (not a dash or asterisk)
+4. Every insight must specifically relate to ${tavilyAreaFilter || 'change management'} - do not include generic points
+5. Write in professional, clear UK English
+6. Focus on practical, action-oriented insights for ${tavilyAreaFilter || 'change management'} professionals
+7. Maintain a formal, expert tone throughout
 `;
       
       // Perform search and summarization

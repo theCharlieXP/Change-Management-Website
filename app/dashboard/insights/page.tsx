@@ -84,18 +84,15 @@ const generateFallbackSummary = (searchResults: Insight[], searchQuery: string, 
   // Extract the focus area label
   const focusAreaLabel = INSIGHT_FOCUS_AREAS[focusArea].label;
   
-  // Create a more descriptive title based on search query - keeping it to 10 words max and capitalized
-  const capitalizedQuery = searchQuery.charAt(0).toUpperCase() + searchQuery.slice(1).toLowerCase();
-  // Limit to 10 words total
-  const words = (capitalizedQuery + ' - ' + focusAreaLabel + ' Insights').split(' ');
-  const title = `# ${words.slice(0, 10).join(' ')}`;
+  // Create a title that explicitly connects the query and focus area
+  const title = `# ${searchQuery} in ${focusAreaLabel}: Key Insights`;
   
   // Create the context section (exactly what was searched, focus area)
   const context = `## Context
-${searchQuery}, ${focusAreaLabel}`;
+${searchQuery} in the context of ${focusAreaLabel}`;
   
   // Create the insights section with bullet points from result summaries
-  let insights = `## Insights`;
+  let insights = `## Insights for ${focusAreaLabel}`;
   
   // Extract key points from each result's summary
   const allPoints: string[] = [];
@@ -136,14 +133,14 @@ ${searchQuery}, ${focusAreaLabel}`;
     insights += `\n• ${formattedPoint}`;
   });
   
-  // Add a message if no points were found
+  // Add fallback insights if no points were found
   if (uniquePoints.length === 0) {
-    insights += `\n• Change management projects require careful planning and execution to successfully implement new processes or systems within an organisation. Effective communication, stakeholder engagement, and measuring results are critical components for success.`;
-    insights += `\n• Resistance to change is a common challenge that must be addressed through proper training, clear explanation of benefits, and involvement of employees in the change process to ensure smoother transitions.`;
-    insights += `\n• Creating a detailed change management plan with specific milestones, responsibilities, and timelines helps organisations navigate the complexities of transformation whilst minimising disruption to ongoing operations.`;
+    insights += `\n• ${focusAreaLabel} approach to ${searchQuery} requires careful planning and execution to successfully implement new processes or systems within an organisation. Effective communication, stakeholder engagement, and measuring results are critical components for success.`;
+    insights += `\n• Resistance to changes related to ${searchQuery} is a common challenge in ${focusAreaLabel.toLowerCase()} that must be addressed through proper training, clear explanation of benefits, and involvement of employees in the change process to ensure smoother transitions.`;
+    insights += `\n• Creating a detailed ${focusAreaLabel.toLowerCase()} plan for ${searchQuery} with specific milestones, responsibilities, and timelines helps organisations navigate the complexities of transformation whilst minimising disruption to ongoing operations.`;
   }
   
-  // Create the references section with links to sources (without source description)
+  // Create the references section with links to sources
   let references = `## References`;
   searchResults.forEach(result => {
     if (result.title && result.url) {
@@ -421,15 +418,16 @@ export default function InsightsPage() {
           query,
           area_filter: focusArea,
           summary_instructions: `
-Create a comprehensive summary of these search results about change management.
+Create a comprehensive summary about ${query} in the context of ${focusArea ? INSIGHT_FOCUS_AREAS[focusArea as InsightFocusArea].label : 'change management'}.
 
 Format your response as follows:
-# Title With Every First Letter Capitalized
+# ${query} in ${focusArea ? INSIGHT_FOCUS_AREAS[focusArea as InsightFocusArea].label : 'Change Management'}: Key Insights
 
 ## Insights
-• Create 7-10 bullet points that reflect key insights from the search results
+• Create 7-10 bullet points that reflect key insights about ${query} as it relates to ${focusArea ? INSIGHT_FOCUS_AREAS[focusArea as InsightFocusArea].label : 'change management'}
 • Each bullet should be a complete thought with proper punctuation
 • Focus specifically on the area of ${focusArea ? INSIGHT_FOCUS_AREAS[focusArea as InsightFocusArea].label : 'general change management'}
+• Every insight must directly connect ${query} to ${focusArea ? INSIGHT_FOCUS_AREAS[focusArea as InsightFocusArea].label : 'change management'}
 • Write as a senior change management expert using professional UK English
 
 ## References
