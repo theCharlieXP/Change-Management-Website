@@ -10,11 +10,11 @@ export const dynamic = 'force-dynamic';
 export const fetchCache = 'default-no-store';
 
 // Version marker to help track deployment
-export const PRODUCTION_VERSION = '1.0.4';
+export const PRODUCTION_VERSION = '1.0.5';
 
 export async function POST(request: Request) {
   try {
-    console.log('PRODUCTION VERSION 1.0.4 - Summarize route activated at', new Date().toISOString());
+    console.log('PRODUCTION VERSION 1.0.5 - Summarize route activated at', new Date().toISOString());
     
     // Check authentication
     const authData = await auth();
@@ -87,26 +87,38 @@ ${insight.content ? `Content: ${Array.isArray(insight.content) ? insight.content
     }
     
     // HARD-CODED PROMPT WITH PRODUCTION VERSION MARKER
-    const FIXED_PROMPT = `VERSION 1.0.4 - PRODUCTION DEPLOYMENT
+    const FIXED_PROMPT = `CRITICAL: FOLLOW THESE INSTRUCTIONS EXACTLY
 
-As a senior change management expert, create a high-quality summary with this EXACT format:
+Your task is to create a change management summary in markdown format with THESE EXACT SECTIONS:
 
-# Title With Each Word Capitalized
+# Title With First Letter Of Each Word Capitalized
 
 ## Insights
-• First bullet point with expert analysis...
-• Second bullet point...
-(7-10 total bullet points)
+• First bullet point (40-60 words of expert analysis)
+• Second bullet point
+• Third bullet point
+(Continue with 7-10 detailed bullet points total)
 
 ## References
-[Source links only]
+[Source links]
 
-MANDATORY REQUIREMENTS:
-1. TITLE: Capitalize EVERY first letter of EVERY word
-2. NO CONTEXT SECTION ALLOWED
-3. INSIGHTS: 7-10 detailed bullet points (40-60 words each)
-4. Each insight must be expert-level analysis with implications
-5. Use UK English (organisation, programme)
+YOU MUST FOLLOW THESE FORMATTING RULES:
+1. TITLE: Every Word Must Start With A Capital Letter
+2. DO NOT CREATE A CONTEXT SECTION - THIS IS FORBIDDEN
+3. INSIGHTS: Use "•" character (not "-" or "*") for 7-10 bullet points
+4. REFERENCES: List source links only
+
+EXAMPLE OF CORRECT FORMAT:
+# Implementing Digital Transformation In Healthcare
+
+## Insights
+• Healthcare organizations must develop comprehensive change management strategies that address both technical implementation and cultural adaptation to ensure successful digital transformation.
+• Executive sponsorship is crucial for driving adoption of new digital tools, providing necessary resources and signaling organizational commitment to the transformation effort.
+• etc.
+
+## References
+[Digital Transformation in Healthcare](https://example.com)
+[Change Management Best Practices](https://example.com)
 
 CONTENT TO ANALYZE:
 ${content}`;
@@ -118,7 +130,7 @@ ${content}`;
     console.log('Production deployment timestamp:', new Date().toISOString());
     
     // Generate the summary using DeepSeek with our FIXED_PROMPT
-    console.log('--- CALLING DEEPSEEK API WITH PRODUCTION PROMPT V1.0.4 ---');
+    console.log('--- CALLING DEEPSEEK API WITH PRODUCTION PROMPT V1.0.5 ---');
     
     try {
       // Add a timeout to prevent hanging if DeepSeek API doesn't respond
@@ -135,7 +147,7 @@ ${content}`;
       clearTimeout(timeoutId);
       
       // Add production version marker to summary
-      summary = `<!-- PRODUCTION VERSION 1.0.4 -->\n${summary}`;
+      summary = `<!-- PRODUCTION VERSION 1.0.5 -->\n${summary}`;
       
       // ALWAYS Apply post-processing to ensure requirements are met
       console.log('--- APPLYING FORCED FORMATTING ---');
@@ -154,13 +166,13 @@ ${content}`;
         vercel: process.env.VERCEL,
         region: process.env.VERCEL_REGION,
         deploymentUrl: process.env.VERCEL_URL,
-        productionVersion: '1.0.4'
+        productionVersion: '1.0.5'
       });
       
       return new NextResponse(
         JSON.stringify({ 
           summary,
-          version: '1.0.4',
+          version: '1.0.5',
           generated: new Date().toISOString()
         }),
         { status: 200 }
@@ -172,10 +184,13 @@ ${content}`;
       console.log('--- USING EMERGENCY FALLBACK SUMMARY ---');
       const fallbackSummary = generateEmergencyFallbackSummary(searchQuery, insights);
       
+      // Apply EMERGENCY_FORMAT_OVERRIDE to the fallback summary as well for consistency
+      const finalFallbackSummary = EMERGENCY_FORMAT_OVERRIDE(fallbackSummary);
+      
       return new NextResponse(
         JSON.stringify({ 
-          summary: fallbackSummary,
-          version: '1.0.4-fallback',
+          summary: finalFallbackSummary,
+          version: '1.0.5-fallback',
           generated: new Date().toISOString(),
           fallback: true
         }),
@@ -263,92 +278,109 @@ function forceCorrectFormatting(summary: string, searchQuery: string): string {
 }
 
 /**
- * EMERGENCY OVERRIDE - this function will ALWAYS run and completely restructure the output
- * regardless of what DeepSeek returns or what other formatters do
+ * Last-resort formatting to ensure the output meets our requirements
+ * This function is called after all other formatters and ensures that:
+ * 1. Title is properly capitalized
+ * 2. No Context section exists
+ * 3. Bullet points use the correct character
  */
 function EMERGENCY_FORMAT_OVERRIDE(input: string): string {
-  console.log('EMERGENCY OVERRIDE ACTIVE - FORCING CORRECT FORMAT');
+  console.log('Applying EMERGENCY_FORMAT_OVERRIDE to ensure proper formatting');
   
-  // Extract anything useful from the input
-  const extractTitle = input.match(/# (.*?)(?:\r?\n|$)/i);
-  const extractInsights = input.match(/## Insights\s*([\s\S]*?)(?=##|$)/i);
-  const extractReferences = input.match(/## References\s*([\s\S]*?)$/i);
+  // Extract each section
+  const sections: Record<string, string> = {};
   
-  // Define a proper title with every first letter capitalized
-  let title = extractTitle ? extractTitle[1].trim() : "Change Management Insights";
+  // 1. Extract title
+  const titleMatch = input.match(/# (.*?)($|\n)/);
+  let title = titleMatch ? titleMatch[1].trim() : "Change Management Insights";
+  
+  // Ensure title uses proper capitalization
   title = title.split(' ')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
   
-  // Get insights content or create placeholder
-  let insightsContent = "";
-  if (extractInsights && extractInsights[1].trim()) {
-    // Process the insights to ensure proper bullet points
-    insightsContent = extractInsights[1].trim()
-      .split(/\r?\n/)
-      .filter(line => line.trim())
-      .map(line => {
-        // Ensure line starts with bullet point
-        line = line.trim();
-        if (!line.startsWith('•')) {
-          line = '• ' + line;
-        }
-        
-        // Remove bullet characters at the end
-        if (line.endsWith(' ·')) {
-          line = line.substring(0, line.length - 2) + '.';
-        }
-        
-        // Ensure line ends with proper punctuation
-        if (!/[.!?]$/.test(line)) {
-          line += '.';
-        }
-        
-        return line;
-      })
-      .join('\n\n');
+  // 2. Check and remove Context section if it exists
+  if (input.includes('## Context') || input.includes('## Background') || input.includes('## Overview')) {
+    console.log('EMERGENCY: Context section detected - removing it');
+    input = input.replace(/##\s*(Context|Background|Overview)[\s\S]*?(##|$)/, '$2');
+  }
+  
+  // 3. Extract insights section
+  const insightsMatch = input.match(/## Insights\s*([\s\S]*?)(?=##|$)/i);
+  let insightsText = '';
+  
+  if (insightsMatch && insightsMatch[1].trim()) {
+    // Process bullet points for insights
+    const points = insightsMatch[1].trim()
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+    
+    // Format each bullet point correctly
+    const formattedPoints = points.map(point => {
+      // Ensure it starts with • character
+      if (!point.startsWith('•')) {
+        // Replace any other bullet characters
+        point = point.replace(/^[-*]\s*/, '');
+        point = '• ' + point;
+      }
+      
+      // Make sure it ends with proper punctuation
+      if (!/[.!?]$/.test(point)) {
+        point += '.';
+      }
+      
+      return point;
+    });
+    
+    insightsText = formattedPoints.join('\n\n');
   } else {
-    // Default insights if none found
-    insightsContent = `• The implementation of change management requires careful planning and stakeholder engagement to ensure successful adoption and minimize resistance.
+    // If no insights section found, create default bullets
+    insightsText = `• Effective change management requires strategic planning and stakeholder engagement to ensure successful adoption of new processes and minimize resistance.
 
-• Effective communication strategies are essential throughout the change process, as they help clarify expectations and reduce uncertainty among affected employees.
+• Communication is a critical success factor in change initiatives, serving as the foundation for building trust and reducing uncertainty among affected employees.
 
 • Organizations that establish clear metrics for measuring change progress are better positioned to make timely adjustments and demonstrate value to leadership.
 
-• Change management initiatives benefit from executive sponsorship, which provides necessary resources and signals organizational commitment to the transformation.
+• Executive sponsorship provides necessary resources and signals organizational commitment, significantly increasing the likelihood of successful change implementation.
 
-• Building a coalition of change champions across different departments helps create broader ownership and accelerates the adoption of new processes or systems.
+• Building a coalition of change champions across departments creates broader ownership and accelerates adoption of new systems or processes.
 
-• Training programs specifically tailored to different stakeholder groups ensure that employees have the necessary skills and knowledge to operate effectively in the changed environment.
+• Customized training programs ensure employees have the necessary skills to operate effectively in the changed environment, reducing productivity dips.
 
-• Post-implementation support is crucial for sustaining change, as it addresses emerging challenges and reinforces new behaviors until they become organizational norms.`;
+• Post-implementation support addresses emerging challenges and reinforces new behaviors until they become organizational norms.`;
   }
   
-  // Get references or create placeholder
-  let referencesContent = "";
-  if (extractReferences && extractReferences[1].trim()) {
-    referencesContent = extractReferences[1].trim();
+  // 4. Extract references section
+  const referencesMatch = input.match(/## References\s*([\s\S]*?)(?=##|$)/i);
+  let referencesText = '';
+  
+  if (referencesMatch && referencesMatch[1].trim()) {
+    referencesText = referencesMatch[1].trim();
   } else {
-    // If no references were found, check if we can extract URLs from the input
-    const urlMatches = input.match(/\[.*?\]\((https?:\/\/[^\s)]+)\)/g);
-    if (urlMatches && urlMatches.length > 0) {
-      referencesContent = urlMatches.join('\n\n');
+    // Look for any links in the text
+    const links = input.match(/\[.*?\]\((https?:\/\/[^\s)]+)\)/g);
+    if (links && links.length > 0) {
+      referencesText = links.join('\n\n');
     } else {
-      referencesContent = "[Source information not available]";
+      referencesText = '[Source information not available]';
     }
   }
   
-  // Construct the final formatted output
-  const formattedOutput = `# ${title}
+  // 5. Reconstruct the formatted output with only the sections we want
+  const formattedOutput = `<!-- EMERGENCY OVERRIDE V1.0.5 -->
+
+# ${title}
 
 ## Insights
 
-${insightsContent}
+${insightsText}
 
 ## References
 
-${referencesContent}`;
+${referencesText}`;
 
+  console.log('EMERGENCY FORMAT OVERRIDE complete');
   return formattedOutput;
 }
 

@@ -54,26 +54,38 @@ export async function summarizeWithDeepseek(content: string, focusArea: InsightF
   }
 
   // Define the system prompt - PRODUCTION VERSION 1.0.4
-  const systemPrompt = `PRODUCTION VERSION 1.0.4 - DO NOT IGNORE THESE INSTRUCTIONS
+  const systemPrompt = `IMPORTANT: FOLLOW THESE INSTRUCTIONS EXACTLY - DO NOT DEVIATE
 
-You are creating a change management summary with this EXACT format:
+Your task is to create a change management summary with EXACTLY THREE SECTIONS in markdown format:
 
-# Title With Every Word Capitalized
+# Title With First Letter Of Each Word Capitalized
 
 ## Insights
-• Bullet point 1
-• Bullet point 2
-...
-(7-10 bullet points total, each 40-60 words)
+• First bullet point (comprehensive expert analysis)
+• Second bullet point
+• Third bullet point
+(Continue with 7-10 detailed bullet points total)
 
 ## References
 [Source links]
 
-CRITICAL REQUIREMENTS:
-1. CAPITALIZE THE FIRST LETTER OF EVERY WORD IN THE TITLE
-2. DO NOT CREATE A CONTEXT SECTION
-3. 7-10 expert-level bullet points
-4. Include only Title, Insights, and References sections`;
+STRICT RULES YOU MUST FOLLOW:
+1. TITLE FORMAT: CAPITALIZE THE FIRST LETTER OF EVERY WORD (Title Case)
+2. NO CONTEXT SECTION ALLOWED - DO NOT CREATE A CONTEXT SECTION
+3. INSIGHTS SECTION: 7-10 bullet points with the "•" character (not "-" or "*")
+4. REFERENCES: Only include the source links with minimal text
+
+EXAMPLE OF CORRECT FORMAT:
+# Implementing Digital Transformation In Healthcare
+
+## Insights
+• Healthcare organizations must develop comprehensive change management strategies that address both technical implementation and cultural adaptation to ensure successful digital transformation.
+• Executive sponsorship is crucial for driving adoption of new digital tools, providing necessary resources and signaling organizational commitment to the transformation effort.
+• etc.
+
+## References
+[Digital Transformation in Healthcare](https://example.com)
+[Change Management Best Practices](https://example.com)`;
 
   // Extract valuable content from the user input - ignore prompt instructions
   // because we will use our own consistent system prompt
@@ -421,55 +433,53 @@ if (process.env.NODE_ENV === 'production') {
 function FINAL_PRODUCTION_OVERRIDE(input: string): string {
   console.log('FINAL PRODUCTION OVERRIDE activated');
   
-  // Create a completely new document structure
-  const parts = [];
-  
-  // 1. Extract title if possible, or use a default
+  // STEP 1: Extract or create title with first letter of each word capitalized
+  let title = "Change Management Insights";
   const titleMatch = input.match(/# (.*?)(\r?\n|$)/);
-  let title = titleMatch ? titleMatch[1].trim() : "Change Management Insights";
+  if (titleMatch) {
+    title = titleMatch[1].trim();
+  }
   
-  // 2. Capitalize every first letter
+  // Ensure title case (first letter of each word capitalized)
   title = title.split(' ')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
   
-  parts.push(`# ${title}`);
-  
-  // 3. Extract any insights we can find
+  // STEP 2: Extract insights or provide defaults
+  let insightsText = "";
   const insightsMatch = input.match(/## Insights\s*([\s\S]*?)(?=##|$)/i);
   let insights: string[] = [];
   
   if (insightsMatch && insightsMatch[1].trim()) {
-    // Process any bullet points we find
-    insights = insightsMatch[1].trim()
+    // Process bullet points
+    const bulletPoints = insightsMatch[1]
       .split('\n')
-      .filter(line => line.trim())
-      .map(line => {
-        // Clean up the line
-        line = line.trim();
-        
-        // Make sure it starts with a bullet
-        if (!line.startsWith('•')) {
-          line = '• ' + line;
-        }
-        
-        // Remove any trailing bullet
-        if (line.endsWith(' ·')) {
-          line = line.slice(0, -2) + '.';
-        }
-        
-        // Add a period if missing
-        if (!/[.!?]$/.test(line)) {
-          line += '.';
-        }
-        
-        return line;
-      });
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+    
+    // Clean and format each bullet point
+    insights = bulletPoints.map(point => {
+      // Ensure it starts with bullet point character
+      if (!point.startsWith('•')) {
+        point = '• ' + point;
+      }
+      
+      // Fix common bullet point issues
+      point = point.replace(/^\s*[-*]\s*/, '• '); // Replace - or * with •
+      
+      // Add period if missing
+      if (!/[.!?]$/.test(point)) {
+        point += '.';
+      }
+      
+      return point;
+    });
   }
   
-  // If we didn't find any insights, use default ones
-  if (insights.length === 0) {
-    insights = [
+  // If we don't have enough insights, add defaults
+  if (insights.length < 7) {
+    console.log('Not enough insights, adding defaults');
+    const defaultInsights = [
       '• Effective change management requires strategic planning and stakeholder engagement to ensure successful adoption of new processes and minimize resistance.',
       '• Communication is a critical success factor in change initiatives, serving as the foundation for building trust and reducing uncertainty among affected employees.',
       '• Organizations that establish clear metrics for measuring change progress are better positioned to make timely adjustments and demonstrate value to leadership.',
@@ -478,24 +488,52 @@ function FINAL_PRODUCTION_OVERRIDE(input: string): string {
       '• Customized training programs ensure employees have the necessary skills to operate effectively in the changed environment, reducing productivity dips.',
       '• Post-implementation support addresses emerging challenges and reinforces new behaviors until they become organizational norms.'
     ];
-  }
-  
-  parts.push('## Insights\n\n' + insights.join('\n\n'));
-  
-  // 4. Extract references if possible
-  const referencesMatch = input.match(/## References\s*([\s\S]*?)$/i);
-  if (referencesMatch && referencesMatch[1].trim()) {
-    parts.push('## References\n\n' + referencesMatch[1].trim());
-  } else {
-    // Look for any links in the input
-    const links = input.match(/\[.*?\]\((https?:\/\/[^\s)]+)\)/g);
-    if (links && links.length > 0) {
-      parts.push('## References\n\n' + links.join('\n\n'));
-    } else {
-      parts.push('## References\n\n[Source information not available]');
+    
+    // Add default insights until we have at least 7
+    while (insights.length < 7) {
+      const nextDefault = defaultInsights[insights.length % defaultInsights.length];
+      if (!insights.includes(nextDefault)) {
+        insights.push(nextDefault);
+      } else {
+        break; // Prevent infinite loop if all defaults are already included
+      }
     }
   }
   
-  // Return the final formatted result with version marker
-  return `<!-- FINAL PRODUCTION OVERRIDE V1.0.3 -->\n\n${parts.join('\n\n')}`;
+  // Cap insights at 10 if there are too many
+  if (insights.length > 10) {
+    insights = insights.slice(0, 10);
+  }
+  
+  // STEP 3: Extract references or create defaults
+  let referencesText = "";
+  const referencesMatch = input.match(/## References\s*([\s\S]*?)$/i);
+  
+  if (referencesMatch && referencesMatch[1].trim()) {
+    referencesText = referencesMatch[1].trim();
+  } else {
+    // Extract any links from the input
+    const links = input.match(/\[.*?\]\((https?:\/\/[^\s)]+)\)/g);
+    if (links && links.length > 0) {
+      referencesText = links.join('\n\n');
+    } else {
+      referencesText = "[Source information not available]";
+    }
+  }
+  
+  // STEP 4: Assemble the final formatted document with EXACTLY the sections we want
+  const formattedOutput = `<!-- FINAL PRODUCTION OVERRIDE V1.0.5 -->
+
+# ${title}
+
+## Insights
+
+${insights.join('\n\n')}
+
+## References
+
+${referencesText}`;
+
+  console.log('FINAL_PRODUCTION_OVERRIDE complete - enforced strict formatting');
+  return formattedOutput;
 } 
