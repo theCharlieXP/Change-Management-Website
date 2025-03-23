@@ -357,401 +357,157 @@ export default function InsightsPage() {
     }
   };
 
-  const fetchInsights = async () => {
-    console.log('PRODUCTION VERSION 1.0.3 - Search initiated at', new Date().toISOString());
+  // Save search results to local storage for later reference
+  const saveSearchResults = (results: Insight[], searchQuery: string, summaryContent: string) => {
+    try {
+      // Save to session storage to persist between page reloads but not browser sessions
+      sessionStorage.setItem('lastSearchResults', JSON.stringify(results));
+      sessionStorage.setItem('lastSearchQuery', searchQuery);
+      sessionStorage.setItem('lastSearchSummary', summaryContent);
+      console.log('Saved search results to session storage');
+    } catch (error) {
+      console.error('Error saving search results to session storage:', error);
+    }
+  };
+
+  const handleSearch = async (e?: React.FormEvent) => {
+    e?.preventDefault()
     
-    if (!query.trim()) return
-    
-    if (!focusArea) {
+    if (!query) {
       toast({
-        title: "Focus Area Required",
-        description: "Please select a focus area before searching.",
+        title: "Search query is required",
+        description: "Please enter a search query to find insights.",
         variant: "destructive"
       })
       return
     }
-
-    // TEMPORARY: Force bypass usage check for debugging
-    const bypassUsageCheck = true;
     
-    if (!usageTrackerRef.current && !bypassUsageCheck) {
-      console.error('Search functionality not available: usage tracker not initialized')
+    // Check if we can search
+    if (isSearchLimitReached && !bypassUsageCheck) {
+      toast({
+        title: "Search limit reached",
+        description: "You have reached your search limit for today. Please upgrade your plan or try again tomorrow.",
+        variant: "destructive"
+      })
       return
     }
-
-    setLoading(true)
-    setLoadingStage('Checking search service availability...')
-    setError(null)
+    
+    // Reset results and errors
+    setResults([])
     setSummary(null)
-    setResults([]) // Reset results to prevent stale data
-
+    setError(null)
+    setIsLoading(true)
+    setLoading(true)
+    setLoadingStage("Preparing search...")
+    
     try {
-      // First check Tavily API connectivity
-      const tavilyConnected = await checkTavilyConnection();
-      if (!tavilyConnected) {
-        setError('Search service is unavailable. Please try again later.');
-        setLoading(false);
-        setLoadingStage(null);
-        return;
+      // Check Tavily connection first
+      const tavilyAvailable = await checkTavilyConnection();
+      if (!tavilyAvailable) {
+        throw new Error("Could not connect to the search service. Please try again later.");
       }
       
-      setLoadingStage('Checking usage limits...')
+      setLoadingStage("Searching for relevant insights...")
       
-      // Check if we can perform the search
-      let canSearch = true
-      
-      if (!bypassUsageCheck) {
-        canSearch = await usageTrackerRef.current!.incrementUsage()
-          .catch(err => {
-            console.error('Error checking usage limits:', err)
-            toast({
-              title: "Error",
-              description: "Failed to check usage limits. Please try again.",
-              variant: "destructive"
-            })
-            return false
-          })
-      }
-      
-      if (!canSearch) {
-        // If we can't search, it could be due to API error or limit reached
-        if (isSearchLimitReached) {
-          setError('You have reached your daily search limit. Please upgrade to continue searching.')
-        } else {
-          setError('Unable to verify search quota. Please try again.')
-        }
-        setLoading(false)
-        return
-      }
+      // Use the new combined search-and-summarize endpoint
+      const response = await fetch('/api/insights/search-and-summarize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          query,
+          area_filter: focusArea,
+          summary_instructions: `
+Create a comprehensive summary of these search results about change management.
 
-      setLoadingStage('Searching insights...')
-      
-      // Step 1: Initial search
-      setLoadingStage("Initialising search...")
-      const params = new URLSearchParams()
-      if (query) params.append('query', query)
-      if (focusArea) params.append('focusArea', focusArea)
-      if (selectedIndustries.length > 0) params.append('industries', selectedIndustries.join(','))
-      
-      // Add debug parameter if needed
-      // params.append('debug', 'true') // Uncomment to enable detailed debugging
+Format your response as follows:
+# Title With Every First Letter Capitalized
 
-      await new Promise(resolve => setTimeout(resolve, 800))
+## Insights
+• Create 7-10 bullet points that reflect key insights from the search results
+• Each bullet should be a complete thought with proper punctuation
+• Focus specifically on the area of ${focusArea ? INSIGHT_FOCUS_AREAS[focusArea as InsightFocusArea].label : 'general change management'}
+• Write as a senior change management expert using professional UK English
 
-      // Step 2: Search and analysis
-      setLoadingStage("Searching through trusted sources...")
+## References
+[Include any relevant source links available in the search results]
+          `
+        })
+      });
       
-      // Create an AbortController to handle client-side timeouts
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
-
-      let searchResults: Insight[] = [];
-      
-      try {
-        console.log(`Fetching from: /api/insights/search?${params.toString()}`);
-        const response = await fetch(`/api/insights/search?${params.toString()}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include',
-          signal: controller.signal
-        }).finally(() => {
-          clearTimeout(timeoutId);
-        });
-
-        console.log('Search response status:', response.status);
+      if (!response.ok) {
+        let errorMessage = `Search failed with status: ${response.status}`;
         
-        // Add diagnostic logging
-        const responseText = await response.clone().text();
         try {
-          const debugData = JSON.parse(responseText);
-          console.log('Debug - Search response data:', debugData);
-          if (debugData.error) {
-            console.error('API ERROR DETAILS:', debugData.details || 'No detailed error information');
+          const errorData = await response.json();
+          
+          if (errorData.details && typeof errorData.details === 'object') {
+            const keyInfo = {
+              exists: errorData.details.tavily_api_key_exists,
+              prefix: errorData.details.tavily_api_key_prefix,
+              env: errorData.details.environment
+            };
+            console.log('API key diagnostic info:', keyInfo);
             
-            // Check for specific error types we can handle
-            if (debugData.details && debugData.details.tavily_api_key_exists === false) {
-              throw new Error('The search service API key is missing or invalid. Please contact support.');
-            }
-          }
-        } catch (e) {
-          console.log('Debug - Could not parse response as JSON:', responseText.substring(0, 500));
-        }
-
-        // Handle specific HTTP status codes
-        if (response.status === 504) {
-          throw new Error('The search request timed out. Please try a more specific query, fewer industries, or a different focus area.');
-        }
-
-        if (response.status === 404) {
-          throw new Error('The search service is currently unavailable. Please try again later.');
-        }
-
-        if (!response.ok) {
-          let errorMessage = `HTTP error! status: ${response.status}`;
-          try {
-            const errorData = await response.json();
-            console.error('Search API error details:', errorData);
-            
-            // Extract API key information for better error reporting
-            if (errorData.details && typeof errorData.details === 'object') {
-              const keyInfo = {
-                exists: errorData.details.tavily_api_key_exists,
-                prefix: errorData.details.tavily_api_key_prefix,
-                env: errorData.details.environment
-              };
-              console.log('API key diagnostic info:', keyInfo);
-              
-              // Special handling for common errors
-              if (keyInfo.exists === false) {
-                errorMessage = 'The search service API key is missing. Please contact support.';
-              } else if (errorData.details.message && errorData.details.message.includes('Network error')) {
-                errorMessage = 'Could not connect to the search service. Please check your internet connection or try again later.';
-              } else if (errorData.details.name === 'AbortError') {
-                errorMessage = 'The search request timed out. Please try a more specific query or try again later.';
-              } else {
-                errorMessage = errorData.error || errorData.details?.message || errorMessage;
-              }
+            // Special handling for common errors
+            if (keyInfo.exists === false) {
+              errorMessage = 'The search service API key is missing. Please contact support.';
+            } else if (errorData.details.message && errorData.details.message.includes('Network error')) {
+              errorMessage = 'Could not connect to the search service. Please check your internet connection or try again later.';
+            } else if (errorData.details.name === 'AbortError') {
+              errorMessage = 'The search request timed out. Please try a more specific query or try again later.';
             } else {
-              errorMessage = errorData.error || errorData.details || errorMessage;
+              errorMessage = errorData.error || errorData.details?.message || errorMessage;
             }
-            
-            // Try fallback to basic search if main search fails with 500
-            if (response.status === 500) {
-              console.log('Main search endpoint failed with 500, trying simplified endpoint...');
-              setLoadingStage("Trying alternative search method...");
-              
-              // Try the simplified search endpoint
-              const basicParams = new URLSearchParams();
-              basicParams.append('query', query);
-              
-              const backupResponse = await fetch(`/api/insights/search-basic?${basicParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                credentials: 'include'
-              });
-              
-              if (backupResponse.ok) {
-                console.log('Backup search succeeded!');
-                const backupData = await backupResponse.json();
-                
-                if (backupData.results && backupData.results.length > 0) {
-                  // Transform the basic results to match the expected format
-                  const transformedResults = backupData.results.map((result: any) => ({
-                    id: Math.random().toString(36).substring(2, 9),
-                    title: result.title || 'Untitled',
-                    summary: result.content || '',
-                    content: result.content || '',
-                    url: result.url || '',
-                    source: result.source || new URL(result.url || 'https://example.com').hostname,
-                    focus_area: focusArea,
-                    readTime: Math.ceil((result.content?.split(' ')?.length || 0) / 200) || '5 min',
-                    tags: focusArea ? [INSIGHT_FOCUS_AREAS[focusArea].label] : ['General'],
-                    created_at: new Date().toISOString()
-                  }));
-                  
-                  searchResults = transformedResults;
-                  
-                  // Skip throwing the error since we recovered
-                  // but continue with summary generation
-                  return; // Early return to prevent the error being thrown below
-                }
-              } else {
-                console.log('Backup search also failed:', backupResponse.status);
-              }
-            }
-            
-          } catch (e) {
-            // If we can't parse the JSON, just use the default error message
-            console.error('Error parsing error response:', e);
-          }
-          
-          throw new Error(errorMessage);
-        }
-
-        const data = await response.json();
-        
-        if ('error' in data) {
-          console.error('Search error in response data:', data);
-          throw new Error(data.error);
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setLoadingStage("Analysing findings from Tavily search...");
-
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setLoadingStage("Synthesising insights and creating summary with DeepSeek...");
-
-        // Extract results and summary from the response
-        const { results, query: searchQuery, focusArea: searchFocusArea } = data;
-        
-        // Update state with results
-        searchResults = results || [];
-
-        // Store the search query and focus area for the summary generation
-        const searchContext = {
-          query: searchQuery || query,
-          focusArea: searchFocusArea || focusArea
-        };
-
-        // Store search context for summary generation
-        sessionStorage.setItem('lastSearchContext', JSON.stringify(searchContext));
-        
-        // Generate summary for the search results
-        setLoadingStage("Generating comprehensive summary using Tavily search results with DeepSeek...");
-        try {
-          // Add a fallback mechanism in case the primary summary endpoint fails
-          let summaryResponse
-          let summarySuccess = false
-          let summaryErrorMessage = ""
-          
-          // First try the regular summarize endpoint
-          try {
-            console.log('Trying primary DeepSeek summary endpoint...');
-            
-            // Create an AbortController to handle client-side timeouts
-            const summaryController = new AbortController();
-            const summaryTimeoutId = setTimeout(() => summaryController.abort(), 25000); // 25 second timeout
-            
-            summaryResponse = await fetch('/api/insights/summarize', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                insights: searchResults,
-                focusArea,
-                searchInfo: {
-                  query: searchContext.query || query,
-                  focusArea: searchContext.focusArea,
-                  industries: selectedIndustries,
-                  _productionVersion: '1.0.4',
-                  _timestamp: new Date().toISOString(),
-                  _client: 'web-ui'
-                },
-                format: {
-                  sections: [
-                    {
-                      title: "Insights",
-                      description: "7-10 comprehensive bullet points written by a change management expert"
-                    },
-                    {
-                      title: "References",
-                      description: "List of all sources with markdown links"
-                    }
-                  ],
-                  style: "Use clean markdown formatting with minimal excess text. Use bullet points (•) for Insights. Write as a senior change management consultant in UK English."
-                }
-              }),
-              signal: summaryController.signal
-            }).finally(() => clearTimeout(summaryTimeoutId));
-            
-            if (summaryResponse.ok) {
-              summarySuccess = true;
-            } else {
-              summaryErrorMessage = `Primary endpoint error: ${summaryResponse.status} ${summaryResponse.statusText}`;
-              console.error('Primary summary endpoint failed:', summaryErrorMessage);
-            }
-          } catch (primaryError) {
-            summaryErrorMessage = primaryError instanceof Error ? primaryError.message : 'Unknown error';
-            console.error('Error with primary summary endpoint:', summaryErrorMessage);
-          }
-          
-          // If the primary endpoint failed, try the hardcoded fallback
-          if (!summarySuccess) {
-            console.log('Primary endpoint failed, trying hardcoded fallback...');
-            setLoadingStage("Primary summary service unavailable. Using backup generator...");
-            
-            try {
-              summaryResponse = await fetch('/api/ai-test', {
-                method: 'GET',
-                headers: {
-                  'Content-Type': 'application/json'
-                }
-              });
-              
-              if (summaryResponse.ok) {
-                summarySuccess = true;
-                console.log('Fallback summary generation successful');
-              } else {
-                console.error('Even fallback summary failed:', summaryResponse.status);
-              }
-            } catch (fallbackError) {
-              console.error('Error with fallback summary:', fallbackError);
-            }
-          }
-          
-          // Process the summary response
-          if (summarySuccess && summaryResponse) {
-            const summaryData = await summaryResponse.json();
-            let summaryContent = '';
-            
-            // Check if we're using the primary or fallback endpoint based on response structure
-            if (summaryData.summary) {
-              // This is the fallback endpoint response
-              summaryContent = summaryData.summary;
-              console.log('Using hardcoded fallback summary');
-            } else {
-              // This is the primary endpoint response
-              summaryContent = summaryData.summary || 'No summary generated';
-              console.log('Using primary endpoint summary');
-            }
-            
-            // Save the summary and proceed
-            setSummary(summaryContent);
-            setLoadingStage("");
-            setIsLoading(false);
-            
-            // Save results for future reference
-            setResults(searchResults);
-            saveSearchResults(searchResults, query, summaryContent);
           } else {
-            throw new Error(`Could not generate summary: ${summaryErrorMessage}`);
+            errorMessage = errorData.error || errorData.details || errorMessage;
           }
-        } catch (error) {
-          console.error('Error generating summary:', error);
-          // Generate a fallback summary from search results when DeepSeek API fails
-          const fallbackSummary = generateFallbackSummary(
-            searchResults, 
-            searchContext.query || query, 
-            searchContext.focusArea as InsightFocusArea || focusArea as InsightFocusArea
-          );
-          setSummary(fallbackSummary);
           
-          toast({
-            title: "Notice",
-            description: "Generated a simple summary due to an error with the advanced summarization service.",
-            variant: "default"
-          });
-        }
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
-          setError('The search request was cancelled. Please try again with a more specific query.');
-          setLoading(false);
-          setLoadingStage(null);
-          return;
-        } else if (error.message.includes('timed out')) {
-          setError('The search request timed out. Please try a more specific query, fewer industries, or a different focus area.');
-          setLoading(false);
-          setLoadingStage(null);
-          return;
+        } catch (e) {
+          // If we can't parse the JSON, just use the default error message
+          console.error('Error parsing error response:', e);
         }
         
-        // Pass the error up to be handled by the outer catch block
-        throw error;
+        throw new Error(errorMessage);
       }
 
-      // Update state with results
-      setResults(searchResults);
-
-      // Show success message if we got results
-      if (searchResults.length > 0) {
+      const data = await response.json();
+      
+      if ('error' in data) {
+        console.error('Search error in response data:', data);
+        throw new Error(data.error);
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setLoadingStage("Processing search results...");
+      
+      // Extract results and summary from the response
+      const { results, summary, query: searchQuery, focusArea: searchFocusArea } = data;
+      
+      // Transform the results to match the application's expected format
+      const transformedResults = results.map((result: any, index: number) => ({
+        id: Math.random().toString(36).substring(2, 9),
+        title: result.title || 'Untitled',
+        summary: result.content?.substring(0, 200) + '...' || '',
+        content: result.content || '',
+        url: result.url || '',
+        source: result.source || new URL(result.url || 'https://example.com').hostname,
+        focus_area: focusArea || 'general',
+        readTime: Math.ceil((result.content?.split(' ')?.length || 0) / 200) || '5 min',
+        tags: focusArea ? [INSIGHT_FOCUS_AREAS[focusArea as InsightFocusArea].label] : ['General'],
+        created_at: new Date().toISOString()
+      }));
+      
+      // Save the summary and results
+      setSummary(summary);
+      setResults(transformedResults);
+      
+      // Show success message
+      if (transformedResults.length > 0) {
         toast({
           title: "Search Complete",
-          description: `Found ${searchResults.length} relevant sources`,
+          description: `Found ${transformedResults.length} relevant sources`,
         });
       } else {
         toast({
@@ -760,26 +516,33 @@ export default function InsightsPage() {
           variant: "destructive"
         });
       }
-    } catch (err) {
-      console.error('Search error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      setError(errorMessage);
+      
+      // Save results for future reference
+      saveSearchResults(transformedResults, searchQuery, summary);
+      
+      // Increment usage count
+      usageTrackerRef.current?.incrementUsage();
+      
+    } catch (error: any) {
+      console.error('Search error:', error);
+      setError(error.message || 'Failed to search for insights');
       
       toast({
-        title: "Error",
-        description: errorMessage,
+        title: "Search Error",
+        description: error.message || "Failed to search for insights",
         variant: "destructive"
       });
     } finally {
+      setIsLoading(false);
       setLoading(false);
-      setLoadingStage(null);
+      setLoadingStage("");
     }
   }
 
   // Add keyboard support for search
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !loading && focusArea) {
-      fetchInsights()
+      handleSearch()
     }
   }
 
@@ -918,7 +681,7 @@ export default function InsightsPage() {
                     className="flex-1 min-w-[200px]"
                   />
                   <Button 
-                    onClick={fetchInsights}
+                    onClick={handleSearch}
                     disabled={loading || (!bypassUsageCheck && isSearchLimitReached) || !focusArea}
                     className="min-w-[100px]"
                   >
