@@ -88,11 +88,16 @@ A single line that states exactly what was searched in the search bar, which foc
 
 ## Insights
 • Create 7-10 informative bullet points in full sentences using UK English spelling
-• Ensure each bullet point provides comprehensive, valuable information
-• Incorporate your knowledge of change management to make insights more informative and complete
-• Each bullet point should be a complete, well-formed sentence ending with proper punctuation
+• Each bullet point must be a comprehensive, detailed explanation (at least 20-30 words)
+• Expand on information found in sources by adding context, implications, and practical applications
+• Explain WHY each point matters to change management practitioners
+• Connect insights to practical implications for change projects
+• Incorporate your knowledge of change management best practices and theory
+• Each bullet point should provide actionable value that helps with change management projects
+• Extract key information from sources but expand it into complete, valuable insights
 • Do NOT include numbers at the end of bullet points
-• Extract and synthesize the most relevant information from the sources
+• Do NOT include bullet characters (·) at the end of sentences
+• End each bullet point with proper punctuation (typically a full stop)
 • Focus on actionable insights tailored to the search query and focus area
 
 ## References
@@ -105,10 +110,13 @@ CRITICAL REQUIREMENTS:
 1. Generate a specific, descriptive title that accurately reflects the search topic
 2. Write in professional UK English (using spellings like "organisation", "centre", "programme")
 3. Keep the Context section to a SINGLE line showing exactly what was searched
-4. Ensure all bullet points are FULL, COMPLETE sentences with proper punctuation
+4. Ensure all bullet points are COMPREHENSIVE, DETAILED sentences (minimum 20-30 words each)
 5. The References section should contain ONLY the links, no additional descriptions
 6. Focus specifically on ${focusAreaInfo.label} aspects of content
 7. Do not include numbers at the end of bullet points
+8. Explain the significance and practical application of each insight
+9. Do NOT include bullet characters (·) at the end of sentences
+10. Ensure proper punctuation at the end of each bullet point
 
 Here are the insights to analyze (found via Tavily search):
 
