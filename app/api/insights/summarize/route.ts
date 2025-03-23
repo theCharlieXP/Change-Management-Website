@@ -73,6 +73,11 @@ ${insight.content ? `Content: ${Array.isArray(insight.content) ? insight.content
       style: "Use clean markdown formatting with minimal excess text. Use bullet points (•) for Insights."
     }
     
+    console.log('--- GENERATING SUMMARY WITH THE FOLLOWING PARAMETERS ---');
+    console.log('Focus Area:', focusAreaInfo.label);
+    console.log('Search Query:', searchQuery);
+    console.log('Number of insights:', insights.length);
+    
     const prompt = `As a senior change management expert, analyze the following information and create a high-quality summary.
 
 YOUR OUTPUT MUST FOLLOW THIS EXACT FORMAT:
@@ -133,11 +138,29 @@ Analyze these insights from Tavily search:
 
 ${content}`
 
+    console.log('--- PROMPT CREATED (length: ' + prompt.length + ') ---');
+    console.log('Prompt first 500 chars:', prompt.substring(0, 500));
+    
     // Generate the summary using Deepseek
+    console.log('--- CALLING DEEPSEEK API ---');
     let summary = await summarizeWithDeepseek(prompt, focusArea as InsightFocusArea)
-
+    
+    console.log('--- RAW DEEPSEEK RESPONSE ---');
+    console.log(summary.substring(0, 500)); // Log the first 500 chars
+    
     // Post-process the summary to ensure it meets formatting requirements
+    console.log('--- APPLYING POST-PROCESSING ---');
     summary = postProcessSummary(summary, focusAreaInfo.label, searchQuery)
+    
+    console.log('--- POST-PROCESSED RESPONSE ---');
+    console.log(summary.substring(0, 500)); // Log the first 500 chars
+    
+    // Apply one final dedicated formatter to ensure strict compliance
+    console.log('--- APPLYING STRICT FORMATTER ---');
+    summary = enforceStrictFormatting(summary)
+    
+    console.log('--- FINAL FORMATTED RESPONSE ---');
+    console.log(summary.substring(0, 500)); // Log the first 500 chars
 
     return new NextResponse(
       JSON.stringify({ summary }),
@@ -159,33 +182,49 @@ ${content}`
  * Post-processes the summary to ensure it meets all formatting requirements
  */
 function postProcessSummary(summary: string, focusArea: string, searchQuery: string): string {
+  console.log('Starting post-processing on summary of length:', summary.length);
+  
   // Split the summary into lines
   const lines = summary.split('\n')
   let processedLines: string[] = []
   let currentSection = ''
+  let hasTitle = false;
+  let hasInsights = false;
+  let hasReferences = false;
   
   // Process each line
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim()
     
+    if (line === '') {
+      processedLines.push('');
+      continue;
+    }
+    
     // Process the title
     if (line.startsWith('# ')) {
+      hasTitle = true;
+      
       // Capitalize first letter of each word in title
       const title = line.substring(2)
       const capitalizedTitle = title
         .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(' ')
+      
       processedLines.push(`# ${capitalizedTitle}`)
+      console.log('Processed title:', `# ${capitalizedTitle}`);
       continue
     }
     
     // Track current section
     if (line.startsWith('## ')) {
       currentSection = line.substring(3).toLowerCase()
+      console.log('Found section:', currentSection);
       
       // Skip Context section entirely
       if (currentSection === 'context') {
+        console.log('Removing Context section');
         // Skip until we find the next section
         while (i + 1 < lines.length && !lines[i + 1].startsWith('## ')) {
           i++
@@ -193,7 +232,13 @@ function postProcessSummary(summary: string, focusArea: string, searchQuery: str
         continue
       }
       
-      processedLines.push(line)
+      if (currentSection === 'insights') {
+        hasInsights = true;
+      } else if (currentSection === 'references') {
+        hasReferences = true;
+      }
+      
+      processedLines.push(`## ${currentSection.charAt(0).toUpperCase() + currentSection.slice(1)}`);
       continue
     }
     
@@ -218,28 +263,101 @@ function postProcessSummary(summary: string, focusArea: string, searchQuery: str
     processedLines.push(line)
   }
   
-  // If there's no title, add one
-  if (!processedLines.some(line => line.startsWith('# '))) {
+  // If there's no title, create one
+  if (!hasTitle) {
+    console.log('No title found, creating one');
     const words = focusArea.split(' ')
       .concat(searchQuery.split(' '))
       .filter((word, index, self) => self.indexOf(word) === index) // Remove duplicates
       .slice(0, 10) // Limit to 10 words
     
     const title = words
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ')
     
     processedLines.unshift(`# ${title}`)
   }
   
-  // Ensure there's no Context section
-  if (!processedLines.includes('## Insights') && !processedLines.some(line => line.startsWith('## Insights'))) {
+  // Ensure we have an Insights section
+  if (!hasInsights) {
+    console.log('No Insights section found, creating one');
     // Find where to insert Insights section
     const titleIndex = processedLines.findIndex(line => line.startsWith('# '))
-    if (titleIndex !== -1) {
-      processedLines.splice(titleIndex + 1, 0, '', '## Insights')
-    }
+    const insertIndex = titleIndex !== -1 ? titleIndex + 2 : 0
+    processedLines.splice(insertIndex, 0, '## Insights', '')
   }
   
-  return processedLines.join('\n')
+  // Ensure we have a References section
+  if (!hasReferences) {
+    console.log('No References section found, creating one');
+    processedLines.push('', '## References', '[Source information not available]')
+  }
+  
+  // Do a final check for Context section - this is a failsafe
+  const result = processedLines.join('\n')
+  if (result.includes('## Context') || result.match(/##\s+Context/i)) {
+    console.log('Context section found in final check, removing it');
+    return result
+      .replace(/##\s+Context\s*\n[\s\S]*?(##|$)/i, '$1')
+      .replace(/\n{3,}/g, '\n\n'); // Fix excess newlines
+  }
+  
+  return result
+}
+
+/**
+ * Enforces strict formatting rules on the summary
+ * This is a last resort to ensure the summary meets our requirements
+ */
+function enforceStrictFormatting(summary: string): string {
+  // Extract sections from the summary
+  const titleMatch = summary.match(/# (.*?)(?:\n|$)/);
+  const title = titleMatch ? titleMatch[1] : "Change Management Insights";
+  
+  // Find Insights section - capture everything between ## Insights and the next ## or end of string
+  const insightsMatch = summary.match(/## Insights\s*([\s\S]*?)(?=##|$)/);
+  let insights = insightsMatch ? insightsMatch[1].trim() : "";
+  
+  // Find References section - capture everything after ## References
+  const referencesMatch = summary.match(/## References\s*([\s\S]*?)$/);
+  let references = referencesMatch ? referencesMatch[1].trim() : "";
+  
+  // Capitalize title words
+  const capitalizedTitle = title
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+  
+  // Process insights to ensure they're bullet points
+  let bulletPoints = insights.split('\n')
+    .filter(line => line.trim() !== '')
+    .map(line => {
+      // Ensure line starts with bullet point
+      if (!line.startsWith('•')) {
+        line = '• ' + line;
+      }
+      
+      // Ensure proper punctuation at the end
+      if (!/[.!?]$/.test(line)) {
+        line = line + '.';
+      }
+      
+      // Remove bullet characters at the end
+      if (line.endsWith(' ·')) {
+        line = line.slice(0, -2) + '.';
+      }
+      
+      return line;
+    });
+  
+  // Compile the formatted summary
+  let formattedSummary = `# ${capitalizedTitle}\n\n## Insights\n\n`;
+  
+  // Add bullet points
+  formattedSummary += bulletPoints.join('\n\n');
+  
+  // Add references section
+  formattedSummary += `\n\n## References\n\n${references || '[Source information not available]'}`;
+  
+  return formattedSummary;
 } 
