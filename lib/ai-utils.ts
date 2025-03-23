@@ -1,9 +1,9 @@
-// Production version 1.0.3
+// Production version 1.0.5
 import { InsightFocusArea } from '@/types/insights'
 
 export async function summarizeWithDeepseek(content: string, focusArea: InsightFocusArea): Promise<string> {
   // Log production version to confirm deployment
-  console.log('PRODUCTION VERSION 1.0.4 - DeepSeek helper called at', new Date().toISOString());
+  console.log('PRODUCTION VERSION 1.0.5 - DeepSeek helper called at', new Date().toISOString());
   
   // Server-side only - ensure we're not running on the client
   if (typeof window !== 'undefined') {
@@ -53,7 +53,7 @@ export async function summarizeWithDeepseek(content: string, focusArea: InsightF
 [Source information not available]`;
   }
 
-  // Define the system prompt - PRODUCTION VERSION 1.0.4
+  // Define the system prompt - PRODUCTION VERSION 1.0.5
   const systemPrompt = `IMPORTANT: FOLLOW THESE INSTRUCTIONS EXACTLY - DO NOT DEVIATE
 
 Your task is to create a change management summary with EXACTLY THREE SECTIONS in markdown format:
@@ -71,9 +71,11 @@ Your task is to create a change management summary with EXACTLY THREE SECTIONS i
 
 STRICT RULES YOU MUST FOLLOW:
 1. TITLE FORMAT: CAPITALIZE THE FIRST LETTER OF EVERY WORD (Title Case)
-2. NO CONTEXT SECTION ALLOWED - DO NOT CREATE A CONTEXT SECTION
-3. INSIGHTS SECTION: 7-10 bullet points with the "•" character (not "-" or "*")
-4. REFERENCES: Only include the source links with minimal text
+2. DO NOT CREATE A CONTEXT SECTION - THERE MUST BE NO CONTEXT SECTION IN YOUR RESPONSE
+3. DO NOT INCLUDE "## Context" ANYWHERE IN YOUR RESPONSE
+4. INSIGHTS SECTION: 7-10 bullet points with the "•" character (not "-" or "*")
+5. REFERENCES: Only include the source links with minimal text
+6. FOLLOW THIS EXACT STRUCTURE - NO ADDITIONAL SECTIONS ALLOWED
 
 EXAMPLE OF CORRECT FORMAT:
 # Implementing Digital Transformation In Healthcare
@@ -91,12 +93,12 @@ EXAMPLE OF CORRECT FORMAT:
   // because we will use our own consistent system prompt
   const extractedContent = extractContentFromPrompt(content);
   
-  console.log('Production v1.0.4 - Using hard-coded system prompt');
+  console.log('Production v1.0.5 - Using hard-coded system prompt');
   console.log('Extracted content length:', extractedContent.length);
 
   try {
     // Log request information
-    console.log('Preparing DeepSeek API call for production v1.0.4');
+    console.log('Preparing DeepSeek API call for production v1.0.5');
     
     // IMPORTANT: Creating a safer API call that won't fail with environment issues
     // Wrap the entire request in a timeout to prevent hanging
@@ -137,9 +139,9 @@ EXAMPLE OF CORRECT FORMAT:
       }
 
       const data = await response.json()
-      console.log('Production v1.0.4 - DeepSeek API response received');
+      console.log('Production v1.0.5 - DeepSeek API response received');
       
-      // Apply direct formatting before returning - V1.0.4
+      // Apply direct formatting before returning - V1.0.5
       const rawResponse = data.choices[0].message.content;
       
       console.log('Production formatting starting...');
@@ -242,9 +244,10 @@ function directlyFormatResponse(text: string): string {
   
   // Step 1: Remove Context section if present
   let processed = text;
-  if (processed.includes('## Context')) {
+  if (processed.includes('## Context') || processed.toLowerCase().includes('## context')) {
     console.log('Removing Context section directly in DeepSeek handler');
     processed = processed.replace(/## Context[\s\S]*?(?=##|$)/i, '');
+    processed = processed.replace(/## context[\s\S]*?(?=##|$)/i, '');
   }
   
   // Step 2: Ensure title is properly formatted
@@ -316,13 +319,21 @@ function directlyFormatResponse(text: string): string {
  * Ensures consistent output format for production
  */
 function PRODUCTION_FORMATTER(text: string): string {
-  console.log('Running PRODUCTION FORMATTER V1.0.3');
+  console.log('Running PRODUCTION FORMATTER V1.0.5');
+  
+  // Explicitly remove Context section before doing anything else
+  let processed = text;
+  if (processed.includes('## Context') || processed.toLowerCase().includes('## context')) {
+    console.log('Removing Context section in PRODUCTION_FORMATTER');
+    processed = processed.replace(/## Context[\s\S]*?(?=##|$)/i, '');
+    processed = processed.replace(/## context[\s\S]*?(?=##|$)/i, '');
+  }
   
   // Create the sections array
   const sections = [];
   
   // Extract title or create default
-  const titleMatch = text.match(/# (.*?)(\r?\n|$)/);
+  const titleMatch = processed.match(/# (.*?)(\r?\n|$)/);
   const title = titleMatch ? titleMatch[1] : "Change Management Insights";
   
   // Ensure title has first letter of each word capitalized
@@ -334,7 +345,7 @@ function PRODUCTION_FORMATTER(text: string): string {
   sections.push(`# ${capitalizedTitle}`);
   
   // Extract Insights or create default
-  const insightsMatch = text.match(/## Insights\s*([\s\S]*?)(?=##|$)/i);
+  const insightsMatch = processed.match(/## Insights\s*([\s\S]*?)(?=##|$)/i);
   if (insightsMatch && insightsMatch[1].trim()) {
     // Process bullet points
     const bulletPoints = insightsMatch[1]
@@ -382,12 +393,12 @@ function PRODUCTION_FORMATTER(text: string): string {
   }
   
   // Extract References or create default
-  const referencesMatch = text.match(/## References\s*([\s\S]*?)$/i);
+  const referencesMatch = processed.match(/## References\s*([\s\S]*?)$/i);
   if (referencesMatch && referencesMatch[1].trim()) {
     sections.push('## References\n\n' + referencesMatch[1].trim());
   } else {
     // Look for links in the text
-    const links = text.match(/\[.*?\]\((https?:\/\/[^\s)]+)\)/g);
+    const links = processed.match(/\[.*?\]\((https?:\/\/[^\s)]+)\)/g);
     if (links && links.length > 0) {
       sections.push('## References\n\n' + links.join('\n\n'));
     } else {
@@ -431,11 +442,19 @@ if (process.env.NODE_ENV === 'production') {
  * regardless of what DeepSeek returns
  */
 function FINAL_PRODUCTION_OVERRIDE(input: string): string {
-  console.log('FINAL PRODUCTION OVERRIDE activated');
+  console.log('FINAL PRODUCTION OVERRIDE V1.0.5 activated');
+  
+  // Explicitly remove Context section before doing anything else
+  let processed = input;
+  if (processed.includes('## Context') || processed.toLowerCase().includes('## context')) {
+    console.log('Removing Context section in FINAL_PRODUCTION_OVERRIDE');
+    processed = processed.replace(/## Context[\s\S]*?(?=##|$)/i, '');
+    processed = processed.replace(/## context[\s\S]*?(?=##|$)/i, '');
+  }
   
   // STEP 1: Extract or create title with first letter of each word capitalized
   let title = "Change Management Insights";
-  const titleMatch = input.match(/# (.*?)(\r?\n|$)/);
+  const titleMatch = processed.match(/# (.*?)(\r?\n|$)/);
   if (titleMatch) {
     title = titleMatch[1].trim();
   }
@@ -447,7 +466,7 @@ function FINAL_PRODUCTION_OVERRIDE(input: string): string {
   
   // STEP 2: Extract insights or provide defaults
   let insightsText = "";
-  const insightsMatch = input.match(/## Insights\s*([\s\S]*?)(?=##|$)/i);
+  const insightsMatch = processed.match(/## Insights\s*([\s\S]*?)(?=##|$)/i);
   let insights: string[] = [];
   
   if (insightsMatch && insightsMatch[1].trim()) {
@@ -507,13 +526,13 @@ function FINAL_PRODUCTION_OVERRIDE(input: string): string {
   
   // STEP 3: Extract references or create defaults
   let referencesText = "";
-  const referencesMatch = input.match(/## References\s*([\s\S]*?)$/i);
+  const referencesMatch = processed.match(/## References\s*([\s\S]*?)$/i);
   
   if (referencesMatch && referencesMatch[1].trim()) {
     referencesText = referencesMatch[1].trim();
   } else {
     // Extract any links from the input
-    const links = input.match(/\[.*?\]\((https?:\/\/[^\s)]+)\)/g);
+    const links = processed.match(/\[.*?\]\((https?:\/\/[^\s)]+)\)/g);
     if (links && links.length > 0) {
       referencesText = links.join('\n\n');
     } else {

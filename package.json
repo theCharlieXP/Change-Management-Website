@@ -55,6 +55,7 @@
     "cmdk": "^1.0.4",
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.7",
+    "flat-cache": "^6.1.7",
     "framer-motion": "^12.4.7",
     "jose": "^5.9.6",
     "lucide-react": "^0.475.0",
