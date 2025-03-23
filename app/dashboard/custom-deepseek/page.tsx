@@ -197,4 +197,10 @@ Please analyze the provided content and create a summary in the following format
 ## References
 [Include any relevant source links if available]
 
-Make sure to be thorough in your analysis and provide actionable insights in full sentences. Make sure it is written in UK English.`; 
+IMPORTANT FORMATTING RULES:
+1. DO NOT include a Context section - this is strictly prohibited
+2. Only use the exact sections specified above: Title, Insights, and References
+3. Make sure to be thorough in your analysis and provide actionable insights in full sentences
+4. Write in UK English
+
+Your analysis will be rejected if it includes a Context, Overview, or Background section.`; 

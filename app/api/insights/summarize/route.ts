@@ -10,11 +10,11 @@ export const dynamic = 'force-dynamic';
 export const fetchCache = 'default-no-store';
 
 // Version marker to help track deployment
-export const PRODUCTION_VERSION = '2.0.0';
+export const PRODUCTION_VERSION = '2.0.1';
 
 export async function POST(request: Request) {
   try {
-    console.log('PRODUCTION VERSION 2.0.0 - Summarize route activated at', new Date().toISOString());
+    console.log('PRODUCTION VERSION 2.0.1 - Summarize route activated at', new Date().toISOString());
     
     // Check authentication
     const authData = await auth();
@@ -82,14 +82,14 @@ ${content}`;
     
     try {
       // Generate the summary using DeepSeek with our clean implementation
-      console.log('--- CALLING DEEPSEEK API WITH CUSTOM PROMPT (V2.0.0) ---');
+      console.log('--- CALLING DEEPSEEK API WITH CUSTOM PROMPT (V2.0.1) ---');
       
       // Use the summarizeWithDeepseek function from ai-utils.ts
       // This function now uses the exact prompt from custom-deepseek
       let summary = await summarizeWithDeepseek(contentWithContext, focusArea as InsightFocusArea);
       
       // Add production version marker to summary
-      summary = `<!-- PRODUCTION VERSION 2.0.0 -->\n${summary}`;
+      summary = `<!-- PRODUCTION VERSION 2.0.1 -->\n${summary}`;
       
       // Log the first part of the summary for debugging
       console.log('Summary generated successfully, first 200 chars:');

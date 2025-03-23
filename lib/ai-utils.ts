@@ -1,4 +1,4 @@
-// Production version 2.0.0
+// Production version 2.0.1
 import { InsightFocusArea } from '@/types/insights'
 
 /**
@@ -7,7 +7,7 @@ import { InsightFocusArea } from '@/types/insights'
  * without any post-processing or content manipulation
  */
 export async function directDeepSeekQuery(customPrompt: string, userContent: string): Promise<string> {
-  console.log('DIRECT DEEPSEEK CALL - No formatters - V2.0.0');
+  console.log('DIRECT DEEPSEEK CALL - No formatters - V2.0.1');
   
   // Server-side only check
   if (typeof window !== 'undefined') {
@@ -85,7 +85,7 @@ export async function directDeepSeekQuery(customPrompt: string, userContent: str
  */
 export async function summarizeWithDeepseek(content: string, focusArea: InsightFocusArea): Promise<string> {
   // Log production version to confirm deployment
-  console.log('PRODUCTION VERSION 2.0.0 - DeepSeek with Custom Prompt Format');
+  console.log('PRODUCTION VERSION 2.0.1 - DeepSeek with Custom Prompt Format - NO CONTEXT SECTION');
   
   // Server-side only check
   if (typeof window !== 'undefined') {
@@ -115,7 +115,7 @@ export async function summarizeWithDeepseek(content: string, focusArea: InsightF
     return generateFallbackResponse(content, focusArea);
   }
 
-  // Use exact prompt from custom-deepseek page
+  // Use exact prompt from custom-deepseek page with explicit instructions to avoid CONTEXT section
   const systemPrompt = `You are an expert in change management who provides insightful analysis.
 Please analyze the provided content and create a summary in the following format:
 # Title (Use Title Case)
@@ -126,9 +126,15 @@ Please analyze the provided content and create a summary in the following format
 ## References
 [Include any relevant source links if available]
 
-Make sure to be thorough in your analysis and provide actionable insights in full sentences. Make sure it is written in UK English.`;
+IMPORTANT FORMATTING RULES:
+1. DO NOT include a Context section - this is strictly prohibited
+2. Only use the exact sections specified above: Title, Insights, and References
+3. Make sure to be thorough in your analysis and provide actionable insights in full sentences
+4. Write in UK English
 
-  console.log('V2.0.0 - Using exact prompt from custom-deepseek');
+Your analysis will be rejected if it includes a Context, Overview, or Background section.`;
+
+  console.log('V2.0.1 - Using updated prompt with explicit instructions to avoid CONTEXT section');
   
   try {
     console.log('Preparing DeepSeek API call with custom-deepseek prompt');
