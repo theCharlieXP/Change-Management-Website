@@ -14,36 +14,56 @@ export async function POST(request: Request) {
       throw new Error('Deepseek API key not configured')
     }
 
-    const systemMessage = `You are an expert at analyzing and synthesizing change management insights, focusing specifically on ${focusAreaInfo.label}.
-Your task is to create a comprehensive summary of multiple insights related to ${focusAreaInfo.label}, identifying the main themes and their frequency.
+    const systemMessage = `You are a senior change management expert creating a meta-analysis of change management insights.
 
-Context about this focus area:
-${focusAreaInfo.description}
+YOUR OUTPUT MUST FOLLOW THIS EXACT FORMAT:
 
-Create a summary with the following sections:
+# Title With Every First Letter Capitalized
 
-1. Key Findings (3-5 bullet points)
-- List the main points in order of how frequently they appear across all summaries
-- Combine similar points into unified insights
-- Focus on actionable takeaways specific to ${focusAreaInfo.label}
-- Ensure each bullet point is a complete, grammatically correct sentence or paragraph
-- Never truncate sentences or leave thoughts incomplete
-- Start with a descriptive title with The First Letter Of Each Word Capitalized
+## Key Findings
+• First key finding (complete sentence with expert analysis)
+• Second key finding
+• Etc. (3-5 total key findings)
 
-2. Different Perspectives (2-3 bullet points)
-- Highlight any contradictions or differing viewpoints found in the sources
-- Explain the context of these differences
-- Provide complete thoughts with proper beginning and end
+## Different Perspectives
+• First perspective (complete sentence explaining differing viewpoints)
+• Second perspective
+• Etc. (2-3 total perspectives)
 
-3. Actionable Recommendations (2-3 bullet points)
-- Provide specific, practical steps based on the insights
-- Focus on implementation within the context of ${focusAreaInfo.label}
-- Ensure each recommendation is comprehensive and complete
+## Actionable Recommendations
+• First recommendation (specific, practical action steps)
+• Second recommendation
+• Etc. (2-3 total recommendations)
 
-Format each section with clear headers and bullet points starting with •
-Write as if you are a senior change management consultant with 20+ years of experience
-Never cut off sentences - ensure all bullet points are complete thoughts
-DO NOT include a Context section in your output`
+CRITICAL REQUIREMENTS:
+
+1. TITLE FORMAT:
+   - CAPITALIZE THE FIRST LETTER OF EVERY WORD
+   - Example: "# Strategic Approaches To Digital Transformation"
+   - Begin with a single # followed by a space
+
+2. STRUCTURE:
+   - Include ONLY the sections listed above
+   - DO NOT include a Context section
+   - DO NOT include any other sections
+
+3. ALL BULLET POINTS MUST:
+   - Begin with the • symbol
+   - Be complete thoughts/sentences with proper punctuation
+   - Reflect expert-level analysis (as a senior consultant)
+   - Never be truncated or cut off mid-thought
+   - Provide substantive, actionable insights
+   - Be written in professional UK English
+
+4. FOCUS ON SPECIFIC INSIGHTS:
+   - Key Findings should identify the most frequent themes in order of importance
+   - Different Perspectives should highlight contradictions with context
+   - Recommendations should be specific and implementable
+
+IMPORTANT: 
+- If you include any additional sections, your work will be rejected
+- If you don't capitalize the first letter of every word in the title, your work will be rejected
+- If bullet points are superficial or generic, your work will be rejected`
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -57,7 +77,7 @@ DO NOT include a Context section in your output`
           { role: 'system', content: systemMessage },
           { role: 'user', content: summaries.join('\n\n') }
         ],
-        temperature: 0.2,
+        temperature: 0.1,
         max_tokens: 1500
       })
     })

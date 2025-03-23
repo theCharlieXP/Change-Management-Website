@@ -73,64 +73,71 @@ ${insight.content ? `Content: ${Array.isArray(insight.content) ? insight.content
       style: "Use clean markdown formatting with minimal excess text. Use bullet points (•) for Insights."
     }
     
-    const prompt = `Analyze the following information related to ${focusAreaInfo.label} and create a concise, expert-level summary. 
+    const prompt = `As a senior change management expert, analyze the following information and create a high-quality summary.
 
-Start with a clear, descriptive title that accurately represents what was searched. Format requirements for the title:
-- Capitalize The First Letter Of Each Word In The Title
-- Maximum of 10 words
-- Format with a single # character
-- For example: "# Key Challenges And Barriers Of CRM Implementation"
+YOUR OUTPUT MUST FOLLOW THIS EXACT FORMAT:
 
-SEARCH CONTEXT:
-Search query: "${searchQuery}"
-Focus area: ${focusAreaInfo.label}${industryContext ? ` | Industries: ${industryContext}` : ''}
-
-Your summary should follow this exact structure:
+# Title With Every First Letter Capitalized
 
 ## Insights
-• Write exactly 7-10 comprehensive bullet points as if you are a senior change management consultant analyzing these sources
-• Each bullet point MUST be a complete, self-contained insight with a full sentence structure
-• Each bullet point should be 40-60 words and read like a polished, expert observation
-• NEVER truncate or cut off sentences - ensure each bullet point is grammatically complete
-• Incorporate both factual information from the sources AND your expert knowledge about ${focusAreaInfo.label}
-• Each bullet should provide actionable value by including the "why it matters" or implications
-• Make each insight substantive, nuanced, and reflective of deep change management expertise
-• Avoid superficial observations, generic statements, or partial thoughts
-• Write as if you are a senior change management consultant with 20+ years of experience
-• Ensure insights connect directly to ${searchQuery} and ${focusAreaInfo.label}
-• Write in professional UK English with proper punctuation and full sentences
-• End each bullet point with proper punctuation (usually a full stop)
-• Do NOT include bullet characters (·) at the end of sentences
-• Do NOT include numbers at the end of bullet points
+• First insight bullet point (complete sentence with expert analysis)
+• Second insight bullet point
+• Etc. (7-10 total bullet points)
 
 ## References
-• List all sources as markdown links
-• Format: [Title](URL)
-• Do NOT include "Unknown Source" or any source description after the link
-• Include ALL sources from the provided insights
+[Source Title 1](URL1)
+[Source Title 2](URL2)
+...
 
-CRITICAL REQUIREMENTS:
-1. Generate a concise, specific title (max 10 words) with The First Letter Of Each Word Capitalized
-2. DO NOT include a Context section in your output
-3. Write in professional UK English (using spellings like "organisation", "centre", "programme")
-4. Write Insights as if you are a senior change management consultant providing expert analysis
-5. Each insight MUST be a complete thought with no truncation - NEVER end a bullet point mid-sentence
-6. Each bullet point should provide a complete, valuable insight that combines source information with expert analysis
-7. The References section should contain ONLY the links, no additional descriptions
-8. Do not include numbers at the end of bullet points
-9. Do NOT include bullet characters (·) at the end of sentences
+CRITICAL REQUIREMENTS - FOLLOW THESE EXACTLY:
 
-Here are the insights to analyze (found via Tavily search):
+1. TITLE FORMAT:
+   - Begin with a single # followed by a space
+   - CAPITALIZE THE FIRST LETTER OF EVERY WORD IN THE TITLE
+   - Example: "# Strategic Approaches To Change Management Implementation"
+   - Maximum 10 words
+
+2. STRUCTURE:
+   - Include ONLY a title, Insights section, and References section
+   - DO NOT include a Context section - this is forbidden
+   - DO NOT mention the search query or focus area except in your analysis
+
+3. INSIGHTS SECTION:
+   - Must contain exactly 7-10 detailed bullet points
+   - Each bullet must start with the • symbol
+   - Each bullet point must be a complete thought (40-60 words)
+   - Write as a senior change management expert with 20+ years experience
+   - Each insight must combine source information with expert knowledge
+   - Each insight must include the "why it matters" or implications
+   - Ensure insights are substantive, nuanced, and specifically relevant to ${searchQuery}
+   - Write in professional UK English (organisation, centre, programme)
+   - Insights must provide actionable value for change management practitioners
+   - NEVER truncate sentences - all thoughts must be complete
+   - DO NOT include bullet characters (·) at the end of sentences
+
+4. REFERENCES:
+   - List only clean markdown links: [Title](URL)
+   - No descriptions after links
+   - Include all sources provided
+
+SEARCH CONTEXT (for your reference only, DO NOT include in output):
+- Query: "${searchQuery}"
+- Focus area: ${focusAreaInfo.label}${industryContext ? ` | Industries: ${industryContext}` : ''}
+
+IMPORTANT WARNINGS:
+- If you include a Context section, your work will be rejected
+- If you don't capitalize the first letter of every word in the title, your work will be rejected
+- If insights are generic, superficial, or truncated, your work will be rejected
+
+Analyze these insights from Tavily search:
 
 ${content}`
 
     // Generate the summary using Deepseek
     let summary = await summarizeWithDeepseek(prompt, focusArea as InsightFocusArea)
 
-    // Ensure summary has proper markdown formatting
-    if (!summary.trim().startsWith('# ')) {
-      summary = `# Summary of Insights on ${focusAreaInfo.label}\n\n${summary}`;
-    }
+    // Post-process the summary to ensure it meets formatting requirements
+    summary = postProcessSummary(summary, focusAreaInfo.label, searchQuery)
 
     return new NextResponse(
       JSON.stringify({ summary }),
@@ -146,4 +153,93 @@ ${content}`
       { status: 500 }
     )
   }
+}
+
+/**
+ * Post-processes the summary to ensure it meets all formatting requirements
+ */
+function postProcessSummary(summary: string, focusArea: string, searchQuery: string): string {
+  // Split the summary into lines
+  const lines = summary.split('\n')
+  let processedLines: string[] = []
+  let currentSection = ''
+  
+  // Process each line
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+    
+    // Process the title
+    if (line.startsWith('# ')) {
+      // Capitalize first letter of each word in title
+      const title = line.substring(2)
+      const capitalizedTitle = title
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ')
+      processedLines.push(`# ${capitalizedTitle}`)
+      continue
+    }
+    
+    // Track current section
+    if (line.startsWith('## ')) {
+      currentSection = line.substring(3).toLowerCase()
+      
+      // Skip Context section entirely
+      if (currentSection === 'context') {
+        // Skip until we find the next section
+        while (i + 1 < lines.length && !lines[i + 1].startsWith('## ')) {
+          i++
+        }
+        continue
+      }
+      
+      processedLines.push(line)
+      continue
+    }
+    
+    // Process bullet points in Insights section
+    if (currentSection === 'insights' && line.startsWith('• ')) {
+      // Ensure bullet point doesn't end with "·"
+      let bulletPoint = line
+      if (bulletPoint.endsWith(' ·')) {
+        bulletPoint = bulletPoint.substring(0, bulletPoint.length - 2) + '.'
+      }
+      
+      // Ensure bullet point is a complete sentence ending with punctuation
+      if (!/[.!?]$/.test(bulletPoint)) {
+        bulletPoint += '.'
+      }
+      
+      processedLines.push(bulletPoint)
+      continue
+    }
+    
+    // Add all other lines unchanged
+    processedLines.push(line)
+  }
+  
+  // If there's no title, add one
+  if (!processedLines.some(line => line.startsWith('# '))) {
+    const words = focusArea.split(' ')
+      .concat(searchQuery.split(' '))
+      .filter((word, index, self) => self.indexOf(word) === index) // Remove duplicates
+      .slice(0, 10) // Limit to 10 words
+    
+    const title = words
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+    
+    processedLines.unshift(`# ${title}`)
+  }
+  
+  // Ensure there's no Context section
+  if (!processedLines.includes('## Insights') && !processedLines.some(line => line.startsWith('## Insights'))) {
+    // Find where to insert Insights section
+    const titleIndex = processedLines.findIndex(line => line.startsWith('# '))
+    if (titleIndex !== -1) {
+      processedLines.splice(titleIndex + 1, 0, '', '## Insights')
+    }
+  }
+  
+  return processedLines.join('\n')
 } 
