@@ -28,6 +28,7 @@ import { SaveToProjectDialog } from '@/components/save-to-project-dialog'
 import InsightSearchUsageTracker from '@/app/components/InsightSearchUsageTracker'
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import type { UsageTrackerRef } from '@/app/components/InsightSearchUsageTracker'
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 type TimeframeValue = 
   | 'last_day'
@@ -163,6 +164,7 @@ export default function InsightsPage() {
   const [loading, setLoading] = useState(false)
   const [loadingStage, setLoadingStage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [errorType, setErrorType] = useState<'timeout' | 'other' | null>(null)
   const [resetKey, setResetKey] = useState(0)
   const [selectedInsight, setSelectedInsight] = useState<string | null>(null)
   const [insightNotes, setInsightNotes] = useState<Record<string, string>>({})
@@ -442,7 +444,11 @@ Format your response as follows:
         try {
           const errorData = await response.json();
           
-          if (errorData.details && typeof errorData.details === 'object') {
+          // Use the user-friendly message if available
+          if (errorData.userMessage) {
+            errorMessage = errorData.userMessage;
+          } else if (errorData.details && typeof errorData.details === 'object') {
+            // Process detailed error information
             const keyInfo = {
               exists: errorData.details.tavily_api_key_exists,
               prefix: errorData.details.tavily_api_key_prefix,
@@ -455,7 +461,7 @@ Format your response as follows:
               errorMessage = 'The search service API key is missing. Please contact support.';
             } else if (errorData.details.message && errorData.details.message.includes('Network error')) {
               errorMessage = 'Could not connect to the search service. Please check your internet connection or try again later.';
-            } else if (errorData.details.name === 'AbortError') {
+            } else if (errorData.details.name === 'AbortError' || response.status === 504 || (errorData.details.reason === 'timeout')) {
               errorMessage = 'The search request timed out. Please try a more specific query or try again later.';
             } else {
               errorMessage = errorData.error || errorData.details?.message || errorMessage;
@@ -527,9 +533,30 @@ Format your response as follows:
       console.error('Search error:', error);
       setError(error.message || 'Failed to search for insights');
       
+      // Create more specific error messages based on error types
+      let errorTitle = "Search Error";
+      let errorDescription = error.message || "Failed to search for insights";
+      let isTimeout = false;
+      
+      // Add more user-friendly messages for specific errors
+      if (error.message?.includes('timed out') || error.message?.includes('try a more specific query')) {
+        errorTitle = "Request Timed Out";
+        errorDescription = "Your search request took too long to process. Try a more specific query or try again later.";
+        isTimeout = true;
+        setErrorType('timeout');
+      } else if (error.message?.includes('search service')) {
+        errorTitle = "Search Service Issue";
+        setErrorType('other');
+      } else if (error.message?.includes('network') || error.message?.includes('internet')) {
+        errorTitle = "Connection Problem";
+        setErrorType('other');
+      } else {
+        setErrorType('other');
+      }
+      
       toast({
-        title: "Search Error",
-        description: error.message || "Failed to search for insights",
+        title: errorTitle,
+        description: errorDescription,
         variant: "destructive"
       });
     } finally {
@@ -643,6 +670,25 @@ Format your response as follows:
       return localStorage.getItem('isPremiumUser') === 'true';
     }
     return false;
+  };
+
+  // Add a new function to handle retrying with more specific query
+  const handleRetryWithMoreSpecificQuery = () => {
+    // Keep the existing query but suggest adding more specificity
+    toast({
+      title: "Trying again",
+      description: "Try to make your query more specific for better results",
+    });
+    
+    // Reset error state
+    setError(null);
+    setErrorType(null);
+    
+    // Focus on the search input to help user modify query
+    const searchInput = document.querySelector('input[placeholder="Search insights..."]') as HTMLInputElement;
+    if (searchInput) {
+      searchInput.focus();
+    }
   };
 
   return (
@@ -770,7 +816,30 @@ Format your response as follows:
                 </div>
               ) : error ? (
                 <div className="flex items-center justify-center h-64 text-red-500">
-                  {error}
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                    {errorType === 'timeout' && (
+                      <div className="mt-3">
+                        <Button 
+                          onClick={handleRetryWithMoreSpecificQuery}
+                          size="sm"
+                          variant="outline"
+                        >
+                          Try with more specific query
+                        </Button>
+                        <Button 
+                          onClick={handleSearch}
+                          size="sm"
+                          variant="outline"
+                          className="ml-2"
+                        >
+                          Retry search
+                        </Button>
+                      </div>
+                    )}
+                  </Alert>
                 </div>
               ) : summary ? (
                 <>

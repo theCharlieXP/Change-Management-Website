@@ -11,10 +11,13 @@ export const dynamic = 'force-dynamic';
 export const fetchCache = 'default-no-store';
 
 // Version marker to help track deployment
-export const PRODUCTION_VERSION = '1.0.3';
+export const PRODUCTION_VERSION = '1.0.4';
 
 // Set this to false to use the real implementation
 const USE_MOCK_IMPLEMENTATION = false;
+
+// Increase Vercel timeout limit (max 60 seconds)
+export const maxDuration = 45; // seconds
 
 export async function POST(request: Request) {
   try {
@@ -136,22 +139,25 @@ IMPORTANT FORMATTING REQUIREMENTS:
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
         controller.abort();
-        console.error('Search and summarize operation timed out after 60 seconds');
-      }, 60000); // 60 second timeout
+        console.error('Search and summarize operation timed out after 40 seconds');
+      }, 40000); // 40 second timeout (allowing 5s buffer before Vercel's 45s limit)
       
       try {
+        const startTime = Date.now();
         const { summary, results } = await summarizer.search_and_summarize(
           query,
           tavilyAreaFilter,
           formattedSummaryInstructions,
           controller.signal // Pass the AbortSignal to the search method
         );
+        const endTime = Date.now();
+        const elapsedTime = (endTime - startTime) / 1000;
         
         // Clear the timeout since operation completed
         clearTimeout(timeoutId);
         
         // Log success
-        console.log('Search and summarization successful');
+        console.log(`Search and summarization successful (${elapsedTime.toFixed(2)}s)`);
         console.log('Results count:', results.length);
         console.log('Summary first 200 chars:', summary.substring(0, 200));
         
@@ -163,7 +169,10 @@ IMPORTANT FORMATTING REQUIREMENTS:
           focusArea: area_filter || 'general',
           version: PRODUCTION_VERSION,
           timestamp: new Date().toISOString(),
-          mock: USE_MOCK_IMPLEMENTATION
+          mock: USE_MOCK_IMPLEMENTATION,
+          timing: {
+            elapsedTimeSeconds: elapsedTime.toFixed(2)
+          }
         });
       } catch (timeoutError) {
         // Clear timeout in case of error
@@ -194,15 +203,31 @@ IMPORTANT FORMATTING REQUIREMENTS:
         } else if (error.message.includes('DeepSeek API')) {
           errorDetails.service = 'DeepSeek';
           errorDetails.stage = 'summary';
+        } else if (error.message.includes('abort') || error.name === 'AbortError') {
+          errorDetails.reason = 'timeout';
+          errorDetails.suggestion = 'The operation took too long. Try a more specific query or try again later.';
         }
       }
       
+      // Check if this is an AbortController timeout
+      const isTimeout = 
+        error instanceof Error && 
+        (error.name === 'AbortError' || error.message.includes('abort') || error.message.includes('timeout'));
+      
+      // Determine status code based on error type
+      const statusCode = isTimeout ? 504 : 500;
+      
       return new NextResponse(
         JSON.stringify({ 
-          error: 'Failed to search and summarize',
-          details: errorDetails
+          error: isTimeout 
+            ? 'Request timed out while generating insights' 
+            : 'Failed to search and summarize',
+          details: errorDetails,
+          userMessage: isTimeout 
+            ? 'Your request took too long to process. Try a more specific query or try again later.' 
+            : 'We encountered an issue while generating your insights. Please try again.'
         }),
-        { status: 500 }
+        { status: statusCode }
       );
     }
     
@@ -213,7 +238,8 @@ IMPORTANT FORMATTING REQUIREMENTS:
       JSON.stringify({ 
         error: 'Unexpected error processing request',
         details: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        userMessage: 'Something went wrong. Please try again with a more specific query.'
       }),
       { status: 500 }
     );
