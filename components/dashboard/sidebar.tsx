@@ -1,11 +1,11 @@
 'use client'
 
 import Link from "next/link"
-import { FolderKanban, Brain, Handshake, UserCircle, MessageSquare, Sparkles } from "lucide-react"
+import { FolderKanban, Brain, Handshake, UserCircle, MessageSquare, Sparkles, Wrench } from "lucide-react"
 import { usePathname } from 'next/navigation'
 
 export default function Sidebar() {
-  const pathname = usePathname()
+  const pathname = usePathname() || ''
   
   const sidebarItems = [
     {
@@ -19,6 +19,12 @@ export default function Sidebar() {
       href: "/dashboard/insights",
       icon: Brain,
       matchPaths: ['/dashboard/insights']
+    },
+    {
+      name: "Custom DeepSeek",
+      href: "/dashboard/custom-deepseek",
+      icon: Wrench,
+      matchPaths: ['/dashboard/custom-deepseek']
     },
     {
       name: "Communications",

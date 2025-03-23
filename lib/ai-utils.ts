@@ -1,6 +1,80 @@
 // Production version 1.0.5
 import { InsightFocusArea } from '@/types/insights'
 
+// Add this new direct function that bypasses all formatters
+export async function directDeepSeekQuery(customPrompt: string, userContent: string): Promise<string> {
+  console.log('DIRECT DEEPSEEK CALL - No formatters - V1.0.0');
+  
+  // Server-side only check
+  if (typeof window !== 'undefined') {
+    console.error('directDeepSeekQuery was called on the client side - this should never happen');
+    throw new Error('Cannot call DeepSeek API from client side');
+  }
+
+  const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
+  
+  if (!DEEPSEEK_API_KEY) {
+    console.warn('WARNING: DEEPSEEK_API_KEY is not configured for direct query');
+    return '<!-- ERROR: DeepSeek API key missing for direct query -->\n\n# Error: API Key Missing\n\nCould not process your request because the DeepSeek API key is missing.';
+  }
+
+  console.log('Making direct DeepSeek API call with custom prompt');
+  
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    
+    try {
+      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            {
+              role: 'system',
+              content: customPrompt
+            },
+            {
+              role: 'user',
+              content: userContent
+            }
+          ],
+          temperature: 0.1,
+          max_tokens: 2500
+        }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Could not read error response');
+        console.error(`Direct DeepSeek API error (${response.status}):`, errorText);
+        return `<!-- ERROR: DeepSeek API returned ${response.status} -->\n\n# Error: API Request Failed\n\nThe DeepSeek API request failed with status ${response.status}.`;
+      }
+
+      const data = await response.json();
+      console.log('Direct DeepSeek API response received - returning raw content');
+      
+      // Return the raw response without any post-processing
+      return data.choices[0].message.content;
+      
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      console.error('Error in direct DeepSeek fetch:', fetchError);
+      return `<!-- ERROR: DeepSeek API fetch failed -->\n\n# Error: API Fetch Failed\n\nThe request to the DeepSeek API failed: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`;
+    }
+    
+  } catch (error) {
+    console.error('Error in direct DeepSeek query:', error);
+    return `<!-- ERROR: DeepSeek API general error -->\n\n# Error: API Error\n\nAn unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
 export async function summarizeWithDeepseek(content: string, focusArea: InsightFocusArea): Promise<string> {
   // Log production version to confirm deployment
   console.log('PRODUCTION VERSION 1.0.5 - DeepSeek helper called at', new Date().toISOString());
