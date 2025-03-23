@@ -1,6 +1,6 @@
 /**
  * NewsSearchAndSummarizer - Class for handling Tavily search and DeepSeek summary generation
- * Version 1.0.2
+ * Version 1.0.3
  */
 
 import { InsightFocusArea } from '@/types/insights';
@@ -107,27 +107,38 @@ export class NewsSearchAndSummarizer {
     const tavilyAnswer = search_results.answer ? 
       `\nTavily Summary: ${search_results.answer}\n` : '';
     
+    // Format reference links for the summary
+    const referenceLinks = search_results.results.map(result => 
+      `[${result.title}](${result.url})`
+    ).join('\n');
+    
     // Create the prompt for DeepSeek
     const prompt = `
-Based on the following search results about change management, create a comprehensive summary.
+You are a senior change management expert creating a high-quality, professional summary about "${search_results.query}".
 
+Here are the search results to analyze:
 ${tavilyAnswer}
-Search Results:
 ${context}
 
-${summary_instructions ? `Instructions for summary:
 ${summary_instructions}
 
-` : ''}Summary:
+Remember to:
+1. Create a compelling title that accurately reflects the content
+2. Format each insight as a bullet point starting with '•'
+3. Make each insight substantive, actionable, and valuable to change management professionals
+4. Include proper reference links to all sources
+5. Write in professional UK English
 `;
     
     try {
       console.log('Sending prompt to DeepSeek for summary generation');
       
       // Create a system message to control the output format
-      const systemMessage = `You are an expert in change management who provides insightful analysis.
-Please analyze the provided content and create a summary according to the user's instructions.
-Make sure to follow any formatting instructions precisely.`;
+      const systemMessage = `You are a senior change management expert with extensive experience in creating insightful summaries.
+When given search results, your task is to analyze them and create a well-structured summary following the exact format provided in the instructions.
+Your analysis should be thorough, practical, and focused on providing valuable insights for change management professionals.
+Always use the bullet point format specified (• character), and ensure each insight is substantive and actionable.
+Always include proper reference links to all sources.`;
       
       const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
         method: 'POST',
@@ -147,7 +158,7 @@ Make sure to follow any formatting instructions precisely.`;
               content: prompt
             }
           ],
-          temperature: 0.1,
+          temperature: 0.2, // Slightly increased to allow for more creativity in insights
           max_tokens: 2500
         }),
         signal: signal // Use the AbortSignal if provided
@@ -160,7 +171,14 @@ Make sure to follow any formatting instructions precisely.`;
       }
       
       const data = await response.json();
-      return data.choices[0].message.content;
+      let summaryContent = data.choices[0].message.content;
+      
+      // If no "References" section exists, add one with the links
+      if (!summaryContent.includes('## References')) {
+        summaryContent += `\n\n## References\n${referenceLinks}`;
+      }
+      
+      return summaryContent;
     } catch (error) {
       console.error('Error generating summary with DeepSeek:', error);
       throw error;

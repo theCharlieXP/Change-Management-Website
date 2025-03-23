@@ -11,10 +11,10 @@ export const dynamic = 'force-dynamic';
 export const fetchCache = 'default-no-store';
 
 // Version marker to help track deployment
-export const PRODUCTION_VERSION = '1.0.2';
+export const PRODUCTION_VERSION = '1.0.3';
 
-// Set this to true to use the mock implementation instead of real APIs
-const USE_MOCK_IMPLEMENTATION = true;
+// Set this to false to use the real implementation
+const USE_MOCK_IMPLEMENTATION = false;
 
 export async function POST(request: Request) {
   try {
@@ -103,11 +103,33 @@ export async function POST(request: Request) {
         console.warn(`Unknown area filter: ${area_filter}, using null`);
       }
       
+      // Format summary instructions to match the mock template structure
+      const formattedSummaryInstructions = `
+Create a comprehensive summary using the following template:
+
+# [Insert Descriptive Title About ${query}]
+
+## Insights
+• [First key insight about change management with specific details]
+• [Second key insight with practical applications]
+• [Add 6-8 additional bullet points with substantive insights about change management]
+
+## References
+[Include links to all sources in markdown format]
+
+IMPORTANT FORMATTING REQUIREMENTS:
+1. Each bullet point must be a complete, detailed sentence with substantive information
+2. Begin each bullet with the • character (not a dash or asterisk)
+3. Write in professional, clear UK English
+4. Focus on practical, action-oriented insights for change management professionals
+5. Maintain a formal, expert tone throughout
+`;
+      
       // Perform search and summarization
       console.log('Performing search and summarization with:', {
         query,
         area_filter: tavilyAreaFilter,
-        has_instructions: !!summary_instructions
+        has_instructions: true
       });
       
       // Set a timeout to prevent long-running requests
@@ -121,7 +143,7 @@ export async function POST(request: Request) {
         const { summary, results } = await summarizer.search_and_summarize(
           query,
           tavilyAreaFilter,
-          summary_instructions || '',
+          formattedSummaryInstructions,
           controller.signal // Pass the AbortSignal to the search method
         );
         
