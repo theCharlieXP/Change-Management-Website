@@ -70,9 +70,17 @@ async function summarizeWithDeepseek(content: string, category: string) {
         messages: [
           {
             role: 'system',
-            content: `You are an expert in change management and business transformation. 
+            content: `You are a senior expert in change management and business transformation with 20+ years of experience in the field. 
             Your task is to analyze and summarize content related to ${category} initiatives.
-            Focus on key insights, metrics, and lessons learned.`
+            Focus on key insights, metrics, and lessons learned.
+            
+            Critical guidelines for your analysis:
+            1. Write complete, well-formed sentences that provide comprehensive insights
+            2. Never truncate or cut off sentences - ensure every thought is complete
+            3. Provide substantive, actionable analysis that would be valuable to change management practitioners
+            4. Write in a polished, authoritative style befitting a senior change management consultant
+            5. Ensure your analysis reflects deep expertise and knowledge of best practices
+            6. Format in clear paragraphs with proper beginning and end to each thought`
           },
           {
             role: 'user',
@@ -80,7 +88,8 @@ async function summarizeWithDeepseek(content: string, category: string) {
             ${content}`
           }
         ],
-        temperature: 0.7,
+        temperature: 0.2,
+        max_tokens: 2000,
       }),
     })
 

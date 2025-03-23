@@ -26,16 +26,24 @@ Create a summary with the following sections:
 - List the main points in order of how frequently they appear across all summaries
 - Combine similar points into unified insights
 - Focus on actionable takeaways specific to ${focusAreaInfo.label}
+- Ensure each bullet point is a complete, grammatically correct sentence or paragraph
+- Never truncate sentences or leave thoughts incomplete
+- Start with a descriptive title with The First Letter Of Each Word Capitalized
 
 2. Different Perspectives (2-3 bullet points)
 - Highlight any contradictions or differing viewpoints found in the sources
 - Explain the context of these differences
+- Provide complete thoughts with proper beginning and end
 
 3. Actionable Recommendations (2-3 bullet points)
 - Provide specific, practical steps based on the insights
 - Focus on implementation within the context of ${focusAreaInfo.label}
+- Ensure each recommendation is comprehensive and complete
 
-Format each section with clear headers and bullet points starting with •`
+Format each section with clear headers and bullet points starting with •
+Write as if you are a senior change management consultant with 20+ years of experience
+Never cut off sentences - ensure all bullet points are complete thoughts
+DO NOT include a Context section in your output`
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -49,8 +57,8 @@ Format each section with clear headers and bullet points starting with •`
           { role: 'system', content: systemMessage },
           { role: 'user', content: summaries.join('\n\n') }
         ],
-        temperature: 0.3,
-        max_tokens: 1000
+        temperature: 0.2,
+        max_tokens: 1500
       })
     })
 

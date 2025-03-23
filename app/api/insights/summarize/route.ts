@@ -76,10 +76,10 @@ ${insight.content ? `Content: ${Array.isArray(insight.content) ? insight.content
     const prompt = `Analyze the following information related to ${focusAreaInfo.label} and create a concise, expert-level summary. 
 
 Start with a clear, descriptive title that accurately represents what was searched. Format requirements for the title:
-- Begin with a capital letter
+- Capitalize The First Letter Of Each Word In The Title
 - Maximum of 10 words
 - Format with a single # character
-- For example: "# Challenges and Barriers of CRM Implementation"
+- For example: "# Key Challenges And Barriers Of CRM Implementation"
 
 SEARCH CONTEXT:
 Search query: "${searchQuery}"
@@ -87,19 +87,19 @@ Focus area: ${focusAreaInfo.label}${industryContext ? ` | Industries: ${industry
 
 Your summary should follow this exact structure:
 
-## Context
-${searchQuery}, ${focusAreaInfo.label}${industryContext ? `, ${industryContext}` : ''}
-
 ## Insights
-• Write 7-10 comprehensive bullet points as if you are a senior change management consultant analyzing these sources
-• Each bullet point should represent a key insight a change management expert would extract from the sources
-• Incorporate both information from the sources AND expert knowledge about ${focusAreaInfo.label}
-• Focus on actionable insights that would be valuable to change management practitioners
-• Each bullet point should be 25-40 words and read like a polished, expert observation
+• Write exactly 7-10 comprehensive bullet points as if you are a senior change management consultant analyzing these sources
+• Each bullet point MUST be a complete, self-contained insight with a full sentence structure
+• Each bullet point should be 40-60 words and read like a polished, expert observation
+• NEVER truncate or cut off sentences - ensure each bullet point is grammatically complete
+• Incorporate both factual information from the sources AND your expert knowledge about ${focusAreaInfo.label}
+• Each bullet should provide actionable value by including the "why it matters" or implications
 • Make each insight substantive, nuanced, and reflective of deep change management expertise
-• Avoid superficial observations or generic statements
-• Ensure insights are specifically relevant to ${searchQuery} and ${focusAreaInfo.label}
-• Write in professional UK English with proper punctuation
+• Avoid superficial observations, generic statements, or partial thoughts
+• Write as if you are a senior change management consultant with 20+ years of experience
+• Ensure insights connect directly to ${searchQuery} and ${focusAreaInfo.label}
+• Write in professional UK English with proper punctuation and full sentences
+• End each bullet point with proper punctuation (usually a full stop)
 • Do NOT include bullet characters (·) at the end of sentences
 • Do NOT include numbers at the end of bullet points
 
@@ -110,14 +110,15 @@ ${searchQuery}, ${focusAreaInfo.label}${industryContext ? `, ${industryContext}`
 • Include ALL sources from the provided insights
 
 CRITICAL REQUIREMENTS:
-1. Generate a concise, specific title (max 10 words) that accurately reflects the search topic
-2. Format the Context section EXACTLY as: [search query], [focus area], [industries if applicable]
+1. Generate a concise, specific title (max 10 words) with The First Letter Of Each Word Capitalized
+2. DO NOT include a Context section in your output
 3. Write in professional UK English (using spellings like "organisation", "centre", "programme")
 4. Write Insights as if you are a senior change management consultant providing expert analysis
-5. Each insight should reflect deep expertise and knowledge of change management best practices
-6. The References section should contain ONLY the links, no additional descriptions
-7. Do not include numbers at the end of bullet points
-8. Do NOT include bullet characters (·) at the end of sentences
+5. Each insight MUST be a complete thought with no truncation - NEVER end a bullet point mid-sentence
+6. Each bullet point should provide a complete, valuable insight that combines source information with expert analysis
+7. The References section should contain ONLY the links, no additional descriptions
+8. Do not include numbers at the end of bullet points
+9. Do NOT include bullet characters (·) at the end of sentences
 
 Here are the insights to analyze (found via Tavily search):
 

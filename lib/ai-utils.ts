@@ -30,9 +30,9 @@ export async function summarizeWithDeepseek(content: string, focusArea: InsightF
 Your task is to create a concise, well-structured summary from search results provided via Tavily search engine.
 
 Guidelines for creating summaries:
-1. Start with a descriptive, specific title (maximum 10 words) with first letter capitalized
+1. Start with a descriptive, specific title (maximum 10 words) with The First Letter Of Each Word Capitalized
 2. Format exactly as requested in the user's instructions
-3. Format Context section as: [search query], [focus area], [industries if applicable]
+3. DO NOT include a Context section in your output
 4. Write in UK English (using spellings like "organisation", "centre", "programme")
 5. Write as a senior change management consultant providing expert analysis
 6. Create comprehensive insights that reflect deep change management expertise
@@ -46,15 +46,18 @@ Guidelines for creating summaries:
 14. Incorporate both source information AND expert knowledge about change management
 15. Focus on insights that would be valuable to change management practitioners
 16. Follow the user's instructions exactly for formatting and structure
-17. Combine source information with expert knowledge to create value`
+17. Combine source information with expert knowledge to create value
+18. NEVER truncate sentences - ensure all bullet points are complete thoughts
+19. Each bullet point should be a full, grammatically complete sentence or paragraph
+20. Write as if you have 20+ years of senior change management consulting experience`
           },
           {
             role: 'user',
             content: content
           }
         ],
-        temperature: 0.3,
-        max_tokens: 2000
+        temperature: 0.2,
+        max_tokens: 2500
       })
     })
 
