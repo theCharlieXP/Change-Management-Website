@@ -83,12 +83,15 @@ const generateFallbackSummary = (searchResults: Insight[], searchQuery: string, 
   // Extract the focus area label
   const focusAreaLabel = INSIGHT_FOCUS_AREAS[focusArea].label;
   
-  // Create a more descriptive title based on search query
-  const title = `# ${searchQuery} - ${focusAreaLabel} Insights`;
+  // Create a more descriptive title based on search query - keeping it to 10 words max and capitalized
+  const capitalizedQuery = searchQuery.charAt(0).toUpperCase() + searchQuery.slice(1).toLowerCase();
+  // Limit to 10 words total
+  const words = (capitalizedQuery + ' - ' + focusAreaLabel + ' Insights').split(' ');
+  const title = `# ${words.slice(0, 10).join(' ')}`;
   
-  // Create the context section (as a single line)
+  // Create the context section (exactly what was searched, focus area)
   const context = `## Context
-Search query: "${searchQuery}" | Focus area: ${focusAreaLabel}`;
+${searchQuery}, ${focusAreaLabel}`;
   
   // Create the insights section with bullet points from result summaries
   let insights = `## Insights`;
@@ -615,18 +618,18 @@ export default function InsightsPage() {
                 sections: [
                   {
                     title: "Context",
-                    description: "A single line showing exactly what was searched, which focus area was selected, and which industries were selected (if applicable)"
+                    description: "Exactly what was searched, focus area selected, and industries selected (if applicable)"
                   },
                   {
                     title: "Insights",
-                    description: "7-10 comprehensive bullet points that provide detailed explanations and actionable value (minimum 20-30 words each)"
+                    description: "7-10 comprehensive bullet points written by a change management expert"
                   },
                   {
                     title: "References",
                     description: "List of all sources with markdown links"
                   }
                 ],
-                style: "Use clean markdown formatting with minimal excess text. Use bullet points (•) for Insights. Write in UK English. Make each bullet point a detailed explanation that provides real value for change management practitioners."
+                style: "Use clean markdown formatting with minimal excess text. Use bullet points (•) for Insights. Write as a senior change management consultant in UK English."
               }
             })
           });

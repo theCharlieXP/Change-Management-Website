@@ -59,11 +59,11 @@ ${insight.content ? `Content: ${Array.isArray(insight.content) ? insight.content
       sections: [
         {
           title: "Context",
-          description: "A single line showing exactly what was searched, which focus area was selected, and which industries were selected (if applicable)"
+          description: "Exactly what was searched, focus area selected, and industries selected (if applicable)"
         },
         {
           title: "Insights",
-          description: "7-10 informative bullet points in full sentences that provide valuable information"
+          description: "7-10 comprehensive bullet points written by a change management expert"
         },
         {
           title: "References",
@@ -73,9 +73,13 @@ ${insight.content ? `Content: ${Array.isArray(insight.content) ? insight.content
       style: "Use clean markdown formatting with minimal excess text. Use bullet points (•) for Insights."
     }
     
-    const prompt = `Analyze the following information related to ${focusAreaInfo.label} and create a concise, well-structured summary. 
+    const prompt = `Analyze the following information related to ${focusAreaInfo.label} and create a concise, expert-level summary. 
 
-Start with a clear, descriptive title that accurately represents what was searched. The title should give the reader a good understanding of the topic and focus area. Format it with a single # character (e.g., "# Effective Change Management Strategies for Digital Transformation").
+Start with a clear, descriptive title that accurately represents what was searched. Format requirements for the title:
+- Begin with a capital letter
+- Maximum of 10 words
+- Format with a single # character
+- For example: "# Challenges and Barriers of CRM Implementation"
 
 SEARCH CONTEXT:
 Search query: "${searchQuery}"
@@ -84,21 +88,20 @@ Focus area: ${focusAreaInfo.label}${industryContext ? ` | Industries: ${industry
 Your summary should follow this exact structure:
 
 ## Context
-A single line that states exactly what was searched in the search bar, which focus area was selected, and which industries were selected (if applicable).
+${searchQuery}, ${focusAreaInfo.label}${industryContext ? `, ${industryContext}` : ''}
 
 ## Insights
-• Create 7-10 informative bullet points in full sentences using UK English spelling
-• Each bullet point must be a comprehensive, detailed explanation (at least 20-30 words)
-• Expand on information found in sources by adding context, implications, and practical applications
-• Explain WHY each point matters to change management practitioners
-• Connect insights to practical implications for change projects
-• Incorporate your knowledge of change management best practices and theory
-• Each bullet point should provide actionable value that helps with change management projects
-• Extract key information from sources but expand it into complete, valuable insights
-• Do NOT include numbers at the end of bullet points
+• Write 7-10 comprehensive bullet points as if you are a senior change management consultant analyzing these sources
+• Each bullet point should represent a key insight a change management expert would extract from the sources
+• Incorporate both information from the sources AND expert knowledge about ${focusAreaInfo.label}
+• Focus on actionable insights that would be valuable to change management practitioners
+• Each bullet point should be 25-40 words and read like a polished, expert observation
+• Make each insight substantive, nuanced, and reflective of deep change management expertise
+• Avoid superficial observations or generic statements
+• Ensure insights are specifically relevant to ${searchQuery} and ${focusAreaInfo.label}
+• Write in professional UK English with proper punctuation
 • Do NOT include bullet characters (·) at the end of sentences
-• End each bullet point with proper punctuation (typically a full stop)
-• Focus on actionable insights tailored to the search query and focus area
+• Do NOT include numbers at the end of bullet points
 
 ## References
 • List all sources as markdown links
@@ -107,16 +110,14 @@ A single line that states exactly what was searched in the search bar, which foc
 • Include ALL sources from the provided insights
 
 CRITICAL REQUIREMENTS:
-1. Generate a specific, descriptive title that accurately reflects the search topic
-2. Write in professional UK English (using spellings like "organisation", "centre", "programme")
-3. Keep the Context section to a SINGLE line showing exactly what was searched
-4. Ensure all bullet points are COMPREHENSIVE, DETAILED sentences (minimum 20-30 words each)
-5. The References section should contain ONLY the links, no additional descriptions
-6. Focus specifically on ${focusAreaInfo.label} aspects of content
+1. Generate a concise, specific title (max 10 words) that accurately reflects the search topic
+2. Format the Context section EXACTLY as: [search query], [focus area], [industries if applicable]
+3. Write in professional UK English (using spellings like "organisation", "centre", "programme")
+4. Write Insights as if you are a senior change management consultant providing expert analysis
+5. Each insight should reflect deep expertise and knowledge of change management best practices
+6. The References section should contain ONLY the links, no additional descriptions
 7. Do not include numbers at the end of bullet points
-8. Explain the significance and practical application of each insight
-9. Do NOT include bullet characters (·) at the end of sentences
-10. Ensure proper punctuation at the end of each bullet point
+8. Do NOT include bullet characters (·) at the end of sentences
 
 Here are the insights to analyze (found via Tavily search):
 

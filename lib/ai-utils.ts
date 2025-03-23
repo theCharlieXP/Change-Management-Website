@@ -30,21 +30,21 @@ export async function summarizeWithDeepseek(content: string, focusArea: InsightF
 Your task is to create a concise, well-structured summary from search results provided via Tavily search engine.
 
 Guidelines for creating summaries:
-1. Start with a descriptive, specific title that accurately reflects what was searched
+1. Start with a descriptive, specific title (maximum 10 words) with first letter capitalized
 2. Format exactly as requested in the user's instructions
-3. Keep the Context section to a single line showing exactly what was searched
+3. Format Context section as: [search query], [focus area], [industries if applicable]
 4. Write in UK English (using spellings like "organisation", "centre", "programme")
-5. Create comprehensive, detailed bullet points (minimum 20-30 words each)
-6. Format references as clean markdown links without source descriptions
-7. Focus on extracting key insights related to ${focusArea.replace('-', ' ')}
-8. Present information in a professional, clear style
-9. Avoid unnecessary words or filler content
-10. Always use the bullet character • (not - or *) for all bullet points
-11. Do not include numbers at the end of bullet points
+5. Write as a senior change management consultant providing expert analysis
+6. Create comprehensive insights that reflect deep change management expertise
+7. Format references as clean markdown links without source descriptions
+8. Ensure insights are substantive, nuanced, and specifically relevant to the search topic
+9. Present information in a professional, authoritative style
+10. Avoid superficial observations or generic statements
+11. Always use the bullet character • (not - or *) for all bullet points
 12. Do NOT include bullet characters (·) at the end of sentences
 13. End each bullet point with proper punctuation (typically a full stop)
-14. Explain WHY each insight matters and its practical applications
-15. Connect insights to real-world change management practices
+14. Incorporate both source information AND expert knowledge about change management
+15. Focus on insights that would be valuable to change management practitioners
 16. Follow the user's instructions exactly for formatting and structure
 17. Combine source information with expert knowledge to create value`
           },
