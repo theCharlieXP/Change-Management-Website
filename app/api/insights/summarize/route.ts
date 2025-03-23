@@ -7,9 +7,15 @@ import type { InsightFocusArea } from '@/types/insights'
 // Set proper runtime for compatibility
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'default-no-store';
+
+// Version marker to help track deployment
+export const PRODUCTION_VERSION = '1.0.3';
 
 export async function POST(request: Request) {
   try {
+    console.log('PRODUCTION VERSION 1.0.3 - Summarize route activated at', new Date().toISOString());
+    
     // Check authentication
     const authData = await auth();
     const { userId  } = authData
@@ -23,6 +29,10 @@ export async function POST(request: Request) {
     // Parse request body
     const body = await request.json()
     const { insights, focusArea, format, searchInfo } = body
+    
+    // Log the production version info
+    console.log('Production version check:', searchInfo?._productionVersion || 'Not specified');
+    console.log('Request timestamp:', searchInfo?._timestamp || 'Not specified');
 
     if (!insights || !Array.isArray(insights) || insights.length === 0) {
       return new NextResponse(
@@ -69,72 +79,43 @@ ${insight.content ? `Content: ${Array.isArray(insight.content) ? insight.content
       style: "Use clean markdown formatting with minimal excess text. Use bullet points (•) for Insights."
     }
     
-    // HARD-CODED PROMPT - This is the only place where the prompt is defined
-    // It will not be affected by any other changes
-    const FIXED_PROMPT = `As a senior change management expert, you will analyze the provided information and create a high-quality summary.
+    // HARD-CODED PROMPT WITH PRODUCTION VERSION MARKER
+    const FIXED_PROMPT = `VERSION 1.0.3 - PRODUCTION DEPLOYMENT
 
-FOLLOW THESE EXACT FORMATTING RULES - MANDATORY:
+As a senior change management expert, create a high-quality summary with this EXACT format:
 
-# Title With Every First Letter Capitalized
+# Title With Each Word Capitalized
 
 ## Insights
-• First insight bullet point (complete sentence with expert analysis)
-• Second insight bullet point
-• Etc. (7-10 total bullet points)
+• First bullet point with expert analysis...
+• Second bullet point...
+(7-10 total bullet points)
 
 ## References
-[Source Title 1](URL1)
-[Source Title 2](URL2)
-...
+[Source links only]
 
-CRITICAL FORMATTING REQUIREMENTS:
-
-1. TITLE FORMAT:
-   - Begin with a single # followed by space
-   - CAPITALIZE THE FIRST LETTER OF EVERY WORD IN THE TITLE
-   - Example: "# Strategic Approaches To Change Management"
-   - Maximum 10 words
-
-2. DOCUMENT STRUCTURE:
-   - Include ONLY a title, Insights section, and References section
-   - DO NOT include a Context section - this is absolutely forbidden
-   - DO NOT include any other sections except Title, Insights, References
-
-3. INSIGHTS SECTION:
-   - Must contain exactly 7-10 bullet points
-   - Each bullet must start with the • symbol
-   - Each bullet point must be 40-60 words long
-   - Each bullet must be a complete, expert-level analysis
-   - Each insight must include implications or "why it matters"
-   - Never truncate or cut off sentences
-   - End each point with proper punctuation
-   - Do NOT include bullet characters (·) at the end of sentences
-   - Write in professional UK English (organisation, programme, centre)
-
-4. REFERENCES:
-   - List only clean markdown links: [Title](URL)
-   - No descriptions after links
-
-YOUR ANALYSIS WILL BE REJECTED IF:
-- You include a Context section
-- You fail to capitalize every first letter in the title
-- Your insights are not substantive, expert-level analysis
-- You truncate sentences or provide incomplete thoughts
+MANDATORY REQUIREMENTS:
+1. TITLE: Capitalize EVERY first letter of EVERY word
+2. NO CONTEXT SECTION ALLOWED
+3. INSIGHTS: 7-10 detailed bullet points (40-60 words each)
+4. Each insight must be expert-level analysis with implications
+5. Use UK English (organisation, programme)
 
 CONTENT TO ANALYZE:
-
 ${content}`;
 
     console.log('--- USING FIXED PROMPT: LENGTH=' + FIXED_PROMPT.length + ' ---');
     console.log('Fixed prompt first 200 chars:', FIXED_PROMPT.substring(0, 200));
     
+    // Verify the deployment timestamp
+    console.log('Production deployment timestamp:', new Date().toISOString());
+    
     // Generate the summary using DeepSeek with our FIXED_PROMPT
-    console.log('--- CALLING DEEPSEEK API WITH FIXED PROMPT ---');
+    console.log('--- CALLING DEEPSEEK API WITH PRODUCTION PROMPT V1.0.3 ---');
     let summary = await summarizeWithDeepseek(FIXED_PROMPT, focusArea as InsightFocusArea);
     
-    console.log('--- RAW DEEPSEEK RESPONSE ---');
-    console.log('Response length:', summary.length);
-    console.log(summary.substring(0, 500)); // Log the first 500 chars
+    // Add production version marker to summary
+    summary = `<!-- PRODUCTION VERSION 1.0.3 -->\n${summary}`;
     
     // ALWAYS Apply post-processing to ensure requirements are met
     console.log('--- APPLYING FORCED FORMATTING ---');
@@ -147,8 +128,21 @@ ${content}`;
     console.log('--- FINAL FORMATTED RESPONSE ---');
     console.log(summary.substring(0, 500));
 
+    // Log deployment information for debugging
+    console.log({
+      env: process.env.NODE_ENV,
+      vercel: process.env.VERCEL,
+      region: process.env.VERCEL_REGION,
+      deploymentUrl: process.env.VERCEL_URL,
+      productionVersion: '1.0.3'
+    });
+
     return new NextResponse(
-      JSON.stringify({ summary }),
+      JSON.stringify({ 
+        summary,
+        version: '1.0.3',
+        generated: new Date().toISOString()
+      }),
       { status: 200 }
     )
   } catch (error) {

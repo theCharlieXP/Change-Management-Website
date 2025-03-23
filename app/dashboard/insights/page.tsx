@@ -358,6 +358,8 @@ export default function InsightsPage() {
   };
 
   const fetchInsights = async () => {
+    console.log('PRODUCTION VERSION 1.0.3 - Search initiated at', new Date().toISOString());
+    
     if (!query.trim()) return
     
     if (!focusArea) {
@@ -610,9 +612,11 @@ export default function InsightsPage() {
               insights: searchResults,
               focusArea,
               searchInfo: {
-                query: searchContext.query,
+                query: searchContext.query || query,
                 focusArea: searchContext.focusArea,
-                industries: selectedIndustries
+                industries: selectedIndustries,
+                _productionVersion: '1.0.3',
+                _timestamp: new Date().toISOString()
               },
               format: {
                 sections: [
