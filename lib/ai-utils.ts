@@ -1,4 +1,4 @@
-// Production version 1.0.5
+// Production version 1.1.1
 import { InsightFocusArea } from '@/types/insights'
 
 // Add this new direct function that bypasses all formatters
@@ -77,7 +77,7 @@ export async function directDeepSeekQuery(customPrompt: string, userContent: str
 
 export async function summarizeWithDeepseek(content: string, focusArea: InsightFocusArea): Promise<string> {
   // Log production version to confirm deployment
-  console.log('PRODUCTION VERSION 1.0.5 - DeepSeek helper called at', new Date().toISOString());
+  console.log('PRODUCTION VERSION 1.1.1 - DeepSeek helper called at', new Date().toISOString());
   
   // Server-side only - ensure we're not running on the client
   if (typeof window !== 'undefined') {
@@ -127,52 +127,29 @@ export async function summarizeWithDeepseek(content: string, focusArea: InsightF
 [Source information not available]`;
   }
 
-  // Define the system prompt - PRODUCTION VERSION 1.0.5
-  const systemPrompt = `IMPORTANT: FOLLOW THESE INSTRUCTIONS EXACTLY - DO NOT DEVIATE
-
-Your task is to create a change management summary with EXACTLY THREE SECTIONS in markdown format:
-
-# Title With First Letter Of Each Word Capitalized
+  // Define the system prompt - USING CUSTOMER'S EXACT PROMPT
+  const systemPrompt = `You are an expert in change management who provides insightful analysis.
+Please analyze the provided content and create a summary in the following format:
+# Title (Use Title Case)
 
 ## Insights
-• First bullet point (comprehensive expert analysis)
-• Second bullet point
-• Third bullet point
-(Continue with 7-10 detailed bullet points total)
+• Write 7-10 bullet points using the information received from the internet and your own knowledge based on what was searched and what focus area was selected.
 
 ## References
-[Source links]
+[Include any relevant source links if available]
 
-STRICT RULES YOU MUST FOLLOW:
-1. TITLE FORMAT: CAPITALIZE THE FIRST LETTER OF EVERY WORD (Title Case)
-2. DO NOT CREATE A CONTEXT SECTION - THERE MUST BE NO CONTEXT SECTION IN YOUR RESPONSE
-3. DO NOT INCLUDE "## Context" ANYWHERE IN YOUR RESPONSE
-4. INSIGHTS SECTION: 7-10 bullet points with the "•" character (not "-" or "*")
-5. REFERENCES: Only include the source links with minimal text
-6. FOLLOW THIS EXACT STRUCTURE - NO ADDITIONAL SECTIONS ALLOWED
-
-EXAMPLE OF CORRECT FORMAT:
-# Implementing Digital Transformation In Healthcare
-
-## Insights
-• Healthcare organizations must develop comprehensive change management strategies that address both technical implementation and cultural adaptation to ensure successful digital transformation.
-• Executive sponsorship is crucial for driving adoption of new digital tools, providing necessary resources and signaling organizational commitment to the transformation effort.
-• etc.
-
-## References
-[Digital Transformation in Healthcare](https://example.com)
-[Change Management Best Practices](https://example.com)`;
+Make sure to be thorough in your analysis and provide actionable insights in full sentences. Make sure it is written in UK English.`;
 
   // Extract valuable content from the user input - ignore prompt instructions
   // because we will use our own consistent system prompt
   const extractedContent = extractContentFromPrompt(content);
   
-  console.log('Production v1.0.5 - Using hard-coded system prompt');
+  console.log('Production v1.1.1 - Using customer\'s exact prompt');
   console.log('Extracted content length:', extractedContent.length);
 
   try {
     // Log request information
-    console.log('Preparing DeepSeek API call for production v1.0.5');
+    console.log('Preparing DeepSeek API call for production v1.1.1');
     
     // IMPORTANT: Creating a safer API call that won't fail with environment issues
     // Wrap the entire request in a timeout to prevent hanging
@@ -213,20 +190,10 @@ EXAMPLE OF CORRECT FORMAT:
       }
 
       const data = await response.json()
-      console.log('Production v1.0.5 - DeepSeek API response received');
+      console.log('Production v1.1.1 - DeepSeek API response received');
       
-      // Apply direct formatting before returning - V1.0.5
-      const rawResponse = data.choices[0].message.content;
-      
-      console.log('Production formatting starting...');
-      // First apply the direct formatting
-      const preFormattedResponse = directlyFormatResponse(rawResponse);
-      
-      // Then apply the PRODUCTION_FORMATTER for extra certainty
-      const finalResponse = PRODUCTION_FORMATTER(preFormattedResponse);
-      console.log('Production formatting completed');
-      
-      return finalResponse;
+      // Return raw response without any post-processing
+      return data.choices[0].message.content;
     
     } catch (fetchError) {
       // Clear timeout in case of error
@@ -237,7 +204,23 @@ EXAMPLE OF CORRECT FORMAT:
   } catch (error) {
     console.error('Error calling Deepseek API:', error instanceof Error ? error.message : error)
     // Instead of throwing, return a properly formatted fallback
-    return FINAL_PRODUCTION_OVERRIDE('');
+    return `<!-- EMERGENCY FALLBACK: DeepSeek API error -->
+
+# ${generateTitle(content, focusArea)}
+
+## Insights
+
+• Effective change management requires strategic planning and stakeholder engagement to ensure successful adoption of new processes.
+• Communication strategies must be tailored to address the specific concerns and needs of different stakeholder groups.
+• Organizations that establish clear metrics for measuring change progress are better positioned to make timely adjustments.
+• Executive sponsorship provides necessary resources and signals organizational commitment to the change initiative.
+• Change champions across departments help create broader ownership and accelerate adoption of new systems.
+• Customized training programs ensure employees have the necessary skills to operate effectively in the changed environment.
+• Post-implementation support addresses emerging challenges and reinforces new behaviors until they become organizational norms.
+
+## References
+
+[Source information not available due to API error]`;
   }
 }
 
@@ -482,32 +465,6 @@ function PRODUCTION_FORMATTER(text: string): string {
   
   // Add production version marker at the top as HTML comment
   return `<!-- PRODUCTION VERSION 1.0.3 -->\n\n${sections.join('\n\n')}`;
-}
-
-// Ensure this runs in production
-if (process.env.NODE_ENV === 'production') {
-  console.log('Production environment detected - overriding DeepSeek formatter');
-  
-  // Original summarizeWithDeepseek function (save reference)
-  const originalSummarizeWithDeepseek = summarizeWithDeepseek;
-  
-  // Override the function
-  // @ts-ignore - intentionally overriding
-  summarizeWithDeepseek = async function(content: string, focusArea: InsightFocusArea): Promise<string> {
-    console.log('PRODUCTION OVERRIDE - Using modified DeepSeek API call');
-    
-    try {
-      // Call the original function to get the result
-      const originalResult = await originalSummarizeWithDeepseek(content, focusArea);
-      
-      // Apply our production formatter one more time
-      return FINAL_PRODUCTION_OVERRIDE(originalResult);
-    } catch (error) {
-      console.error('Error in production override:', error);
-      // If something goes wrong, return a default result
-      return FINAL_PRODUCTION_OVERRIDE('');
-    }
-  };
 }
 
 /**

@@ -188,21 +188,13 @@ function convertMarkdownToHtml(markdown: string): string {
 
 // Provide a default system prompt to get started
 const DEFAULT_SYSTEM_PROMPT = `You are an expert in change management who provides insightful analysis.
-
 Please analyze the provided content and create a summary in the following format:
-
 # Title (Use Title Case)
 
-## Context
-• Brief summary of what is being analyzed
-• Key situation details
-
 ## Insights
-• First insight (detailed bullet point about an important insight)
-• Second insight
-• Continue with 5-8 comprehensive insights related to change management
+• Write 7-10 bullet points using the information received from the internet and your own knowledge based on what was searched and what focus area was selected.
 
 ## References
 [Include any relevant source links if available]
 
-Make sure to be thorough in your analysis and provide actionable insights.`; 
+Make sure to be thorough in your analysis and provide actionable insights in full sentences. Make sure it is written in UK English.`; 
