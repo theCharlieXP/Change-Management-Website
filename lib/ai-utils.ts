@@ -97,7 +97,13 @@ YOU MUST NEVER:
     const data = await response.json()
     console.log('DeepSeek API response received, length:', data.choices?.[0]?.message?.content?.length || 0);
     console.log('Response first 200 chars:', data.choices?.[0]?.message?.content?.substring(0, 200) || 'No content');
-    return data.choices[0].message.content
+    
+    // Apply direct formatting before returning
+    const rawResponse = data.choices[0].message.content;
+    const formattedResponse = directlyFormatResponse(rawResponse);
+    console.log('Directly formatted response, first 200 chars:', formattedResponse.substring(0, 200));
+    
+    return formattedResponse;
   } catch (error) {
     console.error('Error calling Deepseek API:', error instanceof Error ? error.message : error)
     throw new Error('Failed to generate summary with Deepseek')
@@ -138,4 +144,82 @@ function extractContentFromPrompt(promptText: string): string {
   // Fallback - return as is but log a warning
   console.warn('Could not identify content section in prompt - using full text');
   return promptText;
+}
+
+/**
+ * Directly formats the DeepSeek response to ensure it meets our requirements
+ * This is a final safety net that runs inside the DeepSeek handler
+ */
+function directlyFormatResponse(text: string): string {
+  console.log('Directly formatting DeepSeek response');
+  
+  // Step 1: Remove Context section if present
+  let processed = text;
+  if (processed.includes('## Context')) {
+    console.log('Removing Context section directly in DeepSeek handler');
+    processed = processed.replace(/## Context[\s\S]*?(?=##|$)/i, '');
+  }
+  
+  // Step 2: Ensure title is properly formatted
+  const titleMatch = processed.match(/# (.*?)(?:\r?\n|$)/i);
+  if (titleMatch) {
+    const originalTitle = titleMatch[0];
+    const titleText = titleMatch[1];
+    const capitalizedTitle = titleText
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+    processed = processed.replace(originalTitle, `# ${capitalizedTitle}\n`);
+    console.log('Directly reformatted title to:', `# ${capitalizedTitle}`);
+  } else {
+    // Add a title if none exists
+    processed = `# Change Management Insights\n\n${processed}`;
+    console.log('Added missing title');
+  }
+  
+  // Step 3: Ensure we have an Insights section
+  if (!processed.includes('## Insights')) {
+    console.log('Adding missing Insights section');
+    // Find a good place to insert it - after title
+    const titleEndIndex = processed.indexOf('\n', processed.indexOf('#')) + 1;
+    const firstPart = processed.substring(0, titleEndIndex);
+    const lastPart = processed.substring(titleEndIndex);
+    processed = `${firstPart}\n## Insights\n\n${lastPart}`;
+  }
+  
+  // Step 4: Ensure sections are in the right order
+  const sections = [];
+  
+  // Extract title
+  const extractedTitle = processed.match(/# (.*?)(?=\r?\n|$)/i);
+  if (extractedTitle) {
+    sections.push(`# ${extractedTitle[1]}`);
+  } else {
+    sections.push('# Change Management Insights');
+  }
+  
+  // Extract insights section
+  const extractedInsights = processed.match(/## Insights\s*([\s\S]*?)(?=##|$)/i);
+  if (extractedInsights && extractedInsights[1].trim()) {
+    sections.push('## Insights\n\n' + extractedInsights[1].trim());
+  } else {
+    sections.push('## Insights\n\n• Default insight for change management.');
+  }
+  
+  // Extract references section
+  const extractedReferences = processed.match(/## References\s*([\s\S]*?)$/i);
+  if (extractedReferences && extractedReferences[1].trim()) {
+    sections.push('## References\n\n' + extractedReferences[1].trim());
+  } else {
+    // Try to find any links
+    const links = processed.match(/\[.*?\]\((https?:\/\/[^\s)]+)\)/g);
+    if (links && links.length > 0) {
+      sections.push('## References\n\n' + links.join('\n\n'));
+    } else {
+      sections.push('## References\n\n[Source information not available]');
+    }
+  }
+  
+  // Reconstruct the document with only the sections we want
+  return sections.join('\n\n');
 } 
