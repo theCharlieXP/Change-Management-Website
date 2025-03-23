@@ -182,11 +182,14 @@ export default function InsightsPage() {
   
   // Helper function to render markdown text with links
   const renderMarkdownText = (text: string) => {
+    // Clean any asterisks from the text first
+    const cleanedText = text.replace(/\*\*/g, '').replace(/\*/g, '');
+    
     // Regular expression to find markdown links: [text](url)
     const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
     
-    if (!linkRegex.test(text)) {
-      return text; // No links, return plain text
+    if (!linkRegex.test(cleanedText)) {
+      return cleanedText; // No links, return plain text
     }
     
     // Reset regex lastIndex
@@ -197,10 +200,10 @@ export default function InsightsPage() {
     let lastIndex = 0;
     let match;
     
-    while ((match = linkRegex.exec(text)) !== null) {
+    while ((match = linkRegex.exec(cleanedText)) !== null) {
       // Add text before the match
       if (match.index > lastIndex) {
-        parts.push(text.substring(lastIndex, match.index));
+        parts.push(cleanedText.substring(lastIndex, match.index));
       }
       
       // Add the link
@@ -221,11 +224,16 @@ export default function InsightsPage() {
     }
     
     // Add any remaining text after the last match
-    if (lastIndex < text.length) {
-      parts.push(text.substring(lastIndex));
+    if (lastIndex < cleanedText.length) {
+      parts.push(cleanedText.substring(lastIndex));
     }
     
     return <>{parts}</>;
+  };
+
+  // Helper function to clean any summary text before displaying it
+  const cleanSummaryText = (text: string): string => {
+    return text.replace(/\*\*/g, '').replace(/\*/g, '');
   };
 
   // Fetch projects when auth is ready
@@ -843,34 +851,45 @@ Format your response as follows:
                 <>
                   <div className="prose prose-sm max-w-none">
                     {summary.split('\n').map((paragraph, index) => {
+                      // Clean the paragraph text first
+                      const cleanedParagraph = cleanSummaryText(paragraph);
+                      
                       // Format markdown headings properly
-                      if (paragraph.startsWith('# ')) {
-                        return <h1 key={index} className="text-2xl font-bold mt-4 mb-2">{paragraph.substring(2)}</h1>;
-                      } else if (paragraph.startsWith('## ')) {
-                        return <h2 key={index} className="text-xl font-bold mt-3 mb-2">{paragraph.substring(3)}</h2>;
-                      } else if (paragraph.startsWith('### ')) {
-                        return <h3 key={index} className="text-lg font-bold mt-3 mb-1">{paragraph.substring(4)}</h3>;
-                      } else if (paragraph.startsWith('- ')) {
-                        // Handle bullet points, including those that might contain markdown links
-                        const content = paragraph.substring(2);
+                      if (cleanedParagraph.startsWith('# ')) {
+                        return <h1 key={index} className="text-2xl font-bold mt-4 mb-2">{cleanedParagraph.substring(2)}</h1>;
+                      } else if (cleanedParagraph.startsWith('## ')) {
+                        return <h2 key={index} className="text-xl font-bold mt-3 mb-2">{cleanedParagraph.substring(3)}</h2>;
+                      } else if (cleanedParagraph.startsWith('### ')) {
+                        return <h3 key={index} className="text-lg font-bold mt-3 mb-1">{cleanedParagraph.substring(4)}</h3>;
+                      } else if (cleanedParagraph.startsWith('• ')) {
+                        // Handle bullet points with bullet character (•)
+                        const content = cleanedParagraph.substring(2);
                         return (
                           <li key={index} className="ml-4">
                             {renderMarkdownText(content)}
                           </li>
                         );
-                      } else if (/^\d+\.\s/.test(paragraph)) {
+                      } else if (cleanedParagraph.startsWith('- ')) {
+                        // Handle bullet points with dash
+                        const content = cleanedParagraph.substring(2);
+                        return (
+                          <li key={index} className="ml-4">
+                            {renderMarkdownText(content)}
+                          </li>
+                        );
+                      } else if (/^\d+\.\s/.test(cleanedParagraph)) {
                         // Match numbered lists (e.g., "1. Item")
-                        const content = paragraph.replace(/^\d+\.\s/, '');
+                        const content = cleanedParagraph.replace(/^\d+\.\s/, '');
                         return (
                           <li key={index} className="ml-4 list-decimal">
                             {renderMarkdownText(content)}
                           </li>
                         );
-                      } else if (paragraph.trim() === '') {
+                      } else if (cleanedParagraph.trim() === '') {
                         return <div key={index} className="h-2"></div>; // Space for empty lines
                       } else {
-                        // Handle regular paragraphs, including those that might contain markdown links
-                        return <p key={index}>{renderMarkdownText(paragraph)}</p>;
+                        // Handle regular paragraphs
+                        return <p key={index}>{renderMarkdownText(cleanedParagraph)}</p>;
                       }
                     })}
                   </div>

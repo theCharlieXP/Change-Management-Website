@@ -128,6 +128,7 @@ IMPORTANT FORMATTING REQUIREMENTS:
 5. Write in professional, clear UK English
 6. Focus on practical, action-oriented insights for ${tavilyAreaFilter || 'change management'} professionals
 7. Maintain a formal, expert tone throughout
+8. DO NOT USE ASTERISKS (*) for emphasis or formatting anywhere in the response
 `;
       
       // Perform search and summarization
@@ -158,14 +159,22 @@ IMPORTANT FORMATTING REQUIREMENTS:
         // Clear the timeout since operation completed
         clearTimeout(timeoutId);
         
+        // Clean the summary to remove any asterisks
+        const cleanSummary = (summary: string): string => {
+          return summary.replace(/\*\*/g, '').replace(/\*/g, '');
+        };
+
+        // Clean any asterisks from the summary
+        const cleanedSummary = cleanSummary(summary);
+        
         // Log success
         console.log(`Search and summarization successful (${elapsedTime.toFixed(2)}s)`);
         console.log('Results count:', results.length);
-        console.log('Summary first 200 chars:', summary.substring(0, 200));
+        console.log('Summary first 200 chars:', cleanedSummary.substring(0, 200));
         
         // Return the results
         return NextResponse.json({
-          summary,
+          summary: cleanedSummary,
           results,
           query,
           focusArea: area_filter || 'general',

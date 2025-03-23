@@ -172,6 +172,7 @@ Remember:
 3. Every insight must specifically relate to ${search_results.focusArea || 'change management'} - do not include generic points
 4. Write in professional UK English
 5. Include references to sources
+6. DO NOT use any asterisks (*) for emphasis or formatting - use plain text only
 `;
     
     let attempts = 0;
@@ -248,6 +249,9 @@ Remember:
         const data = await response.json();
         let summaryContent = data.choices[0].message.content;
         
+        // Clean the content of any asterisks
+        summaryContent = this.cleanSummaryContent(summaryContent);
+        
         // If no "References" section exists, add one with the links
         if (!summaryContent.includes('## References')) {
           summaryContent += `\n\n## References\n${referenceLinks}`;
@@ -274,6 +278,12 @@ Remember:
     return this.generateFallbackSummary(search_results);
   }
   
+  // Clean the summary of any unwanted formatting
+  private cleanSummaryContent(content: string): string {
+    // Remove any asterisks that might be used for emphasis
+    return content.replace(/\*\*/g, '').replace(/\*/g, '');
+  }
+  
   // Generate a fallback summary using only Tavily data when DeepSeek fails
   private generateFallbackSummary(search_results: TavilySearchResults): string {
     try {
@@ -281,9 +291,12 @@ Remember:
       const title = `# ${search_results.query} in ${focusArea}: Key Insights`;
       
       // Use Tavily's answer if available, otherwise create basic insights
-      const insightsSection = search_results.answer 
+      let insightsSection = search_results.answer 
         ? `\n\n## Insights\n• ${search_results.answer.split('. ').join('\n• ')}`
         : `\n\n## Insights in ${focusArea}\n• ${focusArea} requires thorough planning and stakeholder engagement when implementing ${search_results.query} to ensure successful implementation.\n• Clear communication about ${search_results.query} is essential throughout the ${focusArea.toLowerCase()} process to maintain transparency and build trust.\n• Resistance to changes related to ${search_results.query} should be anticipated and addressed proactively to increase acceptance.\n• Leadership support significantly improves the likelihood of successful ${search_results.query} initiatives in ${focusArea.toLowerCase()}.\n• Regular monitoring and measurement helps track progress of ${search_results.query} implementations and demonstrate value.`;
+      
+      // Clean any asterisks
+      insightsSection = this.cleanSummaryContent(insightsSection);
       
       // Add references to all sources
       const referencesSection = `\n\n## References\n${search_results.results.map(result => 
