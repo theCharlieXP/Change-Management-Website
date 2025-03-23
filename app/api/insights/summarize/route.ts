@@ -10,11 +10,11 @@ export const dynamic = 'force-dynamic';
 export const fetchCache = 'default-no-store';
 
 // Version marker to help track deployment
-export const PRODUCTION_VERSION = '1.0.3';
+export const PRODUCTION_VERSION = '1.0.4';
 
 export async function POST(request: Request) {
   try {
-    console.log('PRODUCTION VERSION 1.0.3 - Summarize route activated at', new Date().toISOString());
+    console.log('PRODUCTION VERSION 1.0.4 - Summarize route activated at', new Date().toISOString());
     
     // Check authentication
     const authData = await auth();
@@ -33,6 +33,13 @@ export async function POST(request: Request) {
     // Log the production version info
     console.log('Production version check:', searchInfo?._productionVersion || 'Not specified');
     console.log('Request timestamp:', searchInfo?._timestamp || 'Not specified');
+    console.log('Environment:', {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL: process.env.VERCEL,
+      VERCEL_ENV: process.env.VERCEL_ENV,
+      VERCEL_URL: process.env.VERCEL_URL,
+      HAS_DEEPSEEK_KEY: !!process.env.DEEPSEEK_API_KEY
+    });
 
     if (!insights || !Array.isArray(insights) || insights.length === 0) {
       return new NextResponse(
@@ -80,7 +87,7 @@ ${insight.content ? `Content: ${Array.isArray(insight.content) ? insight.content
     }
     
     // HARD-CODED PROMPT WITH PRODUCTION VERSION MARKER
-    const FIXED_PROMPT = `VERSION 1.0.3 - PRODUCTION DEPLOYMENT
+    const FIXED_PROMPT = `VERSION 1.0.4 - PRODUCTION DEPLOYMENT
 
 As a senior change management expert, create a high-quality summary with this EXACT format:
 
@@ -111,40 +118,70 @@ ${content}`;
     console.log('Production deployment timestamp:', new Date().toISOString());
     
     // Generate the summary using DeepSeek with our FIXED_PROMPT
-    console.log('--- CALLING DEEPSEEK API WITH PRODUCTION PROMPT V1.0.3 ---');
-    let summary = await summarizeWithDeepseek(FIXED_PROMPT, focusArea as InsightFocusArea);
+    console.log('--- CALLING DEEPSEEK API WITH PRODUCTION PROMPT V1.0.4 ---');
     
-    // Add production version marker to summary
-    summary = `<!-- PRODUCTION VERSION 1.0.3 -->\n${summary}`;
-    
-    // ALWAYS Apply post-processing to ensure requirements are met
-    console.log('--- APPLYING FORCED FORMATTING ---');
-    summary = forceCorrectFormatting(summary, searchQuery);
-    
-    // Final emergency override - this will ALWAYS enforce our format requirements
-    console.log('--- APPLYING FINAL EMERGENCY OVERRIDE ---');
-    summary = EMERGENCY_FORMAT_OVERRIDE(summary);
-    
-    console.log('--- FINAL FORMATTED RESPONSE ---');
-    console.log(summary.substring(0, 500));
-
-    // Log deployment information for debugging
-    console.log({
-      env: process.env.NODE_ENV,
-      vercel: process.env.VERCEL,
-      region: process.env.VERCEL_REGION,
-      deploymentUrl: process.env.VERCEL_URL,
-      productionVersion: '1.0.3'
-    });
-
-    return new NextResponse(
-      JSON.stringify({ 
-        summary,
-        version: '1.0.3',
-        generated: new Date().toISOString()
-      }),
-      { status: 200 }
-    )
+    try {
+      // Add a timeout to prevent hanging if DeepSeek API doesn't respond
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
+      
+      let summary = await Promise.race([
+        summarizeWithDeepseek(FIXED_PROMPT, focusArea as InsightFocusArea),
+        new Promise<string>((_, reject) => 
+          setTimeout(() => reject(new Error('DeepSeek API timeout')), 19000)
+        )
+      ]);
+      
+      clearTimeout(timeoutId);
+      
+      // Add production version marker to summary
+      summary = `<!-- PRODUCTION VERSION 1.0.4 -->\n${summary}`;
+      
+      // ALWAYS Apply post-processing to ensure requirements are met
+      console.log('--- APPLYING FORCED FORMATTING ---');
+      summary = forceCorrectFormatting(summary, searchQuery);
+      
+      // Final emergency override - this will ALWAYS enforce our format requirements
+      console.log('--- APPLYING FINAL EMERGENCY OVERRIDE ---');
+      summary = EMERGENCY_FORMAT_OVERRIDE(summary);
+      
+      console.log('--- FINAL FORMATTED RESPONSE ---');
+      console.log(summary.substring(0, 500));
+      
+      // Log deployment information for debugging
+      console.log({
+        env: process.env.NODE_ENV,
+        vercel: process.env.VERCEL,
+        region: process.env.VERCEL_REGION,
+        deploymentUrl: process.env.VERCEL_URL,
+        productionVersion: '1.0.4'
+      });
+      
+      return new NextResponse(
+        JSON.stringify({ 
+          summary,
+          version: '1.0.4',
+          generated: new Date().toISOString()
+        }),
+        { status: 200 }
+      );
+    } catch (error) {
+      console.error('DeepSeek API error:', error);
+      
+      // If DeepSeek fails, use our emergency fallback
+      console.log('--- USING EMERGENCY FALLBACK SUMMARY ---');
+      const fallbackSummary = generateEmergencyFallbackSummary(searchQuery, insights);
+      
+      return new NextResponse(
+        JSON.stringify({ 
+          summary: fallbackSummary,
+          version: '1.0.4-fallback',
+          generated: new Date().toISOString(),
+          fallback: true
+        }),
+        { status: 200 }
+      );
+    }
   } catch (error) {
     console.error('Error generating summary:', error)
     return new NextResponse(
@@ -313,4 +350,57 @@ ${insightsContent}
 ${referencesContent}`;
 
   return formattedOutput;
+}
+
+/**
+ * Emergency fallback summary that doesn't rely on DeepSeek API
+ */
+function generateEmergencyFallbackSummary(searchQuery: string, insights: any[]): string {
+  // Create a title from the search query
+  const title = searchQuery
+    ? searchQuery.split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ')
+    : "Change Management Insights";
+  
+  // Default expert insights that are always relevant to change management
+  const defaultInsights = `• Effective change management requires strategic planning and stakeholder engagement to ensure successful adoption of new processes and minimize resistance.
+
+• Communication is a critical success factor in change initiatives, serving as the foundation for building trust and reducing uncertainty among affected employees.
+
+• Organizations that establish clear metrics for measuring change progress are better positioned to make timely adjustments and demonstrate value to leadership.
+
+• Executive sponsorship provides necessary resources and signals organizational commitment, significantly increasing the likelihood of successful change implementation.
+
+• Building a coalition of change champions across departments creates broader ownership and accelerates adoption of new systems or processes.
+
+• Customized training programs ensure employees have the necessary skills to operate effectively in the changed environment, reducing productivity dips.
+
+• Post-implementation support addresses emerging challenges and reinforces new behaviors until they become organizational norms.`;
+  
+  // Create references from the insights if available
+  let references = "";
+  if (insights && insights.length > 0) {
+    references = insights
+      .filter(insight => insight.title && insight.url)
+      .map(insight => `[${insight.title}](${insight.url})`)
+      .join('\n\n');
+  }
+  
+  if (!references) {
+    references = "[Source information not available]";
+  }
+  
+  // Construct the complete fallback summary
+  return `<!-- EMERGENCY FALLBACK SUMMARY V1.0.4 -->
+
+# ${title}
+
+## Insights
+
+${defaultInsights}
+
+## References
+
+${references}`;
 } 

@@ -615,15 +615,12 @@ export default function InsightsPage() {
                 query: searchContext.query || query,
                 focusArea: searchContext.focusArea,
                 industries: selectedIndustries,
-                _productionVersion: '1.0.3',
-                _timestamp: new Date().toISOString()
+                _productionVersion: '1.0.4',
+                _timestamp: new Date().toISOString(),
+                _client: 'web-ui'
               },
               format: {
                 sections: [
-                  {
-                    title: "Context",
-                    description: "Exactly what was searched, focus area selected, and industries selected (if applicable)"
-                  },
                   {
                     title: "Insights",
                     description: "7-10 comprehensive bullet points written by a change management expert"
