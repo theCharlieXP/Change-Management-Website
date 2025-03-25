@@ -99,6 +99,7 @@ const ProjectsPage: React.FC = () => {
               key={project.id} 
               href={`/dashboard/projects/${project.id}`}
               className="block transition-transform hover:scale-[1.02]"
+              prefetch={true}
             >
               <Card className="h-[140px] sm:h-[160px]">
                 <CardHeader className="pb-2">

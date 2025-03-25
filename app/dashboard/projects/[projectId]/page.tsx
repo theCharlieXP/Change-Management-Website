@@ -359,12 +359,18 @@ export default function ProjectPage() {
 
   if (error || !project) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <p className="text-red-600 mb-4">{error || 'Project not found'}</p>
-        <Button onClick={() => router.push('/dashboard/projects')} variant="outline">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Projects
-        </Button>
+      <div className="container mx-auto py-8">
+        <Card className="w-full">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center justify-center py-12">
+              <p className="text-red-600 mb-4">{error || 'Project not found'}</p>
+              <Button onClick={() => router.push('/dashboard/projects')} variant="outline">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Projects
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
