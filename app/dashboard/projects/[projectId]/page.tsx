@@ -95,18 +95,44 @@ export default function ProjectPage() {
         setLoading(true)
         setError(null)
 
-        const [projectData, notesData, tasksData] = await Promise.all([
-          getProject(projectId),
-          getProjectNotes(projectId),
-          getProjectTasks(projectId)
+        console.log('Fetching project data for ID:', projectId)
+        console.log('Auth state:', { isLoaded, isSignedIn, userId })
+
+        const [projectRes, notesRes, tasksRes] = await Promise.all([
+          fetch(`/api/projects/${projectId}`),
+          fetch(`/api/projects/${projectId}/notes`),
+          fetch(`/api/projects/${projectId}/tasks`)
         ])
 
-        if (!projectData) {
-          setError('Project not found')
-          setLoading(false)
-          router.push('/dashboard/projects')
-          return
+        if (!projectRes.ok) {
+          if (projectRes.status === 404) {
+            console.log('Project not found, redirecting to projects page')
+            setError('Project not found')
+            setLoading(false)
+            router.push('/dashboard/projects')
+            return
+          }
+          if (projectRes.status === 401) {
+            console.log('Unauthorized, redirecting to sign in')
+            setError('Please sign in to view projects')
+            setLoading(false)
+            router.push('/sign-in')
+            return
+          }
+          throw new Error('Failed to fetch project data')
         }
+
+        if (!notesRes.ok || !tasksRes.ok) {
+          throw new Error('Failed to fetch project data')
+        }
+
+        const [projectData, notesData, tasksData] = await Promise.all([
+          projectRes.json(),
+          notesRes.json(),
+          tasksRes.json()
+        ])
+
+        console.log('Project data received:', projectData)
 
         setProject(projectData)
         setNotes(notesData)
