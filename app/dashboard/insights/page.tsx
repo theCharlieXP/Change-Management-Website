@@ -388,7 +388,7 @@ export default function InsightsPage() {
       })
       return
     }
-    
+
     // Check if we can search
     if (isSearchLimitReached && !bypassUsageCheck) {
       toast({
@@ -398,7 +398,7 @@ export default function InsightsPage() {
       })
       return
     }
-    
+
     // Reset results and errors
     setResults([])
     setSummary(null)
@@ -419,9 +419,9 @@ export default function InsightsPage() {
       // Use the new combined search-and-summarize endpoint
       const response = await fetch('/api/insights/search-and-summarize', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+          headers: {
+            'Content-Type': 'application/json'
+          },
         body: JSON.stringify({
           query,
           area_filter: focusArea,
@@ -443,58 +443,58 @@ Format your response as follows:
           `
         })
       });
-      
-      if (!response.ok) {
+
+        if (!response.ok) {
         let errorMessage = `Search failed with status: ${response.status}`;
         
-        try {
-          const errorData = await response.json();
+          try {
+            const errorData = await response.json();
           
           // Use the user-friendly message if available
           if (errorData.userMessage) {
             errorMessage = errorData.userMessage;
           } else if (errorData.details && typeof errorData.details === 'object') {
             // Process detailed error information
-            const keyInfo = {
-              exists: errorData.details.tavily_api_key_exists,
-              prefix: errorData.details.tavily_api_key_prefix,
-              env: errorData.details.environment
-            };
-            console.log('API key diagnostic info:', keyInfo);
-            
-            // Special handling for common errors
-            if (keyInfo.exists === false) {
-              errorMessage = 'The search service API key is missing. Please contact support.';
-            } else if (errorData.details.message && errorData.details.message.includes('Network error')) {
-              errorMessage = 'Could not connect to the search service. Please check your internet connection or try again later.';
+              const keyInfo = {
+                exists: errorData.details.tavily_api_key_exists,
+                prefix: errorData.details.tavily_api_key_prefix,
+                env: errorData.details.environment
+              };
+              console.log('API key diagnostic info:', keyInfo);
+              
+              // Special handling for common errors
+              if (keyInfo.exists === false) {
+                errorMessage = 'The search service API key is missing. Please contact support.';
+              } else if (errorData.details.message && errorData.details.message.includes('Network error')) {
+                errorMessage = 'Could not connect to the search service. Please check your internet connection or try again later.';
             } else if (errorData.details.name === 'AbortError' || response.status === 504 || (errorData.details.reason === 'timeout')) {
-              errorMessage = 'The search request timed out. Please try a more specific query or try again later.';
+                errorMessage = 'The search request timed out. Please try a more specific query or try again later.';
+              } else {
+                errorMessage = errorData.error || errorData.details?.message || errorMessage;
+              }
             } else {
-              errorMessage = errorData.error || errorData.details?.message || errorMessage;
+              errorMessage = errorData.error || errorData.details || errorMessage;
             }
-          } else {
-            errorMessage = errorData.error || errorData.details || errorMessage;
+            
+          } catch (e) {
+            // If we can't parse the JSON, just use the default error message
+            console.error('Error parsing error response:', e);
           }
           
-        } catch (e) {
-          // If we can't parse the JSON, just use the default error message
-          console.error('Error parsing error response:', e);
+          throw new Error(errorMessage);
+        }
+
+        const data = await response.json();
+        
+        if ('error' in data) {
+          console.error('Search error in response data:', data);
+          throw new Error(data.error);
         }
         
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
-      
-      if ('error' in data) {
-        console.error('Search error in response data:', data);
-        throw new Error(data.error);
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       setLoadingStage("Processing search results...");
-      
-      // Extract results and summary from the response
+
+        // Extract results and summary from the response
       const { results, summary, query: searchQuery, focusArea: searchFocusArea } = data;
       
       // Transform the results to match the application's expected format
@@ -521,21 +521,21 @@ Format your response as follows:
           title: "Search Complete",
           description: `Found ${transformedResults.length} relevant sources`,
         });
-      } else {
+              } else {
         toast({
           title: "No Results",
           description: "Try adjusting your search criteria or selecting different filters",
           variant: "destructive"
         });
       }
-      
-      // Save results for future reference
+            
+            // Save results for future reference
       saveSearchResults(transformedResults, searchQuery, summary);
       
       // Increment usage count
       usageTrackerRef.current?.incrementUsage();
       
-    } catch (error: any) {
+      } catch (error: any) {
       console.error('Search error:', error);
       setError(error.message || 'Failed to search for insights');
       
@@ -865,7 +865,7 @@ Format your response as follows:
                         // Handle bullet points with bullet character (•)
                         const content = cleanedParagraph.substring(2);
                         return (
-                          <li key={index} className="ml-4">
+                          <li key={index} className="ml-6 pl-2">
                             {renderMarkdownText(content)}
                           </li>
                         );
@@ -873,7 +873,7 @@ Format your response as follows:
                         // Handle bullet points with dash
                         const content = cleanedParagraph.substring(2);
                         return (
-                          <li key={index} className="ml-4">
+                          <li key={index} className="ml-6 pl-2">
                             {renderMarkdownText(content)}
                           </li>
                         );

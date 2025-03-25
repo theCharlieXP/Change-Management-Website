@@ -129,6 +129,8 @@ IMPORTANT FORMATTING REQUIREMENTS:
 6. Focus on practical, action-oriented insights for ${tavilyAreaFilter || 'change management'} professionals
 7. Maintain a formal, expert tone throughout
 8. DO NOT USE ASTERISKS (*) for emphasis or formatting anywhere in the response
+9. DO NOT include reference links or citations within the insight sentences - keep all references in the References section only
+10. Each bullet point should be a complete, standalone sentence without any trailing references or citations
 `;
       
       // Perform search and summarization
