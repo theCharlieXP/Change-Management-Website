@@ -95,41 +95,18 @@ export default function ProjectPage() {
         setLoading(true)
         setError(null)
 
-        const [projectRes, notesRes, tasksRes] = await Promise.all([
-          fetch(`/api/projects/${projectId}`),
-          fetch(`/api/projects/${projectId}/notes`),
-          fetch(`/api/projects/${projectId}/tasks`)
-        ])
-
-        if (!projectRes.ok) {
-          if (projectRes.status === 404) {
-            setError('Project not found')
-            setLoading(false)
-            return
-          }
-          if (projectRes.status === 401) {
-            if (!isSignedIn) {
-              setError('Please sign in to view projects')
-              setLoading(false)
-              router.push('/sign-in')
-            } else {
-              setError('You do not have permission to view this project')
-              setLoading(false)
-            }
-            return
-          }
-          throw new Error('Failed to fetch project data')
-        }
-
-        if (!notesRes.ok || !tasksRes.ok) {
-          throw new Error('Failed to fetch project data')
-        }
-
         const [projectData, notesData, tasksData] = await Promise.all([
-          projectRes.json(),
-          notesRes.json(),
-          tasksRes.json()
+          getProject(projectId),
+          getProjectNotes(projectId),
+          getProjectTasks(projectId)
         ])
+
+        if (!projectData) {
+          setError('Project not found')
+          setLoading(false)
+          router.push('/dashboard/projects')
+          return
+        }
 
         setProject(projectData)
         setNotes(notesData)
