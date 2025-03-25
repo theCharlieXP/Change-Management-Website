@@ -108,9 +108,14 @@ export default function ProjectPage() {
             return
           }
           if (projectRes.status === 401) {
-            setError('Please sign in to view projects')
-            setLoading(false)
-            router.push('/sign-in')
+            if (!isSignedIn) {
+              setError('Please sign in to view projects')
+              setLoading(false)
+              router.push('/sign-in')
+            } else {
+              setError('You do not have permission to view this project')
+              setLoading(false)
+            }
             return
           }
           throw new Error('Failed to fetch project data')
