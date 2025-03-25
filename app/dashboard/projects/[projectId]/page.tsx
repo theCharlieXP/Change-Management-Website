@@ -57,7 +57,7 @@ export default function ProjectPage() {
   const params = useParams()
   const router = useRouter()
   const { isLoaded, isSignedIn, userId } = useAuth()
-  const projectId = params.projectId as string
+  const projectId = params?.projectId as string
   const [project, setProject] = useState<Project | null>(null)
   const [tasks, setTasks] = useState<ProjectTask[]>([])
   const [loading, setLoading] = useState(true)
@@ -84,6 +84,12 @@ export default function ProjectPage() {
       return
     }
 
+    if (!projectId) {
+      setError('Invalid project ID')
+      setLoading(false)
+      return
+    }
+
     const fetchData = async () => {
       try {
         setLoading(true)
@@ -95,7 +101,22 @@ export default function ProjectPage() {
           fetch(`/api/projects/${projectId}/tasks`)
         ])
 
-        if (!projectRes.ok || !notesRes.ok || !tasksRes.ok) {
+        if (!projectRes.ok) {
+          if (projectRes.status === 404) {
+            setError('Project not found')
+            setLoading(false)
+            return
+          }
+          if (projectRes.status === 401) {
+            setError('Please sign in to view projects')
+            setLoading(false)
+            router.push('/sign-in')
+            return
+          }
+          throw new Error('Failed to fetch project data')
+        }
+
+        if (!notesRes.ok || !tasksRes.ok) {
           throw new Error('Failed to fetch project data')
         }
 
@@ -125,14 +146,14 @@ export default function ProjectPage() {
     }
 
     fetchData()
-  }, [isLoaded, isSignedIn, userId, params.projectId, projectId, router])
+  }, [isLoaded, isSignedIn, userId, projectId, router])
 
   useEffect(() => {
     const fetchSummaries = async () => {
-      if (!params.projectId) return
+      if (!projectId) return
 
       try {
-        const response = await fetch(`/api/projects/${params.projectId}/summaries`)
+        const response = await fetch(`/api/projects/${projectId}/summaries`)
         if (!response.ok) {
           throw new Error('Failed to fetch summaries')
         }
@@ -151,7 +172,7 @@ export default function ProjectPage() {
     }
 
     fetchSummaries()
-  }, [params.projectId])
+  }, [projectId])
 
   const handleStatusChange = async (newStatus: ProjectStatus) => {
     try {
@@ -297,7 +318,7 @@ export default function ProjectPage() {
 
   const handleDeleteSummary = async (summaryId: string) => {
     try {
-      const response = await fetch(`/api/projects/${params.projectId}/summaries`, {
+      const response = await fetch(`/api/projects/${projectId}/summaries`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
