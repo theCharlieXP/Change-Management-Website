@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { createClient } from '@supabase/supabase-js'
+import { supabaseServer } from '@/lib/supabase/server'
 
 // Log environment variables (without exposing sensitive values)
 console.log('Supabase configuration:', {
@@ -10,25 +10,13 @@ console.log('Supabase configuration:', {
   serviceKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0
 })
 
-// Create a Supabase client with the service role key
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false
-    }
-  }
-)
-
 export async function GET(
   request: Request,
   { params }: { params: { projectId: string } }
 ) {
   try {
     const authData = await auth();
-const { userId  } = authData
+    const { userId } = authData
     if (!userId) {
       return new NextResponse(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -36,7 +24,13 @@ const { userId  } = authData
       )
     }
 
-    const { data: project, error } = await supabase
+    console.log('Fetching project:', {
+      projectId: params.projectId,
+      userId,
+      hasServerClient: !!supabaseServer
+    })
+
+    const { data: project, error } = await supabaseServer
       .from('projects')
       .select('*')
       .eq('id', params.projectId)
@@ -44,6 +38,7 @@ const { userId  } = authData
       .single()
 
     if (error) {
+      console.error('Error fetching project:', error)
       if (error.code === 'PGRST116') {
         return new NextResponse(null, { status: 404 })
       }
@@ -72,7 +67,7 @@ export async function PATCH(
 ) {
   try {
     const authData = await auth();
-const { userId  } = authData
+    const { userId } = authData
     if (!userId) {
       return new NextResponse(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -82,7 +77,7 @@ const { userId  } = authData
 
     const updates = await request.json()
 
-    const { data: project, error } = await supabase
+    const { data: project, error } = await supabaseServer
       .from('projects')
       .update(updates)
       .eq('id', params.projectId)
@@ -116,7 +111,7 @@ export async function DELETE(
 ) {
   try {
     const authData = await auth();
-const { userId  } = authData
+    const { userId } = authData
     if (!userId) {
       return new NextResponse(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -124,7 +119,7 @@ const { userId  } = authData
       )
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseServer
       .rpc('soft_delete_project', {
         project_id: params.projectId
       })
@@ -152,7 +147,7 @@ export async function POST(
 ) {
   try {
     const authData = await auth();
-const { userId  } = authData
+    const { userId } = authData
     if (!userId) {
       return new NextResponse(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -163,7 +158,7 @@ const { userId  } = authData
     const { action } = await request.json()
     
     if (action === 'restore') {
-      const { error } = await supabase
+      const { error } = await supabaseServer
         .rpc('restore_project', {
           project_id: params.projectId
         })
