@@ -36,6 +36,7 @@ import { ProjectNotes } from '@/components/projects/project-notes'
 import { toast } from '@/components/ui/use-toast'
 import { ProjectSummaries } from '@/components/projects/project-summaries'
 import { DeleteProjectDialog } from '@/components/projects/delete-project-dialog'
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 
 const STATUS_COLORS = {
   'planning': 'text-blue-600 bg-blue-50',
@@ -71,6 +72,7 @@ export default function ProjectPage() {
   const [notes, setNotes] = useState<ProjectNote[]>([])
   const [summaries, setSummaries] = useState<InsightSummary[]>([])
   const [summariesLoading, setSummariesLoading] = useState(true)
+  const [debugInfo, setDebugInfo] = useState<any>(null)
 
   console.log('Project page mounted for ID:', projectId, 'pathname:', pathname);
 
@@ -107,94 +109,74 @@ export default function ProjectPage() {
           userObject: !!user
         })
 
-        // First, check if we can access the project
-        const projectRes = await fetch(`/api/projects/${projectId}`, {
+        // Use a dedicated server-side API route to fetch all project data at once
+        const projectDataRes = await fetch(`/api/projects/${projectId}/details`, {
           headers: {
-            'Cache-Control': 'no-cache', // Prevent caching
+            'Cache-Control': 'no-cache',
             'Pragma': 'no-cache',
             'Content-Type': 'application/json'
           },
-          credentials: 'include' // Include credentials (cookies) with the request
+          credentials: 'include',
+          // Add a random query parameter to bypass any caching
+          cache: 'no-store'
         })
-        console.log('Project response status:', projectRes.status)
+        
+        console.log('Project details response status:', projectDataRes.status)
 
-        if (!projectRes.ok) {
-          if (projectRes.status === 404) {
-            console.log('Project not found, redirecting to projects page')
+        if (!projectDataRes.ok) {
+          const errorText = await projectDataRes.text()
+          console.error('Project details error:', {
+            status: projectDataRes.status,
+            text: errorText
+          })
+          
+          if (projectDataRes.status === 404) {
             setError('Project not found')
             setLoading(false)
-            router.push('/dashboard/projects')
+            // Don't redirect immediately to help debug the issue
+            setDebugInfo({
+              error: 'Project not found',
+              status: projectDataRes.status,
+              projectId,
+              userId,
+              responseText: errorText
+            })
             return
           }
-          if (projectRes.status === 401) {
-            console.log('Unauthorized, redirecting to sign in')
+          
+          if (projectDataRes.status === 401) {
             setError('Please sign in to view projects')
             setLoading(false)
             router.push('/sign-in')
             return
           }
-          if (projectRes.status === 500) {
-            const errorData = await projectRes.json()
-            console.error('Server error:', errorData)
-            setError('Failed to load project. Please try again later.')
-            toast({
-              title: "Error",
-              description: "There was a problem loading the project. Please try refreshing the page.",
-              variant: "destructive"
-            })
-            setLoading(false)
-            return
-          }
-          throw new Error(`Failed to fetch project data: ${projectRes.status}`)
+          
+          throw new Error(`Failed to fetch project data: ${projectDataRes.status} - ${errorText}`)
         }
 
-        // If we get here, we have a valid project response
-        const projectData = await projectRes.json()
-        console.log('Project data received:', projectData)
+        // Parse the response
+        const responseData = await projectDataRes.json()
+        console.log('Project details received:', responseData)
+        
+        const { project: projectData, tasks: tasksData, notes: notesData } = responseData
 
-        // Now fetch notes and tasks
-        const [notesRes, tasksRes] = await Promise.all([
-          fetch(`/api/projects/${projectId}/notes`, {
-            headers: {
-              'Cache-Control': 'no-cache', // Prevent caching
-              'Pragma': 'no-cache',
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include' // Include credentials with the request
-          }),
-          fetch(`/api/projects/${projectId}/tasks`, {
-            headers: {
-              'Cache-Control': 'no-cache', // Prevent caching
-              'Pragma': 'no-cache',
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include' // Include credentials with the request
-          })
-        ])
-
-        if (!notesRes.ok || !tasksRes.ok) {
-          console.error('Failed to fetch notes or tasks:', {
-            notesStatus: notesRes.status,
-            tasksStatus: tasksRes.status
-          })
-          throw new Error('Failed to fetch related project data')
-        }
-
-        const [notesData, tasksData] = await Promise.all([
-          notesRes.json(),
-          tasksRes.json()
-        ])
-
-        // Set all the state at once
+        // Set all data at once
         setProject(projectData)
-        setNotes(notesData)
-        setTasks(tasksData)
+        setTasks(tasksData || [])
+        setNotes(notesData || [])
         setStatus(projectData.status || 'planning')
         setEditTitle(projectData.title)
         setEditDescription(projectData.description || '')
+        
       } catch (error) {
         console.error('Error fetching project data:', error)
         setError(error instanceof Error ? error.message : 'Failed to load project')
+        setDebugInfo({
+          error: error instanceof Error ? error.message : 'Unknown error',
+          projectId,
+          userId
+        })
+        
         toast({
           title: "Error",
           description: error instanceof Error ? error.message : "Failed to load project data",
@@ -491,8 +473,14 @@ export default function ProjectPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex flex-col gap-4">
+        <Alert className="mb-4">
+          <AlertTitle>Loading Project</AlertTitle>
+          <AlertDescription>Project ID: {projectId}</AlertDescription>
+        </Alert>
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
       </div>
     )
   }
@@ -500,6 +488,15 @@ export default function ProjectPage() {
   if (error || !project) {
     return (
       <div className="container mx-auto py-8">
+        <Alert variant="destructive" className="mb-4">
+          <AlertTitle>Error Loading Project</AlertTitle>
+          <AlertDescription>
+            {error || 'Project not found'}<br/>
+            Project ID: {projectId}<br/>
+            User ID: {userId || 'Not authenticated'}<br/>
+            Path: {pathname}
+          </AlertDescription>
+        </Alert>
         <Card className="w-full">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center justify-center py-12">

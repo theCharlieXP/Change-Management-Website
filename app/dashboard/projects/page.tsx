@@ -29,7 +29,7 @@ const STATUS_LABELS = {
   'cancelled': 'Cancelled'
 } as const
 
-const ProjectsPage: React.FC = () => {
+const ProjectsPage = () => {
   const { user } = useUser()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
@@ -56,6 +56,18 @@ const ProjectsPage: React.FC = () => {
   const addProject = (newProject: Project) => {
     setProjects(prev => [newProject, ...prev])
   }
+
+  const handleProjectClick = (projectId: string) => {
+    // First attempt client-side navigation
+    try {
+      console.log('Navigating to project:', projectId);
+      router.push(`/dashboard/projects/${projectId}`);
+    } catch (error) {
+      console.error('Error navigating to project:', error);
+      // Fallback - open in new tab to avoid client-side issues
+      window.open(`/dashboard/projects/${projectId}`, '_blank');
+    }
+  };
 
   if (loading) {
     return (
@@ -99,7 +111,7 @@ const ProjectsPage: React.FC = () => {
           {projects.map((project) => (
             <div
               key={project.id}
-              onClick={() => router.push(`/dashboard/projects/${project.id}`)}
+              onClick={() => handleProjectClick(project.id)}
               className="block transition-transform hover:scale-[1.02] cursor-pointer"
             >
               <Card className="h-[140px] sm:h-[160px]">
@@ -122,6 +134,7 @@ const ProjectsPage: React.FC = () => {
                     </Badge>
                   </div>
                 </CardContent>
+                <a href={`/dashboard/projects/${project.id}`} className="hidden">View Project</a>
               </Card>
             </div>
           ))}
