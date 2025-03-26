@@ -99,7 +99,12 @@ export default function ProjectPage() {
         console.log('Auth state:', { isLoaded, isSignedIn, userId })
 
         // First, check if we can access the project
-        const projectRes = await fetch(`/api/projects/${projectId}`)
+        const projectRes = await fetch(`/api/projects/${projectId}`, {
+          headers: {
+            'Cache-Control': 'no-cache', // Prevent caching
+            'Pragma': 'no-cache'
+          }
+        })
         console.log('Project response status:', projectRes.status)
 
         if (!projectRes.ok) {
@@ -121,20 +126,35 @@ export default function ProjectPage() {
             const errorData = await projectRes.json()
             console.error('Server error:', errorData)
             setError('Failed to load project. Please try again later.')
+            toast({
+              title: "Error",
+              description: "There was a problem loading the project. Please try refreshing the page.",
+              variant: "destructive"
+            })
             setLoading(false)
             return
           }
-          throw new Error('Failed to fetch project data')
+          throw new Error(`Failed to fetch project data: ${projectRes.status}`)
         }
 
-        // If we get here, we have a valid project
+        // If we get here, we have a valid project response
         const projectData = await projectRes.json()
         console.log('Project data received:', projectData)
 
         // Now fetch notes and tasks
         const [notesRes, tasksRes] = await Promise.all([
-          fetch(`/api/projects/${projectId}/notes`),
-          fetch(`/api/projects/${projectId}/tasks`)
+          fetch(`/api/projects/${projectId}/notes`, {
+            headers: {
+              'Cache-Control': 'no-cache', // Prevent caching
+              'Pragma': 'no-cache'
+            }
+          }),
+          fetch(`/api/projects/${projectId}/tasks`, {
+            headers: {
+              'Cache-Control': 'no-cache', // Prevent caching
+              'Pragma': 'no-cache'
+            }
+          })
         ])
 
         if (!notesRes.ok || !tasksRes.ok) {
@@ -142,7 +162,7 @@ export default function ProjectPage() {
             notesStatus: notesRes.status,
             tasksStatus: tasksRes.status
           })
-          throw new Error('Failed to fetch project data')
+          throw new Error('Failed to fetch related project data')
         }
 
         const [notesData, tasksData] = await Promise.all([
@@ -150,6 +170,7 @@ export default function ProjectPage() {
           tasksRes.json()
         ])
 
+        // Set all the state at once
         setProject(projectData)
         setNotes(notesData)
         setTasks(tasksData)
