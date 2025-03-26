@@ -147,6 +147,28 @@ export default clerkMiddleware(async (auth, req) => {
     }
   }
   
+  // Special handling for hybrid project pages 
+  if (req.nextUrl.pathname.match(/^\/hybrid-project\/[^\/]+$/)) {
+    console.log('Middleware: Hybrid project page detected:', req.nextUrl.pathname);
+    
+    // If user is authenticated, let them through
+    if (userId) {
+      console.log('Middleware: Authenticated access to hybrid project page');
+      return NextResponse.next();
+    } else {
+      // If user is not authenticated, redirect to sign-in
+      console.log('Middleware: Unauthenticated access to hybrid project page, redirecting to sign-in');
+      const signInUrl = new URL("/sign-in", req.url);
+      return NextResponse.redirect(signInUrl);
+    }
+  }
+  
+  // Special handling for static project data API
+  if (req.nextUrl.pathname.match(/^\/static-project-data\/[^\/]+$/)) {
+    console.log('Middleware: Static project data API request detected:', req.nextUrl.pathname);
+    return NextResponse.next();
+  }
+  
   // For authenticated users accessing protected routes
   console.log('Middleware: Allowing authenticated access to protected route:', req.nextUrl.pathname)
   const response = NextResponse.next();

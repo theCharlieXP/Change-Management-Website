@@ -9,10 +9,10 @@ interface ProjectLinkProps {
 }
 
 export function ProjectLink({ projectId, className, children }: ProjectLinkProps) {
-  // Use a simple direct HTML link for maximum reliability
+  // Use the hybrid project page route for maximum reliability
   return (
     <a 
-      href={`/project-view/${projectId}`}
+      href={`/hybrid-project/${projectId}`}
       className={`inline-flex items-center text-sm font-medium text-primary hover:underline ${className || ''}`}
     >
       {children || (

@@ -122,7 +122,7 @@ const ProjectsPage = () => {
             {projects.map((project) => (
               <a
                 key={project.id}
-                href={`/project-view/${project.id}`}
+                href={`/hybrid-project/${project.id}`}
                 className="block transition-transform hover:scale-[1.02] cursor-pointer"
               >
                 <Card className="h-[140px] sm:h-[160px]">
@@ -130,7 +130,7 @@ const ProjectsPage = () => {
                     <div className="flex items-start justify-between gap-4">
                       <CardTitle className="text-sm sm:text-base font-medium flex-1 line-clamp-2">
                         <a 
-                          href={`/project-view/${project.id}`}
+                          href={`/hybrid-project/${project.id}`}
                           className="hover:underline"
                         >
                           {project.title}
@@ -145,7 +145,7 @@ const ProjectsPage = () => {
                         <div>Last edited {format(new Date(project.updated_at), 'MMM d, yyyy')}</div>
                       </div>
                       <a 
-                        href={`/project-view/${project.id}`}
+                        href={`/hybrid-project/${project.id}`}
                       >
                         <ArrowRight className="h-4 w-4" />
                       </a>
@@ -159,7 +159,7 @@ const ProjectsPage = () => {
                       </ProjectLink>
                     </div>
                   </CardContent>
-                  <a href={`/project-view/${project.id}`} className="hidden">View Project</a>
+                  <a href={`/hybrid-project/${project.id}`} className="hidden">View Project</a>
                 </Card>
               </a>
             ))}
