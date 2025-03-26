@@ -23,16 +23,24 @@ export default function HybridProjectPage() {
 
   // Load data using our static route
   useEffect(() => {
-    if (!isLoaded) return
+    if (!isLoaded) {
+      console.log('Hybrid project page: Auth not loaded yet');
+      return;
+    }
     
     if (!isSignedIn) {
-      router.push('/sign-in')
-      return
+      console.log('Hybrid project page: User not signed in, redirecting to sign-in');
+      router.push('/sign-in');
+      return;
     }
+
+    console.log('Hybrid project page: Starting to fetch project data for ID:', projectId);
 
     const fetchProjectData = async () => {
       try {
-        setLoading(true)
+        setLoading(true);
+        
+        console.log('Hybrid project page: Attempting to fetch from static-project-data API');
         
         // Use the dedicated static data route that bypasses client-side auth issues
         const response = await fetch(`/static-project-data/${projectId}`, {
@@ -42,30 +50,42 @@ export default function HybridProjectPage() {
           },
           cache: 'no-store',
           credentials: 'include'
-        })
+        });
+        
+        console.log('Hybrid project page: Response received', { 
+          status: response.status,
+          ok: response.ok,
+          statusText: response.statusText
+        });
         
         if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to load project')
+          const errorData = await response.json();
+          console.error('Hybrid project page: Error response from API', errorData);
+          throw new Error(errorData.error || 'Failed to load project');
         }
         
-        const data = await response.json()
+        const data = await response.json();
+        console.log('Hybrid project page: Data fetched successfully', { 
+          hasProject: !!data.project,
+          taskCount: data.tasks?.length,
+          noteCount: data.notes?.length
+        });
         
         // Set data in state
-        setProject(data.project)
-        setTasks(data.tasks || [])
-        setNotes(data.notes || [])
-        setError(null)
+        setProject(data.project);
+        setTasks(data.tasks || []);
+        setNotes(data.notes || []);
+        setError(null);
       } catch (err) {
-        console.error('Error loading project data:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load project')
+        console.error('Hybrid project page: Error loading project data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load project');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
     
-    fetchProjectData()
-  }, [isLoaded, isSignedIn, projectId, router])
+    fetchProjectData();
+  }, [isLoaded, isSignedIn, projectId, router]);
   
   if (loading) {
     return (
@@ -143,12 +163,12 @@ export default function HybridProjectPage() {
                   <li key={task.id} className="flex items-start gap-2 py-2 border-b">
                     <input 
                       type="checkbox" 
-                      checked={task.completed} 
+                      checked={task.status === 'completed'} 
                       readOnly
                       className="mt-1"
                     />
                     <div>
-                      <div className="font-medium">{task.content}</div>
+                      <div className="font-medium">{task.title}</div>
                       <div className="text-xs text-gray-500">
                         Added {format(new Date(task.created_at), 'PPP')}
                       </div>

@@ -59,7 +59,11 @@ const ProjectsPage = () => {
     setProjects(prev => [newProject, ...prev])
   }
 
-  const handleProjectClick = (projectId: string) => {
+  const handleProjectClick = (projectId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    
     try {
       console.log('Direct navigation to project:', projectId);
       // Use the same hybrid-project path that's used in other links
@@ -122,11 +126,7 @@ const ProjectsPage = () => {
             {projects.map((project) => (
               <a
                 key={project.id}
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleProjectClick(project.id);
-                }}
-                href={`/hybrid-project/${project.id}`}
+                onClick={(e) => handleProjectClick(project.id, e)}
                 className="block transition-transform hover:scale-[1.02] cursor-pointer"
               >
                 <Card className="h-[140px] sm:h-[160px]">
@@ -135,6 +135,7 @@ const ProjectsPage = () => {
                       <CardTitle className="text-sm sm:text-base font-medium flex-1 line-clamp-2">
                         <a 
                           href={`/hybrid-project/${project.id}`}
+                          onClick={(e) => handleProjectClick(project.id, e)}
                           className="hover:underline"
                         >
                           {project.title}
@@ -150,6 +151,7 @@ const ProjectsPage = () => {
                       </div>
                       <a 
                         href={`/hybrid-project/${project.id}`}
+                        onClick={(e) => handleProjectClick(project.id, e)}
                       >
                         <ArrowRight className="h-4 w-4" />
                       </a>
@@ -158,12 +160,16 @@ const ProjectsPage = () => {
                       <Badge className={`${STATUS_COLORS[project.status]} text-xs px-2 py-0.5 whitespace-nowrap`}>
                         {STATUS_LABELS[project.status]}
                       </Badge>
-                      <ProjectLink projectId={project.id} className="!p-0 !h-auto !m-0">
+                      <a 
+                        href={`/hybrid-project/${project.id}`} 
+                        onClick={(e) => handleProjectClick(project.id, e)}
+                        className="inline-flex items-center text-sm font-medium text-primary hover:underline !p-0 !h-auto !m-0"
+                      >
                         <span className="sr-only">View Project</span>
-                      </ProjectLink>
+                      </a>
                     </div>
                   </CardContent>
-                  <a href={`/hybrid-project/${project.id}`} className="hidden">View Project</a>
+                  <a href={`/hybrid-project/${project.id}`} className="hidden" onClick={(e) => handleProjectClick(project.id, e)}>View Project</a>
                 </Card>
               </a>
             ))}
