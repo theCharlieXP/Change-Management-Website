@@ -1,14 +1,26 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { supabaseServer } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 
 // Log environment variables (without exposing sensitive values)
-console.log('Supabase configuration:', {
+console.log('API Route - Supabase configuration:', {
   hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
   hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
   urlFormat: process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('https://') ? 'valid' : 'invalid',
   serviceKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0
 })
+
+// Create a Supabase client with the service role key directly
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    }
+  }
+)
 
 export async function GET(
   request: Request,
@@ -27,10 +39,10 @@ export async function GET(
     console.log('Fetching project:', {
       projectId: params.projectId,
       userId,
-      hasServerClient: !!supabaseServer
+      hasServerClient: !!supabase
     })
 
-    const { data: project, error } = await supabaseServer
+    const { data: project, error } = await supabase
       .from('projects')
       .select('*')
       .eq('id', params.projectId)
@@ -77,7 +89,7 @@ export async function PATCH(
 
     const updates = await request.json()
 
-    const { data: project, error } = await supabaseServer
+    const { data: project, error } = await supabase
       .from('projects')
       .update(updates)
       .eq('id', params.projectId)
@@ -119,7 +131,7 @@ export async function DELETE(
       )
     }
 
-    const { error } = await supabaseServer
+    const { error } = await supabase
       .rpc('soft_delete_project', {
         project_id: params.projectId
       })
@@ -158,7 +170,7 @@ export async function POST(
     const { action } = await request.json()
     
     if (action === 'restore') {
-      const { error } = await supabaseServer
+      const { error } = await supabase
         .rpc('restore_project', {
           project_id: params.projectId
         })

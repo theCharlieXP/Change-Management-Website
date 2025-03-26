@@ -17,6 +17,7 @@ export default clerkMiddleware(async (auth, req) => {
     "/api/insights/debug", // Debug endpoint for environment variables
     "/api/insights/search", // Search API endpoint
     "/api/insights/search-basic", // Simplified search API for debugging
+    "/api/test-env",   // Environment test endpoint
   ];
   
   // Check if the request is for an ignored route
