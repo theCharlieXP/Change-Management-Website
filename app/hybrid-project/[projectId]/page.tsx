@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@clerk/nextjs'
 import type { Project, ProjectTask, ProjectNote } from '@/types/projects'
+import { HybridDebug } from '../debug'
 
 export default function HybridProjectPage() {
   const params = useParams()
@@ -42,40 +43,63 @@ export default function HybridProjectPage() {
         
         console.log('Hybrid project page: Attempting to fetch from static-project-data API');
         
-        // Use the dedicated static data route that bypasses client-side auth issues
-        const response = await fetch(`/static-project-data/${projectId}`, {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          },
-          cache: 'no-store',
-          credentials: 'include'
-        });
+        // Log the exact URL for debugging
+        const apiUrl = `/static-project-data/${projectId}`;
+        console.log('Hybrid project page: API URL:', apiUrl);
         
-        console.log('Hybrid project page: Response received', { 
-          status: response.status,
-          ok: response.ok,
-          statusText: response.statusText
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error('Hybrid project page: Error response from API', errorData);
-          throw new Error(errorData.error || 'Failed to load project');
+        try {
+          // Use the dedicated static data route that bypasses client-side auth issues
+          const response = await fetch(apiUrl, {
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            },
+            cache: 'no-store',
+            credentials: 'include'
+          });
+          
+          console.log('Hybrid project page: Response received', { 
+            status: response.status,
+            ok: response.ok,
+            statusText: response.statusText,
+            headers: Object.fromEntries([...response.headers])
+          });
+          
+          if (!response.ok) {
+            try {
+              const errorData = await response.json();
+              console.error('Hybrid project page: Error response from API', errorData);
+              throw new Error(errorData.error || 'Failed to load project');
+            } catch (jsonError) {
+              console.error('Hybrid project page: Error parsing JSON from error response', jsonError);
+              throw new Error(`Failed to load project: ${response.status} ${response.statusText}`);
+            }
+          }
+          
+          try {
+            const data = await response.json();
+            console.log('Hybrid project page: Data fetched successfully', { 
+              hasProject: !!data.project,
+              projectId: data.project?.id,
+              projectTitle: data.project?.title,
+              taskCount: data.tasks?.length,
+              noteCount: data.notes?.length,
+              debug: data.debug
+            });
+            
+            // Set data in state
+            setProject(data.project);
+            setTasks(data.tasks || []);
+            setNotes(data.notes || []);
+            setError(null);
+          } catch (jsonError) {
+            console.error('Hybrid project page: Error parsing JSON from successful response', jsonError);
+            throw new Error('Failed to parse project data');
+          }
+        } catch (fetchError) {
+          console.error('Hybrid project page: Error during fetch operation', fetchError);
+          throw fetchError;
         }
-        
-        const data = await response.json();
-        console.log('Hybrid project page: Data fetched successfully', { 
-          hasProject: !!data.project,
-          taskCount: data.tasks?.length,
-          noteCount: data.notes?.length
-        });
-        
-        // Set data in state
-        setProject(data.project);
-        setTasks(data.tasks || []);
-        setNotes(data.notes || []);
-        setError(null);
       } catch (err) {
         console.error('Hybrid project page: Error loading project data:', err);
         setError(err instanceof Error ? err.message : 'Failed to load project');
@@ -127,6 +151,7 @@ export default function HybridProjectPage() {
   
   return (
     <main className="container mx-auto py-8 px-4">
+      <HybridDebug />
       <div className="flex items-center gap-4 mb-6">
         <Button variant="outline" size="icon" onClick={() => router.push('/dashboard/projects')}>
           <ArrowLeft className="h-4 w-4" />

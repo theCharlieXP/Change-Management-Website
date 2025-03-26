@@ -39,6 +39,31 @@ export default function RootLayout({
         <body className={`${inter.className} min-h-screen bg-background antialiased`} suppressHydrationWarning>
           <Providers>
             <ProfileCreator />
+            {/* Script to log page visits for debugging */}
+            <script 
+              dangerouslySetInnerHTML={{ 
+                __html: `
+                  console.log('Page loaded: ' + window.location.pathname + window.location.search);
+                  
+                  // Debug navigation
+                  const originalPushState = history.pushState;
+                  history.pushState = function() {
+                    console.log('Navigation detected: pushState to', arguments[2]);
+                    return originalPushState.apply(this, arguments);
+                  };
+                  
+                  const originalReplaceState = history.replaceState;
+                  history.replaceState = function() {
+                    console.log('Navigation detected: replaceState to', arguments[2]);
+                    return originalReplaceState.apply(this, arguments);
+                  };
+                  
+                  window.addEventListener('popstate', function() {
+                    console.log('Navigation detected: popstate to', window.location.pathname);
+                  });
+                `
+              }}
+            />
             {children}
             <CookieConsent />
           </Providers>

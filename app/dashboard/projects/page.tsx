@@ -14,6 +14,7 @@ import { getProjects } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/components/ui/use-toast'
 import { ProjectLink } from '@/components/projects/project-link'
+import { FallbackProjectLink } from './fallback'
 
 const STATUS_COLORS = {
   'planning': 'bg-blue-100 text-blue-800 border-blue-200',
@@ -64,15 +65,8 @@ const ProjectsPage = () => {
       e.preventDefault();
     }
     
-    try {
-      console.log('Direct navigation to project:', projectId);
-      // Use the same hybrid-project path that's used in other links
-      router.push(`/hybrid-project/${projectId}`);
-    } catch (error) {
-      console.error('Error navigating to project:', error);
-      // Backup approach - try to open in new tab as last resort
-      window.open(`/hybrid-project/${projectId}`, '_blank');
-    }
+    // Direct browser navigation - simplest approach to avoid any router complications
+    window.location.href = `/hybrid-project/${projectId}`;
   };
 
   if (loading) {
@@ -124,22 +118,16 @@ const ProjectsPage = () => {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map((project) => (
-              <a
+              <FallbackProjectLink
                 key={project.id}
-                onClick={(e) => handleProjectClick(project.id, e)}
+                projectId={project.id}
                 className="block transition-transform hover:scale-[1.02] cursor-pointer"
               >
                 <Card className="h-[140px] sm:h-[160px]">
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between gap-4">
                       <CardTitle className="text-sm sm:text-base font-medium flex-1 line-clamp-2">
-                        <a 
-                          href={`/hybrid-project/${project.id}`}
-                          onClick={(e) => handleProjectClick(project.id, e)}
-                          className="hover:underline"
-                        >
-                          {project.title}
-                        </a>
+                        {project.title}
                       </CardTitle>
                     </div>
                   </CardHeader>
@@ -149,29 +137,16 @@ const ProjectsPage = () => {
                         <div>Created {format(new Date(project.created_at), 'MMM d, yyyy')}</div>
                         <div>Last edited {format(new Date(project.updated_at), 'MMM d, yyyy')}</div>
                       </div>
-                      <a 
-                        href={`/hybrid-project/${project.id}`}
-                        onClick={(e) => handleProjectClick(project.id, e)}
-                      >
-                        <ArrowRight className="h-4 w-4" />
-                      </a>
+                      <ArrowRight className="h-4 w-4" />
                     </div>
                     <div className="flex justify-between items-center">
                       <Badge className={`${STATUS_COLORS[project.status]} text-xs px-2 py-0.5 whitespace-nowrap`}>
                         {STATUS_LABELS[project.status]}
                       </Badge>
-                      <a 
-                        href={`/hybrid-project/${project.id}`} 
-                        onClick={(e) => handleProjectClick(project.id, e)}
-                        className="inline-flex items-center text-sm font-medium text-primary hover:underline !p-0 !h-auto !m-0"
-                      >
-                        <span className="sr-only">View Project</span>
-                      </a>
                     </div>
                   </CardContent>
-                  <a href={`/hybrid-project/${project.id}`} className="hidden" onClick={(e) => handleProjectClick(project.id, e)}>View Project</a>
                 </Card>
-              </a>
+              </FallbackProjectLink>
             ))}
           </div>
         </>

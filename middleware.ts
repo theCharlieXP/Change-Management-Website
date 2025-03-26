@@ -149,7 +149,12 @@ export default clerkMiddleware(async (auth, req) => {
   
   // Special handling for hybrid project pages 
   if (req.nextUrl.pathname.match(/^\/hybrid-project\/[^\/]+$/)) {
-    console.log('Middleware: Hybrid project page detected:', req.nextUrl.pathname);
+    console.log('Middleware: Hybrid project page detected:', {
+      path: req.nextUrl.pathname,
+      cookies: req.cookies.getAll().map(c => c.name).join(', '),
+      hasAuthToken: !!req.cookies.get('__session'),
+      userId
+    });
     
     // If user is authenticated, let them through
     if (userId) {

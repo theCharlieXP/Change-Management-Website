@@ -16,7 +16,14 @@ export async function GET(
     console.log('Auth check for static project data:', {
       hasAuth: !!authData,
       hasUserId: !!userId,
-      projectId: params.projectId
+      projectId: params.projectId,
+      headers: Object.fromEntries([...Object.entries(request.headers)].filter(([key]) => 
+        key.startsWith('x-') || 
+        key.includes('auth') || 
+        key.includes('cookie') || 
+        key === 'host' || 
+        key === 'user-agent'
+      ))
     })
     
     if (!userId) {
