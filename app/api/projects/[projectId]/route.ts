@@ -29,7 +29,18 @@ export async function GET(
   try {
     const authData = await auth();
     const { userId } = authData
+    
+    console.log('API Route - Auth check:', {
+      hasAuth: !!authData,
+      hasUserId: !!userId,
+      projectId: params.projectId,
+      url: request.url,
+      headers: Object.fromEntries(request.headers),
+      method: request.method
+    })
+    
     if (!userId) {
+      console.log('API Route - Unauthorized request', { projectId: params.projectId })
       return new NextResponse(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401 }
@@ -56,6 +67,12 @@ export async function GET(
       }
       throw error
     }
+
+    console.log('Project fetched successfully:', {
+      hasProject: !!project,
+      projectId: params.projectId,
+      userId
+    })
 
     return new NextResponse(
       JSON.stringify(project),

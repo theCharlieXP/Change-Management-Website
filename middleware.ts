@@ -5,6 +5,15 @@ import { NextResponse } from "next/server"
 // Please edit this to allow other routes to be public as needed.
 // See https://clerk.com/docs/references/nextjs/auth-middleware for more information about configuring your middleware
 export default clerkMiddleware(async (auth, req) => {
+  // Debug logging for middleware
+  console.log('Middleware processing request:', {
+    path: req.nextUrl.pathname,
+    cookies: req.cookies.getAll().map(c => c.name),
+    hasAuthToken: !!req.cookies.get('__session'),
+    headers: Object.fromEntries([...req.headers.entries()]),
+    url: req.url
+  })
+
   // Check if the request is for a public route
   const publicRoutes = [
     "/",              // Landing page
@@ -40,6 +49,7 @@ export default clerkMiddleware(async (auth, req) => {
   
   // If it's a public or ignored route, allow access
   if (isPublicRoute || isIgnoredRoute) {
+    console.log('Middleware: Allowing public/ignored route:', req.nextUrl.pathname)
     // Continue to the requested route
     const response = NextResponse.next();
     
@@ -55,8 +65,14 @@ export default clerkMiddleware(async (auth, req) => {
   // For protected routes, get the authentication state
   const { userId } = await auth();
   
+  console.log('Middleware: Auth check for protected route:', {
+    path: req.nextUrl.pathname,
+    hasUserId: !!userId
+  })
+  
   // If the user is authenticated and trying to access the dashboard root
   if (userId && req.nextUrl.pathname === "/dashboard") {
+    console.log('Middleware: Redirecting from dashboard root to projects page')
     // Redirect to the projects page
     const projectsUrl = new URL("/dashboard/projects", req.url);
     return NextResponse.redirect(projectsUrl);
@@ -64,6 +80,7 @@ export default clerkMiddleware(async (auth, req) => {
   
   // If the user is not authenticated and trying to access a protected route
   if (!userId && !isPublicRoute && !isIgnoredRoute) {
+    console.log('Middleware: Unauthenticated request to protected route, redirecting to sign-in:', req.nextUrl.pathname)
     // Redirect to the sign-in page
     const signInUrl = new URL("/sign-in", req.url);
     signInUrl.searchParams.set("redirect_url", req.url);
@@ -71,6 +88,7 @@ export default clerkMiddleware(async (auth, req) => {
   }
   
   // For authenticated users accessing protected routes
+  console.log('Middleware: Allowing authenticated access to protected route:', req.nextUrl.pathname)
   const response = NextResponse.next();
   
   // Add Content Security Policy

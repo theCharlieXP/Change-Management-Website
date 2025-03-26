@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { ArrowLeft, Pencil, Check, X, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
-import { useAuth } from '@clerk/nextjs'
+import { useAuth, useUser } from '@clerk/nextjs'
 import type { InsightSummary } from '@/types/insights'
 import {
   Select,
@@ -57,6 +57,7 @@ export default function ProjectPage() {
   const params = useParams()
   const router = useRouter()
   const { isLoaded, isSignedIn, userId } = useAuth()
+  const { user } = useUser()
   const projectId = params?.projectId as string
   const [project, setProject] = useState<Project | null>(null)
   const [tasks, setTasks] = useState<ProjectTask[]>([])
@@ -96,14 +97,21 @@ export default function ProjectPage() {
         setError(null)
 
         console.log('Fetching project data for ID:', projectId)
-        console.log('Auth state:', { isLoaded, isSignedIn, userId })
+        console.log('Auth state:', { 
+          isLoaded, 
+          isSignedIn, 
+          userId,
+          userObject: !!user
+        })
 
         // First, check if we can access the project
         const projectRes = await fetch(`/api/projects/${projectId}`, {
           headers: {
             'Cache-Control': 'no-cache', // Prevent caching
-            'Pragma': 'no-cache'
-          }
+            'Pragma': 'no-cache',
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include' // Include credentials (cookies) with the request
         })
         console.log('Project response status:', projectRes.status)
 
@@ -146,14 +154,18 @@ export default function ProjectPage() {
           fetch(`/api/projects/${projectId}/notes`, {
             headers: {
               'Cache-Control': 'no-cache', // Prevent caching
-              'Pragma': 'no-cache'
-            }
+              'Pragma': 'no-cache',
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include' // Include credentials with the request
           }),
           fetch(`/api/projects/${projectId}/tasks`, {
             headers: {
               'Cache-Control': 'no-cache', // Prevent caching
-              'Pragma': 'no-cache'
-            }
+              'Pragma': 'no-cache',
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include' // Include credentials with the request
           })
         ])
 
@@ -191,7 +203,7 @@ export default function ProjectPage() {
     }
 
     fetchData()
-  }, [isLoaded, isSignedIn, userId, projectId, router])
+  }, [isLoaded, isSignedIn, userId, projectId, router, user])
 
   useEffect(() => {
     const fetchSummaries = async () => {
