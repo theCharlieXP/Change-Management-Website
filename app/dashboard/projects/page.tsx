@@ -12,6 +12,8 @@ import { format } from 'date-fns'
 import { useUser } from '@clerk/nextjs'
 import { getProjects } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { toast } from '@/components/ui/use-toast'
+import { ProjectLink } from '@/components/projects/project-link'
 
 const STATUS_COLORS = {
   'planning': 'bg-blue-100 text-blue-800 border-blue-200',
@@ -57,15 +59,35 @@ const ProjectsPage = () => {
     setProjects(prev => [newProject, ...prev])
   }
 
-  const handleProjectClick = (projectId: string) => {
-    // First attempt client-side navigation
+  const handleProjectClick = async (projectId: string) => {
+    // First check if the project exists and is accessible
     try {
-      console.log('Navigating to project:', projectId);
-      router.push(`/dashboard/projects/${projectId}`);
+      console.log('Checking project accessibility before navigation:', projectId);
+      
+      // First, try direct navigation for better user experience
+      const directUrl = `/dashboard/projects/${projectId}`;
+      window.location.href = directUrl;
+      
+      // The rest of this function may not execute if navigation occurs
+      // but we'll still make the check request to log the data for debugging
+      fetch('/api/projects/check', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ projectId }),
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Project accessibility check result (after navigation):', data);
+      })
+      .catch(error => {
+        console.error('Error checking project accessibility:', error);
+      });
     } catch (error) {
       console.error('Error navigating to project:', error);
-      // Fallback - open in new tab to avoid client-side issues
-      window.open(`/dashboard/projects/${projectId}`, '_blank');
+      // Fallback to direct navigation
+      window.location.href = `/dashboard/projects/${projectId}`;
     }
   };
 
@@ -107,38 +129,70 @@ const ProjectsPage = () => {
           <p className="text-muted-foreground mb-4">No projects yet. Click the &quot;Create Project&quot; button above to get started.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((project) => (
-            <div
-              key={project.id}
-              onClick={() => handleProjectClick(project.id)}
-              className="block transition-transform hover:scale-[1.02] cursor-pointer"
-            >
-              <Card className="h-[140px] sm:h-[160px]">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-4">
-                    <CardTitle className="text-sm sm:text-base font-medium flex-1 line-clamp-2">{project.title}</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
-                    <div className="space-y-1">
-                      <div>Created {format(new Date(project.created_at), 'MMM d, yyyy')}</div>
-                      <div>Last edited {format(new Date(project.updated_at), 'MMM d, yyyy')}</div>
-                    </div>
-                    <ArrowRight className="h-4 w-4" />
-                  </div>
-                  <div className="flex justify-center">
-                    <Badge className={`${STATUS_COLORS[project.status]} text-xs px-2 py-0.5 whitespace-nowrap`}>
-                      {STATUS_LABELS[project.status]}
-                    </Badge>
-                  </div>
-                </CardContent>
-                <a href={`/dashboard/projects/${project.id}`} className="hidden">View Project</a>
-              </Card>
+        <>
+          <noscript>
+            <div className="mb-4 p-3 border border-yellow-200 bg-yellow-50 rounded-md">
+              <p className="text-sm text-yellow-800">
+                JavaScript appears to be disabled. Project links will use direct navigation.
+              </p>
             </div>
-          ))}
-        </div>
+          </noscript>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {projects.map((project) => (
+              <div
+                key={project.id}
+                onClick={() => handleProjectClick(project.id)}
+                className="block transition-transform hover:scale-[1.02] cursor-pointer"
+              >
+                <Card className="h-[140px] sm:h-[160px]">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-4">
+                      <CardTitle className="text-sm sm:text-base font-medium flex-1 line-clamp-2">
+                        <a 
+                          href={`/dashboard/projects/${project.id}`}
+                          className="hover:underline"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleProjectClick(project.id);
+                          }}
+                        >
+                          {project.title}
+                        </a>
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
+                      <div className="space-y-1">
+                        <div>Created {format(new Date(project.created_at), 'MMM d, yyyy')}</div>
+                        <div>Last edited {format(new Date(project.updated_at), 'MMM d, yyyy')}</div>
+                      </div>
+                      <a 
+                        href={`/dashboard/projects/${project.id}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleProjectClick(project.id);
+                        }}
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                      </a>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <Badge className={`${STATUS_COLORS[project.status]} text-xs px-2 py-0.5 whitespace-nowrap`}>
+                        {STATUS_LABELS[project.status]}
+                      </Badge>
+                      <ProjectLink projectId={project.id} className="!p-0 !h-auto !m-0">
+                        <span className="sr-only">View Project</span>
+                      </ProjectLink>
+                    </div>
+                  </CardContent>
+                  <a href={`/dashboard/projects/${project.id}`} className="hidden">View Project</a>
+                </Card>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )

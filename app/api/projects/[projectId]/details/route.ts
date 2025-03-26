@@ -4,9 +4,22 @@ import { createClient } from '@supabase/supabase-js'
 import { Project } from '@/types/projects'
 
 // Create a Supabase client with the service role key
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Check if we have the required credentials
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('Missing Supabase credentials:', {
+    hasUrl: !!supabaseUrl,
+    hasServiceKey: !!supabaseServiceKey,
+    urlFormat: supabaseUrl?.startsWith('https://') ? 'valid' : 'invalid',
+    serviceKeyLength: supabaseServiceKey?.length || 0
+  });
+}
+
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  supabaseUrl,
+  supabaseServiceKey || '', // Provide empty string as fallback
   {
     auth: {
       persistSession: false,
@@ -20,6 +33,18 @@ export async function GET(
   { params }: { params: { projectId: string } }
 ) {
   console.log('Project details API route called for project:', params.projectId)
+  
+  // Check if we have required credentials
+  if (!supabaseServiceKey) {
+    console.error('Cannot fetch project details: Missing Supabase service key');
+    return new NextResponse(
+      JSON.stringify({ 
+        error: 'Server configuration error',
+        details: 'Missing required Supabase credentials'
+      }),
+      { status: 500 }
+    )
+  }
   
   try {
     // Get authentication data
