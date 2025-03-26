@@ -10,14 +10,14 @@ interface ProjectLinkProps {
 }
 
 export function ProjectLink({ projectId, className, children }: ProjectLinkProps) {
-  // Use a simple direct link without checks
+  // Use the project-view route for reliability
   return (
     <Button 
       variant="ghost" 
       className={className} 
       asChild
     >
-      <a href={`/dashboard/projects/${projectId}`}>
+      <a href={`/project-view/${projectId}`}>
         {children || (
           <>
             View Project <ArrowRight className="ml-2 h-4 w-4" />

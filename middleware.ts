@@ -96,6 +96,63 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.redirect(signInUrl);
   }
   
+  // Special handling for project viewer pages 
+  if (req.nextUrl.pathname.match(/^\/project-view\/[^\/]+$/)) {
+    console.log('Middleware: Project viewer page detected:', req.nextUrl.pathname);
+    
+    // If user is authenticated, let them through with special handling
+    if (userId) {
+      console.log('Middleware: Authenticated access to project viewer');
+      
+      // Extract the project ID from the URL
+      const projectId = req.nextUrl.pathname.split('/').pop();
+      console.log('Middleware: Project ID for viewer:', projectId);
+      
+      // Let the request through to our special viewer page
+      const response = NextResponse.next();
+      
+      // Add special header for debugging
+      response.headers.set('X-Project-Viewer', 'active');
+      response.headers.set('X-Project-Viewer-ID', projectId || '');
+      
+      return response;
+    } else {
+      // If user is not authenticated, redirect to sign-in
+      console.log('Middleware: Unauthenticated access to project viewer, redirecting to sign-in');
+      const signInUrl = new URL("/sign-in", req.url);
+      return NextResponse.redirect(signInUrl);
+    }
+  }
+  
+  // Special handling for project detail pages
+  if (req.nextUrl.pathname.match(/^\/dashboard\/projects\/[^\/]+$/)) {
+    console.log('Middleware: Project details page detected:', req.nextUrl.pathname);
+    
+    // If user is authenticated, let them through with special handling
+    if (userId) {
+      console.log('Middleware: Authenticated access to project details');
+      
+      // Extract the project ID from the URL
+      const projectId = req.nextUrl.pathname.split('/').pop();
+      console.log('Middleware: Project ID extracted:', projectId);
+      
+      // Use Next Response to ensure proper handling
+      const response = NextResponse.next();
+      
+      // Add special header to help with debugging
+      response.headers.set('X-Project-Access', 'allowed');
+      response.headers.set('X-Project-ID', projectId || '');
+      
+      // Add Content Security Policy
+      response.headers.set(
+        'Content-Security-Policy',
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://gc.zgo.at https://*.goatcounter.com; connect-src 'self' https://api.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://*.supabase.co https://*.goatcounter.com; img-src 'self' data: https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://*.goatcounter.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com; worker-src 'self' blob:; child-src 'self' blob:; object-src 'self' data:;"
+      );
+      
+      return response;
+    }
+  }
+  
   // For authenticated users accessing protected routes
   console.log('Middleware: Allowing authenticated access to protected route:', req.nextUrl.pathname)
   const response = NextResponse.next();
