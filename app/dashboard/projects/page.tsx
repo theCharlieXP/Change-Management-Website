@@ -62,12 +62,12 @@ const ProjectsPage = () => {
   const handleProjectClick = (projectId: string) => {
     try {
       console.log('Direct navigation to project:', projectId);
-      // Use direct browser navigation instead of any API checks
-      window.location.href = `/dashboard/projects/${projectId}`;
+      // Use the same hybrid-project path that's used in other links
+      router.push(`/hybrid-project/${projectId}`);
     } catch (error) {
       console.error('Error navigating to project:', error);
       // Backup approach - try to open in new tab as last resort
-      window.open(`/dashboard/projects/${projectId}`, '_blank');
+      window.open(`/hybrid-project/${projectId}`, '_blank');
     }
   };
 
@@ -122,6 +122,10 @@ const ProjectsPage = () => {
             {projects.map((project) => (
               <a
                 key={project.id}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleProjectClick(project.id);
+                }}
                 href={`/hybrid-project/${project.id}`}
                 className="block transition-transform hover:scale-[1.02] cursor-pointer"
               >

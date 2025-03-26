@@ -1,10 +1,15 @@
-import { useHistory } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 
-function ProjectList({ projects }) {
-    const history = useHistory();
+interface Project {
+    id: string;
+    name: string;
+}
 
-    const handleProjectClick = (projectId) => {
-        history.push(`/projects/${projectId}`);
+function ProjectList({ projects }: { projects: Project[] }) {
+    const router = useRouter();
+
+    const handleProjectClick = (projectId: string) => {
+        router.push(`/hybrid-project/${projectId}`);
     };
 
     return (

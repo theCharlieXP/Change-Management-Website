@@ -1,4 +1,4 @@
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 
 interface Project {
     id: string;
@@ -10,7 +10,7 @@ function ProjectItem({ project }: { project: Project }) {
     const router = useRouter();
 
     const handleClick = () => {
-        router.push(`/projects/${project.id}`);
+        router.push(`/hybrid-project/${project.id}`);
     };
 
     return (
