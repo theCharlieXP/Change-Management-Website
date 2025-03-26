@@ -184,7 +184,19 @@ export default function ProjectPage() {
 
   const handleStatusChange = async (newStatus: ProjectStatus) => {
     try {
-      const updatedProject = await updateProject(projectId, { status: newStatus })
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update project status')
+      }
+
+      const updatedProject = await response.json()
       setProject(updatedProject)
       setStatus(newStatus)
     } catch (err) {
@@ -198,31 +210,104 @@ export default function ProjectPage() {
     if (!project) return
 
     try {
-      const updatedProject = await updateProject(projectId, {
-        title: editTitle
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title: editTitle })
       })
+
+      if (!response.ok) {
+        throw new Error('Failed to update project')
+      }
+
+      const updatedProject = await response.json()
       setProject(updatedProject)
       setIsEditing(false)
     } catch (err) {
       console.error('Error updating project:', err)
+      toast({
+        title: "Error",
+        description: "Failed to update project",
+        variant: "destructive"
+      })
     }
   }
 
   const handleAddTask = async (task: Omit<ProjectTask, 'id' | 'created_at' | 'updated_at'>) => {
-    const newTask = await createProjectTask(projectId, task)
-    setTasks((prev) => [newTask, ...prev])
+    try {
+      const response = await fetch(`/api/projects/${projectId}/tasks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(task)
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to add task')
+      }
+
+      const newTask = await response.json()
+      setTasks((prev) => [newTask, ...prev])
+    } catch (error) {
+      console.error('Error adding task:', error)
+      toast({
+        title: "Error",
+        description: "Failed to add task",
+        variant: "destructive"
+      })
+    }
   }
 
   const handleUpdateTask = async (taskId: string, updates: Partial<ProjectTask>) => {
-    const updatedTask = await updateProjectTask(taskId, updates)
-    setTasks((prev) => prev.map((task) => 
-      task.id === taskId ? updatedTask : task
-    ))
+    try {
+      const response = await fetch(`/api/projects/${projectId}/tasks`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: taskId, ...updates })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update task')
+      }
+
+      const updatedTask = await response.json()
+      setTasks((prev) => prev.map((task) => 
+        task.id === taskId ? updatedTask : task
+      ))
+    } catch (error) {
+      console.error('Error updating task:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update task",
+        variant: "destructive"
+      })
+    }
   }
 
   const handleDeleteTask = async (taskId: string) => {
-    await deleteProjectTask(taskId)
-    setTasks((prev) => prev.filter((task) => task.id !== taskId))
+    try {
+      const response = await fetch(`/api/projects/${projectId}/tasks?taskId=${taskId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete task')
+      }
+
+      setTasks((prev) => prev.filter((task) => task.id !== taskId))
+    } catch (error) {
+      console.error('Error deleting task:', error)
+      toast({
+        title: "Error",
+        description: "Failed to delete task",
+        variant: "destructive"
+      })
+    }
   }
 
   const handleReorderTasks = async (reorderedTasks: ProjectTask[]) => {
