@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
 
+// Log environment variables (without exposing sensitive values)
+console.log('Supabase configuration:', {
+  hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+  hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  urlFormat: process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('https://') ? 'valid' : 'invalid',
+  serviceKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0
+})
+
 // Create a Supabase client with the service role key
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -17,6 +17,12 @@ export function checkSupabaseConfig() {
     keyLengths: {
       anonKey: anonKey?.length || 0,
       serviceKey: serviceKey?.length || 0
+    },
+    // Add more detailed environment info
+    env: {
+      NODE_ENV: process.env.NODE_ENV,
+      NEXT_RUNTIME: process.env.NEXT_RUNTIME,
+      NEXT_PUBLIC_VERCEL_ENV: process.env.NEXT_PUBLIC_VERCEL_ENV
     }
   };
   

@@ -10,6 +10,13 @@ export const createBasicClient = () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   
+  console.log('Creating basic Supabase client:', {
+    hasUrl: !!supabaseUrl,
+    hasAnonKey: !!supabaseAnonKey,
+    urlFormat: supabaseUrl?.startsWith('https://') ? 'valid' : 'invalid',
+    anonKeyLength: supabaseAnonKey?.length || 0
+  })
+  
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error('Missing Supabase environment variables in client')
     // Return a dummy client that will fail gracefully
