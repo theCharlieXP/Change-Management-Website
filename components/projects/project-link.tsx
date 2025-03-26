@@ -1,6 +1,5 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
 import { ArrowRight } from 'lucide-react'
 
 interface ProjectLinkProps {
@@ -10,20 +9,17 @@ interface ProjectLinkProps {
 }
 
 export function ProjectLink({ projectId, className, children }: ProjectLinkProps) {
-  // Use the project-view route for reliability
+  // Use a simple direct HTML link for maximum reliability
   return (
-    <Button 
-      variant="ghost" 
-      className={className} 
-      asChild
+    <a 
+      href={`/project-view/${projectId}`}
+      className={`inline-flex items-center text-sm font-medium text-primary hover:underline ${className || ''}`}
     >
-      <a href={`/project-view/${projectId}`}>
-        {children || (
-          <>
-            View Project <ArrowRight className="ml-2 h-4 w-4" />
-          </>
-        )}
-      </a>
-    </Button>
+      {children || (
+        <>
+          View Project <ArrowRight className="ml-2 h-4 w-4" />
+        </>
+      )}
+    </a>
   )
 } 

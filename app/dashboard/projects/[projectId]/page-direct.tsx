@@ -65,7 +65,7 @@ export default async function ProjectPageDirect({ params }: { params: { projectI
           <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-6">
             <h2 className="text-lg font-semibold text-amber-700">Project Not Found</h2>
             <p className="text-amber-600">
-              The project you're looking for doesn't exist or you don't have permission to view it.
+              The project you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to view it.
             </p>
             <Link href="/dashboard/projects" className="flex items-center mt-4 text-sm text-gray-600 hover:text-gray-800">
               <ArrowLeft className="mr-2 h-4 w-4" />

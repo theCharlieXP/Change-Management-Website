@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter, usePathname } from 'next/navigation'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -37,7 +37,7 @@ export function ProjectDetailsContainer({ children }: ProjectDetailsContainerPro
 
   console.log('ProjectDetailsContainer mounted for ID:', projectId, 'pathname:', pathname);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!isLoaded || !isSignedIn || !userId || !projectId) {
       return
     }
@@ -138,7 +138,7 @@ export function ProjectDetailsContainer({ children }: ProjectDetailsContainerPro
     } finally {
       setLoading(false)
     }
-  }
+  }, [isLoaded, isSignedIn, userId, projectId, user, router])
 
   // When auth state or project ID changes, fetch data
   useEffect(() => {
@@ -162,7 +162,7 @@ export function ProjectDetailsContainer({ children }: ProjectDetailsContainerPro
     }
 
     fetchData()
-  }, [isLoaded, isSignedIn, userId, projectId])
+  }, [isLoaded, isSignedIn, userId, projectId, fetchData])
 
   // If there's an error or no project, show an error message
   if (error || (!project && !loading)) {

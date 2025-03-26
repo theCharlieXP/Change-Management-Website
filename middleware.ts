@@ -100,22 +100,16 @@ export default clerkMiddleware(async (auth, req) => {
   if (req.nextUrl.pathname.match(/^\/project-view\/[^\/]+$/)) {
     console.log('Middleware: Project viewer page detected:', req.nextUrl.pathname);
     
-    // If user is authenticated, let them through with special handling
+    // If user is authenticated, redirect directly to the project page
     if (userId) {
-      console.log('Middleware: Authenticated access to project viewer');
+      console.log('Middleware: Authenticated access to project viewer - redirecting directly');
       
       // Extract the project ID from the URL
       const projectId = req.nextUrl.pathname.split('/').pop();
-      console.log('Middleware: Project ID for viewer:', projectId);
       
-      // Let the request through to our special viewer page
-      const response = NextResponse.next();
-      
-      // Add special header for debugging
-      response.headers.set('X-Project-Viewer', 'active');
-      response.headers.set('X-Project-Viewer-ID', projectId || '');
-      
-      return response;
+      // Redirect directly to the project page
+      const projectUrl = new URL(`/dashboard/projects/${projectId}`, req.url);
+      return NextResponse.redirect(projectUrl);
     } else {
       // If user is not authenticated, redirect to sign-in
       console.log('Middleware: Unauthenticated access to project viewer, redirecting to sign-in');
