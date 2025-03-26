@@ -1,6 +1,12 @@
 import { useRouter } from 'next/router';
 
-function ProjectItem({ project }) {
+interface Project {
+    id: string;
+    name: string;
+    description: string;
+}
+
+function ProjectItem({ project }: { project: Project }) {
     const router = useRouter();
 
     const handleClick = () => {
