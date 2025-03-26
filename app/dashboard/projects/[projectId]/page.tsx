@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, usePathname } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -56,6 +56,7 @@ const STATUS_LABELS = {
 export default function ProjectPage() {
   const params = useParams()
   const router = useRouter()
+  const pathname = usePathname()
   const { isLoaded, isSignedIn, userId } = useAuth()
   const { user } = useUser()
   const projectId = params?.projectId as string
@@ -70,6 +71,8 @@ export default function ProjectPage() {
   const [notes, setNotes] = useState<ProjectNote[]>([])
   const [summaries, setSummaries] = useState<InsightSummary[]>([])
   const [summariesLoading, setSummariesLoading] = useState(true)
+
+  console.log('Project page mounted for ID:', projectId, 'pathname:', pathname);
 
   useEffect(() => {
     if (!isLoaded) {

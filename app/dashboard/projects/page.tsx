@@ -11,6 +11,7 @@ import type { Project } from '@/types/projects'
 import { format } from 'date-fns'
 import { useUser } from '@clerk/nextjs'
 import { getProjects } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 const STATUS_COLORS = {
   'planning': 'bg-blue-100 text-blue-800 border-blue-200',
@@ -33,6 +34,7 @@ const ProjectsPage: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
     async function loadProjects() {
@@ -93,13 +95,12 @@ const ProjectsPage: React.FC = () => {
           <p className="text-muted-foreground mb-4">No projects yet. Click the &quot;Create Project&quot; button above to get started.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map((project) => (
-            <Link 
-              key={project.id} 
-              href={`/dashboard/projects/${project.id}`}
-              className="block transition-transform hover:scale-[1.02]"
-              prefetch={true}
+            <div
+              key={project.id}
+              onClick={() => router.push(`/dashboard/projects/${project.id}`)}
+              className="block transition-transform hover:scale-[1.02] cursor-pointer"
             >
               <Card className="h-[140px] sm:h-[160px]">
                 <CardHeader className="pb-2">
@@ -122,7 +123,7 @@ const ProjectsPage: React.FC = () => {
                   </div>
                 </CardContent>
               </Card>
-            </Link>
+            </div>
           ))}
         </div>
       )}

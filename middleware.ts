@@ -10,8 +10,10 @@ export default clerkMiddleware(async (auth, req) => {
     path: req.nextUrl.pathname,
     cookies: req.cookies.getAll().map(c => c.name),
     hasAuthToken: !!req.cookies.get('__session'),
-    headers: Object.fromEntries([...req.headers.entries()]),
-    url: req.url
+    method: req.method,
+    url: req.url,
+    search: req.nextUrl.search,
+    isApi: req.nextUrl.pathname.startsWith('/api/'),
   })
 
   // Check if the request is for a public route
@@ -47,6 +49,13 @@ export default clerkMiddleware(async (auth, req) => {
     return regex.test(req.nextUrl.pathname);
   });
   
+  // For requests to the API, skip middleware for authentication (will be handled by the API endpoint)
+  const isApiRequest = req.nextUrl.pathname.startsWith('/api/');
+  if (isApiRequest) {
+    console.log('Middleware: API request detected, letting route handler handle auth:', req.nextUrl.pathname);
+    return NextResponse.next();
+  }
+
   // If it's a public or ignored route, allow access
   if (isPublicRoute || isIgnoredRoute) {
     console.log('Middleware: Allowing public/ignored route:', req.nextUrl.pathname)
