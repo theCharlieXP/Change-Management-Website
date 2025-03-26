@@ -54,38 +54,10 @@ export function ProjectDetailsContainer({ children }: ProjectDetailsContainerPro
         userObject: !!user
       })
 
-      // Check if we can access this project
-      console.log('Checking project access before fetching details');
-      const checkResponse = await fetch('/api/projects/check', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache',
-        },
-        body: JSON.stringify({ projectId }),
-        cache: 'no-store',
-        credentials: 'include',
-      });
-      
-      const checkData = await checkResponse.json();
-      console.log('Project access check result:', checkData);
-      
-      if (!checkData.exists) {
-        console.error('Project not accessible:', checkData);
-        setError(`Project not found or you don't have permission to access it`)
-        setLoading(false)
-        setDebugInfo({
-          error: 'Project not accessible',
-          checkData,
-          projectId,
-          userId,
-        })
-        return
-      }
-
-      // Fetch project details
+      // Skip the check endpoint which may be failing
+      // and go directly to the details endpoint
       const projectDataRes = await fetch(`/api/projects/${projectId}/details`, {
+        method: 'GET',
         headers: {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache',

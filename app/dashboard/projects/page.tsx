@@ -59,35 +59,15 @@ const ProjectsPage = () => {
     setProjects(prev => [newProject, ...prev])
   }
 
-  const handleProjectClick = async (projectId: string) => {
-    // First check if the project exists and is accessible
+  const handleProjectClick = (projectId: string) => {
     try {
-      console.log('Checking project accessibility before navigation:', projectId);
-      
-      // First, try direct navigation for better user experience
-      const directUrl = `/dashboard/projects/${projectId}`;
-      window.location.href = directUrl;
-      
-      // The rest of this function may not execute if navigation occurs
-      // but we'll still make the check request to log the data for debugging
-      fetch('/api/projects/check', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ projectId }),
-      })
-      .then(response => response.json())
-      .then(data => {
-        console.log('Project accessibility check result (after navigation):', data);
-      })
-      .catch(error => {
-        console.error('Error checking project accessibility:', error);
-      });
+      console.log('Direct navigation to project:', projectId);
+      // Use direct browser navigation instead of any API checks
+      window.location.href = `/dashboard/projects/${projectId}`;
     } catch (error) {
       console.error('Error navigating to project:', error);
-      // Fallback to direct navigation
-      window.location.href = `/dashboard/projects/${projectId}`;
+      // Backup approach - try to open in new tab as last resort
+      window.open(`/dashboard/projects/${projectId}`, '_blank');
     }
   };
 
@@ -140,9 +120,9 @@ const ProjectsPage = () => {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map((project) => (
-              <div
+              <a
                 key={project.id}
-                onClick={() => handleProjectClick(project.id)}
+                href={`/dashboard/projects/${project.id}`}
                 className="block transition-transform hover:scale-[1.02] cursor-pointer"
               >
                 <Card className="h-[140px] sm:h-[160px]">
@@ -152,10 +132,6 @@ const ProjectsPage = () => {
                         <a 
                           href={`/dashboard/projects/${project.id}`}
                           className="hover:underline"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleProjectClick(project.id);
-                          }}
                         >
                           {project.title}
                         </a>
@@ -170,10 +146,6 @@ const ProjectsPage = () => {
                       </div>
                       <a 
                         href={`/dashboard/projects/${project.id}`}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleProjectClick(project.id);
-                        }}
                       >
                         <ArrowRight className="h-4 w-4" />
                       </a>
@@ -189,7 +161,7 @@ const ProjectsPage = () => {
                   </CardContent>
                   <a href={`/dashboard/projects/${project.id}`} className="hidden">View Project</a>
                 </Card>
-              </div>
+              </a>
             ))}
           </div>
         </>
