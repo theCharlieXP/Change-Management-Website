@@ -98,11 +98,9 @@ export default function ProjectPage() {
         console.log('Fetching project data for ID:', projectId)
         console.log('Auth state:', { isLoaded, isSignedIn, userId })
 
-        const [projectRes, notesRes, tasksRes] = await Promise.all([
-          fetch(`/api/projects/${projectId}`),
-          fetch(`/api/projects/${projectId}/notes`),
-          fetch(`/api/projects/${projectId}/tasks`)
-        ])
+        // First, check if we can access the project
+        const projectRes = await fetch(`/api/projects/${projectId}`)
+        console.log('Project response status:', projectRes.status)
 
         if (!projectRes.ok) {
           if (projectRes.status === 404) {
@@ -119,20 +117,38 @@ export default function ProjectPage() {
             router.push('/sign-in')
             return
           }
+          if (projectRes.status === 500) {
+            const errorData = await projectRes.json()
+            console.error('Server error:', errorData)
+            setError('Failed to load project. Please try again later.')
+            setLoading(false)
+            return
+          }
           throw new Error('Failed to fetch project data')
         }
+
+        // If we get here, we have a valid project
+        const projectData = await projectRes.json()
+        console.log('Project data received:', projectData)
+
+        // Now fetch notes and tasks
+        const [notesRes, tasksRes] = await Promise.all([
+          fetch(`/api/projects/${projectId}/notes`),
+          fetch(`/api/projects/${projectId}/tasks`)
+        ])
 
         if (!notesRes.ok || !tasksRes.ok) {
+          console.error('Failed to fetch notes or tasks:', {
+            notesStatus: notesRes.status,
+            tasksStatus: tasksRes.status
+          })
           throw new Error('Failed to fetch project data')
         }
 
-        const [projectData, notesData, tasksData] = await Promise.all([
-          projectRes.json(),
+        const [notesData, tasksData] = await Promise.all([
           notesRes.json(),
           tasksRes.json()
         ])
-
-        console.log('Project data received:', projectData)
 
         setProject(projectData)
         setNotes(notesData)
