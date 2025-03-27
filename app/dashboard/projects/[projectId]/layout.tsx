@@ -16,11 +16,13 @@ export default function ProjectLayout({
     console.log('Project layout mounted for ID:', projectId)
     console.log('Current pathname:', pathname)
     
-    // Check URL for direct access
-    if (pathname && projectId) {
+    // Check URL for direct access - only apply this check if we're actually in the dashboard/projects path
+    // Don't redirect when in hybrid-project or other paths
+    if (pathname && projectId && pathname.startsWith('/dashboard/projects/')) {
       const expectedPath = `/dashboard/projects/${projectId}`
-      if (pathname !== expectedPath) {
-        console.log('Pathname mismatch, fixing navigation')
+      // Only redirect if we're on a malformed dashboard/projects path
+      if (pathname !== expectedPath && !pathname.includes('/hybrid-project/')) {
+        console.log('Pathname mismatch in dashboard context, fixing navigation')
         window.location.href = expectedPath
       } else {
         console.log('Pathname matches expected format')

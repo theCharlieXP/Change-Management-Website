@@ -6,6 +6,15 @@ export function HybridDebug() {
   useEffect(() => {
     console.log('HybridDebug component mounted at ' + window.location.pathname)
     
+    // Log any components that might be interfering with navigation
+    console.log('Checking for redirects or navigation issues')
+    console.log('Location: ' + JSON.stringify({
+      pathname: window.location.pathname,
+      search: window.location.search,
+      hash: window.location.hash,
+      href: window.location.href
+    }))
+    
     // Report any URL changes
     const reportChange = () => {
       console.log('URL changed to ' + window.location.pathname)

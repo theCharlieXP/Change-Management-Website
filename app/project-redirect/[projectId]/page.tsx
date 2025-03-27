@@ -13,6 +13,9 @@ export default async function ProjectRedirectPage({ params }: { params: { projec
     redirect('/sign-in')
   }
   
+  // Make sure the URL is properly formatted
+  console.log('Project redirect: Redirecting to hybrid project page:', projectId)
+  
   // Redirect to the hybrid project page
   redirect(`/hybrid-project/${projectId}`)
 } 
