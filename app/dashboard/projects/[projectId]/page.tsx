@@ -1,5 +1,47 @@
 'use client'
 
+// CRITICAL: Immediately log page load to catch any quick redirects
+if (typeof window !== 'undefined') {
+  console.log('🔴 PROJECT DETAIL PAGE EXECUTING - IMMEDIATE LOG', {
+    url: window.location.href,
+    pathname: window.location.pathname
+  });
+  
+  // Override any immediate redirects to catch the culprit
+  const originalPushState = history.pushState;
+  const originalReplaceState = history.replaceState;
+  const originalAssign = Object.getOwnPropertyDescriptor(window.Location.prototype, 'href')?.set;
+  
+  if (originalAssign) {
+    Object.defineProperty(window.Location.prototype, 'href', {
+      set: function(url) {
+        console.log('🔴 REDIRECT ATTEMPT INTERCEPTED!', {
+          from: window.location.pathname,
+          to: url,
+          stack: new Error().stack
+        });
+        return originalAssign.call(this, url);
+      }
+    });
+  }
+  
+  history.pushState = function() {
+    console.log('🔴 PUSHSTATE INTERCEPTED!', {
+      args: arguments,
+      stack: new Error().stack
+    });
+    return originalPushState.apply(this, arguments);
+  };
+  
+  history.replaceState = function() {
+    console.log('🔴 REPLACESTATE INTERCEPTED!', {
+      args: arguments,
+      stack: new Error().stack
+    });
+    return originalReplaceState.apply(this, arguments);
+  };
+}
+
 import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { Loader2, ArrowLeft, FileText, ListTodo, PlusCircle } from 'lucide-react'
