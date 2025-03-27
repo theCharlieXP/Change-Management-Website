@@ -39,61 +39,15 @@ export function FallbackProjectLink({ projectId, children, className = '' }: Fal
       referrer: document.referrer
     });
     
-    // Completely bypass router by directly setting location - this is more reliable
-    // than router.push or history API methods
     try {
-      // Get the fully qualified URL to the hybrid project page
+      // IMPORTANT: Use our new direct-project-view route instead of hybrid-project
+      // This bypasses any route conflicts or redirects
       const baseUrl = window.location.origin;
-      const fullUrl = `${baseUrl}/hybrid-project/${projectId}`;
+      const fullUrl = `${baseUrl}/direct-project-view/${projectId}`;
       console.log('FallbackProjectLink: [NAVIGATION ATTEMPT] to full URL:', fullUrl);
       
-      // Set up monitoring to detect if navigation fails
-      const navigationTimeout = setTimeout(() => {
-        console.error('FallbackProjectLink: [NAVIGATION TIMEOUT] Navigation did not complete within 5 seconds');
-        setNavigationError('Navigation timeout');
-        
-        // Only restore the original content if we're still on the same page
-        if (window.location.pathname !== `/hybrid-project/${projectId}`) {
-          setIsNavigating(false);
-          target.innerHTML = originalInnerHTML;
-        }
-      }, 5000);
-      
-      // Create a one-time listener to detect page unload
-      const unloadListener = () => {
-        console.log('FallbackProjectLink: [NAVIGATION PROGRESS] Page unload detected');
-        clearTimeout(navigationTimeout);
-        window.removeEventListener('beforeunload', unloadListener);
-      };
-      window.addEventListener('beforeunload', unloadListener, { once: true });
-      
-      // Add a listener for the load event in case we stay on the same page
-      const loadListener = () => {
-        console.log('FallbackProjectLink: [NAVIGATION COMPLETE] Page load event fired');
-        clearTimeout(navigationTimeout);
-        window.removeEventListener('load', loadListener);
-      };
-      window.addEventListener('load', loadListener, { once: true });
-      
-      // First, try to use a fetch request to preflight the URL to see if it works
-      fetch(fullUrl, { method: 'HEAD', credentials: 'include' })
-        .then(response => {
-          console.log('FallbackProjectLink: [PREFLIGHT CHECK]', { 
-            status: response.status,
-            ok: response.ok
-          });
-          
-          // Now perform the actual navigation
-          console.log('FallbackProjectLink: [EXECUTING NAVIGATION] Assigning to window.location');
-          
-          // Force a full page navigation, not a client-side route change
-          window.location.href = fullUrl;
-        })
-        .catch(error => {
-          console.error('FallbackProjectLink: [PREFLIGHT ERROR]', error);
-          // Still try the navigation even if preflight fails
-          window.location.href = fullUrl;
-        });
+      // Force a complete page reload to avoid any client-side routing issues
+      window.location.href = fullUrl;
     } catch (error) {
       console.error('FallbackProjectLink: [NAVIGATION ERROR]', error);
       setNavigationError(error instanceof Error ? error.message : 'Unknown error');
@@ -104,11 +58,10 @@ export function FallbackProjectLink({ projectId, children, className = '' }: Fal
     }
   };
   
-  // Use a regular anchor tag with no dependencies on Next.js or React Router
-  // This ensures the most basic and reliable navigation
+  // Use a regular anchor tag with direct link (with no client-side routing)
   return (
     <a 
-      href={`/hybrid-project/${projectId}`} 
+      href={`/direct-project-view/${projectId}`} 
       onClick={handleClick}
       className={className}
       data-project-id={projectId}

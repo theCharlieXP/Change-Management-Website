@@ -181,6 +181,33 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next();
   }
   
+  // Special handling for direct project view pages
+  if (req.nextUrl.pathname.match(/^\/direct-project-view\/[^\/]+$/)) {
+    console.log('Middleware: Direct project view page detected:', {
+      path: req.nextUrl.pathname,
+      cookies: req.cookies.getAll().map(c => c.name).join(', '),
+      hasAuthToken: !!req.cookies.get('__session'),
+      userId
+    });
+    
+    // If user is authenticated, let them through with no interference
+    if (userId) {
+      console.log('Middleware: Authenticated access to direct project view - ALLOWING ACCESS WITH NO REDIRECTION');
+      const response = NextResponse.next();
+      
+      // Add special headers to explicitly prevent any redirection
+      response.headers.set('X-Direct-Project-Access', 'allowed');
+      response.headers.set('X-No-Redirect', 'true');
+      
+      return response;
+    } else {
+      // If user is not authenticated, redirect to sign-in
+      console.log('Middleware: Unauthenticated access to direct project view, redirecting to sign-in');
+      const signInUrl = new URL("/sign-in", req.url);
+      return NextResponse.redirect(signInUrl);
+    }
+  }
+  
   // For authenticated users accessing protected routes
   console.log('Middleware: Allowing authenticated access to protected route:', req.nextUrl.pathname)
   const response = NextResponse.next();
