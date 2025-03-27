@@ -105,7 +105,10 @@ export function ProfileCreator() {
 
       const success = await createProfile();
       
-      if (!success && isSignedIn) {
+      // IMPORTANT: Don't retry for project detail pages to avoid potential redirects
+      const isProjectPage = typeof window !== 'undefined' && window.location.pathname.includes('/projects/');
+      
+      if (!success && isSignedIn && !isProjectPage) {
         console.log('ProfileCreator: Auth not ready yet, will retry in 3 seconds', {
           retryCount: retryCount + 1,
           currentPathname: typeof window !== 'undefined' ? window.location.pathname : 'server-side'

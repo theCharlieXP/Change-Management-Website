@@ -2,43 +2,55 @@
 
 // CRITICAL: Immediately log page load to catch any quick redirects
 if (typeof window !== 'undefined') {
-  console.log('🔴 PROJECT DETAIL PAGE EXECUTING - IMMEDIATE LOG', {
+  console.log('%c 🛑 PROJECT DETAIL PAGE EXECUTING - IMMEDIATE LOG', 'font-size: 20px; color: red; font-weight: bold', {
     url: window.location.href,
-    pathname: window.location.pathname
+    pathname: window.location.pathname,
+    timestamp: new Date().toISOString()
   });
   
-  // Override any immediate redirects to catch the culprit
-  const originalPushState = history.pushState;
-  const originalReplaceState = history.replaceState;
+  // Override redirects more aggressively
   const originalAssign = Object.getOwnPropertyDescriptor(window.Location.prototype, 'href')?.set;
   
   if (originalAssign) {
     Object.defineProperty(window.Location.prototype, 'href', {
       set: function(url) {
-        console.log('🔴 REDIRECT ATTEMPT INTERCEPTED!', {
+        // Only allow navigation to the current project page or back to project list
+        if (url === window.location.href || url.includes('/dashboard/projects')) {
+          console.log('🟢 ALLOWING NAVIGATION:', {
+            from: window.location.pathname,
+            to: url
+          });
+          return originalAssign.call(this, url);
+        }
+        
+        // Block any other redirects completely
+        console.warn('🔴 BLOCKING UNAUTHORIZED REDIRECT!', {
           from: window.location.pathname,
           to: url,
           stack: new Error().stack
         });
-        return originalAssign.call(this, url);
+        
+        // Don't actually perform the redirect
+        return window.location.href;
       }
     });
   }
   
-  history.pushState = function() {
-    console.log('🔴 PUSHSTATE INTERCEPTED!', {
-      args: arguments,
+  // Disable all history API manipulations too
+  history.pushState = function(...args: any[]) {
+    console.warn('🔴 PUSHSTATE INTERCEPTED AND BLOCKED!', {
+      args,
       stack: new Error().stack
     });
-    return originalPushState.apply(this, arguments);
+    return null;
   };
   
-  history.replaceState = function() {
-    console.log('🔴 REPLACESTATE INTERCEPTED!', {
-      args: arguments,
+  history.replaceState = function(...args: any[]) {
+    console.warn('🔴 REPLACESTATE INTERCEPTED AND BLOCKED!', {
+      args,
       stack: new Error().stack
     });
-    return originalReplaceState.apply(this, arguments);
+    return null;
   };
 }
 
