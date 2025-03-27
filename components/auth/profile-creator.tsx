@@ -106,7 +106,7 @@ export function ProfileCreator() {
       const success = await createProfile();
       
       // IMPORTANT: Don't retry for project detail pages to avoid potential redirects
-      const isProjectPage = typeof window !== 'undefined' && window.location.pathname.includes('/projects/');
+      const isProjectPage = typeof window !== 'undefined' && window.location.pathname.match(/^\/dashboard\/projects\/[^\/]+$/);
       
       if (!success && isSignedIn && !isProjectPage) {
         console.log('ProfileCreator: Auth not ready yet, will retry in 3 seconds', {
