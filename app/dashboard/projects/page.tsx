@@ -3,47 +3,25 @@
 import React from 'react'
 import { useEffect, useState } from 'react'
 import { CreateProjectDialog } from '@/components/projects/create-project-dialog'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { ArrowRight } from 'lucide-react'
-import Link from 'next/link'
 import type { Project } from '@/types/projects'
-import { format } from 'date-fns'
 import { useUser } from '@clerk/nextjs'
 import { getProjects } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
-import { toast } from '@/components/ui/use-toast'
-import { ProjectLink } from '@/components/projects/project-link'
-import { FallbackProjectLink } from './fallback'
-
-const STATUS_COLORS = {
-  'planning': 'bg-blue-100 text-blue-800 border-blue-200',
-  'inprogress': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  'onhold': 'bg-orange-100 text-orange-800 border-orange-200',
-  'completed': 'bg-green-100 text-green-800 border-green-200',
-  'cancelled': 'bg-red-100 text-red-800 border-red-200'
-} as const
-
-const STATUS_LABELS = {
-  'planning': 'Planning',
-  'inprogress': 'In Progress',
-  'onhold': 'On Hold',
-  'completed': 'Completed',
-  'cancelled': 'Cancelled'
-} as const
+import { ProjectCard } from './project-card'
 
 const ProjectsPage = () => {
   const { user } = useUser()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
 
   useEffect(() => {
     async function loadProjects() {
       if (!user) return
       try {
+        console.log('Projects page: Loading projects for user:', user.id);
+        setLoading(true)
         const data = await getProjects(user.id)
+        console.log('Projects page: Successfully loaded', data.length, 'projects');
         setProjects(data)
       } catch (err) {
         console.error('Error loading projects:', err)
@@ -59,15 +37,6 @@ const ProjectsPage = () => {
   const addProject = (newProject: Project) => {
     setProjects(prev => [newProject, ...prev])
   }
-
-  const handleProjectClick = (projectId: string, e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-    }
-    
-    // Direct browser navigation - simplest approach to avoid any router complications
-    window.location.href = `/hybrid-project/${projectId}`;
-  };
 
   if (loading) {
     return (
@@ -107,49 +76,14 @@ const ProjectsPage = () => {
           <p className="text-muted-foreground mb-4">No projects yet. Click the &quot;Create Project&quot; button above to get started.</p>
         </div>
       ) : (
-        <>
-          <noscript>
-            <div className="mb-4 p-3 border border-yellow-200 bg-yellow-50 rounded-md">
-              <p className="text-sm text-yellow-800">
-                JavaScript appears to be disabled. Project links will use direct navigation.
-              </p>
-            </div>
-          </noscript>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map((project) => (
-              <FallbackProjectLink
-                key={project.id}
-                projectId={project.id}
-                className="block transition-transform hover:scale-[1.02] cursor-pointer"
-              >
-                <Card className="h-[140px] sm:h-[160px]">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-4">
-                      <CardTitle className="text-sm sm:text-base font-medium flex-1 line-clamp-2">
-                        {project.title}
-                      </CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
-                      <div className="space-y-1">
-                        <div>Created {format(new Date(project.created_at), 'MMM d, yyyy')}</div>
-                        <div>Last edited {format(new Date(project.updated_at), 'MMM d, yyyy')}</div>
-                      </div>
-                      <ArrowRight className="h-4 w-4" />
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <Badge className={`${STATUS_COLORS[project.status]} text-xs px-2 py-0.5 whitespace-nowrap`}>
-                        {STATUS_LABELS[project.status]}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              </FallbackProjectLink>
-            ))}
-          </div>
-        </>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {projects.map((project) => (
+            <ProjectCard 
+              key={project.id} 
+              project={project} 
+            />
+          ))}
+        </div>
       )}
     </div>
   )
