@@ -20,14 +20,14 @@ export function FallbackProjectLink({ projectId, children, className = '' }: Fal
     
     // Use direct browser navigation with a small delay to ensure the click is processed
     setTimeout(() => {
-      // Go directly to the dashboard project details page which has a working data loader
-      window.location.href = `/dashboard/projects/${projectId}`;
+      // Go directly to the hybrid project page which has a working data loader
+      window.location.href = `/hybrid-project/${projectId}`;
     }, 100);
   };
   
   return (
     <a 
-      href={`/dashboard/projects/${projectId}`} 
+      href={`/hybrid-project/${projectId}`} 
       onClick={handleClick}
       className={className}
     >
