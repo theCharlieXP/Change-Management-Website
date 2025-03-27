@@ -20,7 +20,18 @@ export default function HybridProjectPage() {
   const [tasks, setTasks] = useState<ProjectTask[]>([])
   const [notes, setNotes] = useState<ProjectNote[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
   const projectId = params?.projectId as string
+
+  // Debug mount - will show if the component is properly rendering
+  useEffect(() => {
+    console.log('HybridProjectPage mounted for projectId:', projectId);
+    
+    // Return a cleanup function that logs when the component unmounts
+    return () => {
+      console.log('HybridProjectPage unmounted for projectId:', projectId);
+    };
+  }, [projectId]);
 
   // Load data using our static route
   useEffect(() => {
@@ -28,6 +39,9 @@ export default function HybridProjectPage() {
       console.log('Hybrid project page: Auth not loaded yet');
       return;
     }
+    
+    console.log('Hybrid project page: Auth loaded, isSignedIn =', isSignedIn);
+    setAuthChecked(true);
     
     if (!isSignedIn) {
       console.log('Hybrid project page: User not signed in, redirecting to sign-in');
@@ -92,6 +106,7 @@ export default function HybridProjectPage() {
             setTasks(data.tasks || []);
             setNotes(data.notes || []);
             setError(null);
+            console.log('Hybrid project page: State updated with project data');
           } catch (jsonError) {
             console.error('Hybrid project page: Error parsing JSON from successful response', jsonError);
             throw new Error('Failed to parse project data');
@@ -105,15 +120,33 @@ export default function HybridProjectPage() {
         setError(err instanceof Error ? err.message : 'Failed to load project');
       } finally {
         setLoading(false);
+        console.log('Hybrid project page: Loading completed, state =', {
+          hasProject: !!project,
+          loading,
+          error,
+          authChecked,
+          isSignedIn
+        });
       }
     };
     
     fetchProjectData();
-  }, [isLoaded, isSignedIn, projectId, router]);
+  }, [isLoaded, isSignedIn, projectId, router, authChecked]);
+  
+  console.log('HybridProjectPage rendering with state:', {
+    loading,
+    hasProject: !!project,
+    hasError: !!error,
+    authChecked,
+    isSignedIn,
+    tasksCount: tasks.length,
+    notesCount: notes.length
+  });
   
   if (loading) {
     return (
       <div className="container mx-auto py-8 px-4">
+        <HybridDebug />
         <div className="flex items-center justify-center py-16">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
@@ -128,6 +161,7 @@ export default function HybridProjectPage() {
   if (error || !project) {
     return (
       <div className="container mx-auto py-8 px-4">
+        <HybridDebug />
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col items-center justify-center py-12 text-center">

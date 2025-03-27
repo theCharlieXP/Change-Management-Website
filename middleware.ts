@@ -158,8 +158,15 @@ export default clerkMiddleware(async (auth, req) => {
     
     // If user is authenticated, let them through
     if (userId) {
-      console.log('Middleware: Authenticated access to hybrid project page');
-      return NextResponse.next();
+      console.log('Middleware: Authenticated access to hybrid project page - ALLOWING ACCESS');
+      // IMPORTANT! Add special header to help debugging and prevent any application-level redirects
+      const response = NextResponse.next();
+      
+      // Add headers to signal this page should not be redirected
+      response.headers.set('X-Hybrid-Project-Access', 'allowed');
+      response.headers.set('X-No-Redirect', 'true');
+      
+      return response;
     } else {
       // If user is not authenticated, redirect to sign-in
       console.log('Middleware: Unauthenticated access to hybrid project page, redirecting to sign-in');
