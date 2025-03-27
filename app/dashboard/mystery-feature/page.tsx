@@ -29,6 +29,9 @@ export default function MysteryFeaturePage() {
           <p className="text-xl text-muted-foreground">
             We&apos;re working on something special that will revolutionize your change management experience.
           </p>
+          <p className="text-lg text-muted-foreground">
+            Stay tuned for the big reveal – it's going to change everything about how you work.
+          </p>
         </div>
 
         <Card>
