@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 
 // Add environment variable validation
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -24,58 +26,33 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 
 // GET all notes for a project
 export async function GET(
-  request: NextRequest,
+  request: Request,
   { params }: { params: { projectId: string } }
 ) {
   try {
-    const authData = await auth();
-const { userId  } = authData
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    // First verify project exists and belongs to user
-    const { data: project, error: projectError } = await supabase
-      .from('projects')
-      .select('id')
-      .eq('id', params.projectId)
-      .eq('user_id', userId)
-      .single()
-
-    if (projectError) {
-      if (projectError.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Project not found' },
-          { status: 404 }
-        )
-      }
-      throw projectError
-    }
-
+    const projectId = params.projectId
+    
+    // Create a Supabase client for the route handler
+    const supabase = createRouteHandlerClient({ cookies })
+    
+    // Get the notes for this project
     const { data: notes, error } = await supabase
       .from('project_notes')
       .select('*')
-      .eq('project_id', params.projectId)
+      .eq('project_id', projectId)
       .order('created_at', { ascending: false })
-
+    
     if (error) {
-      console.error('Error fetching notes:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch notes' },
-        { status: 500 }
-      )
+      throw error
     }
-
-    return NextResponse.json(notes)
+    
+    return NextResponse.json(notes || [])
   } catch (error) {
-    console.error('Error in GET /api/projects/[projectId]/notes:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    console.error('Error fetching project notes:', error)
+    return new NextResponse(JSON.stringify({ error: 'Failed to fetch notes' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 }
 

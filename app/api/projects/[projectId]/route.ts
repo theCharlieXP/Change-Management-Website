@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 
 // Log environment variables (without exposing sensitive values)
 console.log('API Route - Supabase configuration:', {
@@ -27,66 +29,36 @@ export async function GET(
   { params }: { params: { projectId: string } }
 ) {
   try {
-    const authData = await auth();
-    const { userId } = authData
+    const projectId = params.projectId
     
-    console.log('API Route - Auth check:', {
-      hasAuth: !!authData,
-      hasUserId: !!userId,
-      projectId: params.projectId,
-      url: request.url,
-      headers: Object.fromEntries(request.headers),
-      method: request.method
-    })
+    // Create a Supabase client for the route handler
+    const supabase = createRouteHandlerClient({ cookies })
     
-    if (!userId) {
-      console.log('API Route - Unauthorized request', { projectId: params.projectId })
-      return new NextResponse(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401 }
-      )
-    }
-
-    console.log('Fetching project:', {
-      projectId: params.projectId,
-      userId,
-      hasServerClient: !!supabase
-    })
-
+    // Get the project
     const { data: project, error } = await supabase
       .from('projects')
       .select('*')
-      .eq('id', params.projectId)
-      .eq('user_id', userId)
+      .eq('id', projectId)
       .single()
-
+    
     if (error) {
-      console.error('Error fetching project:', error)
-      if (error.code === 'PGRST116') {
-        return new NextResponse(null, { status: 404 })
-      }
       throw error
     }
-
-    console.log('Project fetched successfully:', {
-      hasProject: !!project,
-      projectId: params.projectId,
-      userId
-    })
-
-    return new NextResponse(
-      JSON.stringify(project),
-      { status: 200 }
-    )
+    
+    if (!project) {
+      return new NextResponse(JSON.stringify({ error: 'Project not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    
+    return NextResponse.json(project)
   } catch (error) {
-    console.error('Error in project API:', error)
-    return new NextResponse(
-      JSON.stringify({ 
-        error: 'Failed to fetch project',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      }),
-      { status: 500 }
-    )
+    console.error('Error fetching project:', error)
+    return new NextResponse(JSON.stringify({ error: 'Failed to fetch project' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 }
 

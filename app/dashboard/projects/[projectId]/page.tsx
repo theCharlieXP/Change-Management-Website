@@ -1,57 +1,11 @@
 'use client'
 
-// CRITICAL: Immediately log page load to catch any quick redirects
+// Simple debug logging that won't interfere with normal page operation
 if (typeof window !== 'undefined') {
-  console.log('%c 🛑 PROJECT DETAIL PAGE EXECUTING - IMMEDIATE LOG', 'font-size: 20px; color: red; font-weight: bold', {
-    url: window.location.href,
-    pathname: window.location.pathname,
-    timestamp: new Date().toISOString()
-  });
+  console.log('PROJECT DETAIL PAGE LOADED:', window.location.pathname);
   
-  // Override redirects more aggressively
-  const originalAssign = Object.getOwnPropertyDescriptor(window.Location.prototype, 'href')?.set;
-  
-  if (originalAssign) {
-    Object.defineProperty(window.Location.prototype, 'href', {
-      set: function(url) {
-        // Only allow navigation to the current project page or back to project list
-        if (url === window.location.href || url.includes('/dashboard/projects')) {
-          console.log('🟢 ALLOWING NAVIGATION:', {
-            from: window.location.pathname,
-            to: url
-          });
-          return originalAssign.call(this, url);
-        }
-        
-        // Block any other redirects completely
-        console.warn('🔴 BLOCKING UNAUTHORIZED REDIRECT!', {
-          from: window.location.pathname,
-          to: url,
-          stack: new Error().stack
-        });
-        
-        // Don't actually perform the redirect
-        return window.location.href;
-      }
-    });
-  }
-  
-  // Disable all history API manipulations too
-  history.pushState = function(...args: any[]) {
-    console.warn('🔴 PUSHSTATE INTERCEPTED AND BLOCKED!', {
-      args,
-      stack: new Error().stack
-    });
-    return null;
-  };
-  
-  history.replaceState = function(...args: any[]) {
-    console.warn('🔴 REPLACESTATE INTERCEPTED AND BLOCKED!', {
-      args,
-      stack: new Error().stack
-    });
-    return null;
-  };
+  // Add a sentinel value to the window to detect if our component code executes
+  (window as any).__PROJECT_PAGE_LOADED = true;
 }
 
 import { useEffect, useState } from 'react'
@@ -64,6 +18,9 @@ import { Badge } from '@/components/ui/badge'
 import { useUser } from '@clerk/nextjs'
 import type { Project, ProjectTask, ProjectNote } from '@/types/projects'
 import { getProject, getProjectTasks, getProjectNotes } from '@/lib/supabase'
+import { DebugWindow } from './debug-window'
+import { FallbackLoader } from './fallback-loader'
+import { TransitionDebug } from './transition-debug'
 
 // Status display mapping
 const STATUS_COLORS = {
@@ -93,6 +50,19 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
   const [notes, setNotes] = useState<ProjectNote[]>([])
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('overview')
+  const [useFallback, setUseFallback] = useState(false)
+
+  // Set a timeout to switch to fallback if main component doesn't load in time
+  useEffect(() => {
+    const fallbackTimer = setTimeout(() => {
+      if (loading) {
+        console.log('Switching to fallback loader due to timeout');
+        setUseFallback(true);
+      }
+    }, 5000); // 5 seconds timeout
+    
+    return () => clearTimeout(fallbackTimer);
+  }, [loading]);
 
   // Load project data
   useEffect(() => {
@@ -135,6 +105,17 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
     loadProjectData()
   }, [projectId, user])
   
+  // If we're in fallback mode, render the fallback loader
+  if (useFallback) {
+    return (
+      <>
+        <DebugWindow />
+        <TransitionDebug />
+        <FallbackLoader projectId={projectId} />
+      </>
+    );
+  }
+  
   // Go back to projects list
   const goBack = () => {
     window.location.href = '/dashboard/projects';
@@ -144,6 +125,8 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
   if (loading) {
     return (
       <div className="container mx-auto py-8">
+        <DebugWindow />
+        <TransitionDebug />
         <div className="flex items-center justify-center py-16">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
@@ -159,6 +142,8 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
   if (error || !project) {
     return (
       <div className="container mx-auto py-8">
+        <DebugWindow />
+        <TransitionDebug />
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -182,6 +167,8 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
   
   return (
     <div className="space-y-6">
+      <DebugWindow />
+      <TransitionDebug />
       {/* Project header */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div className="flex items-center gap-4">
