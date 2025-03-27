@@ -11,7 +11,11 @@ export function ProfileCreator() {
 
   const createProfile = useCallback(async () => {
     if (!isLoaded || !isSessionLoaded) {
-      console.log('ProfileCreator: Auth or session not loaded yet');
+      console.log('ProfileCreator: Auth or session not loaded yet', {
+        isAuthLoaded: isLoaded,
+        isSessionLoaded: isSessionLoaded,
+        currentPathname: typeof window !== 'undefined' ? window.location.pathname : 'server-side'
+      });
       return false;
     }
 
@@ -19,7 +23,8 @@ export function ProfileCreator() {
       console.log('ProfileCreator: Not signed in or missing data:', { 
         isSignedIn, 
         userId, 
-        hasSession: !!session 
+        hasSession: !!session,
+        currentPathname: typeof window !== 'undefined' ? window.location.pathname : 'server-side'
       });
       return false;
     }
@@ -28,41 +33,62 @@ export function ProfileCreator() {
     
     try {
       // Get the session token
-      const sessionToken = await session.getToken();
-
-      if (!sessionToken) {
-        console.log('ProfileCreator: No session token available yet');
+      let sessionToken;
+      try {
+        sessionToken = await session.getToken();
+        if (!sessionToken) {
+          console.log('ProfileCreator: No session token available yet');
+          return false;
+        }
+      } catch (tokenError) {
+        console.error('ProfileCreator: Error getting session token:', tokenError);
         return false;
       }
 
       console.log('ProfileCreator: Got session token, making request');
-      const response = await fetch('/api/auth/profile', {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionToken}`,
-          'x-user-id': userId.toLowerCase(),
-          'x-session-id': session.id
-        },
-        cache: 'no-store'
-      });
+      try {
+        const response = await fetch('/api/auth/profile', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionToken}`,
+            'x-user-id': userId.toLowerCase(),
+            'x-session-id': session.id
+          },
+          cache: 'no-store'
+        });
 
-      if (!response.ok) {
-        const data = await response.json();
-        console.log('ProfileCreator: Error response:', {
-          status: response.status,
-          statusText: response.statusText,
-          data
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
+          console.log('ProfileCreator: Error response:', {
+            status: response.status,
+            statusText: response.statusText,
+            data,
+            currentPathname: typeof window !== 'undefined' ? window.location.pathname : 'server-side'
+          });
+          return false;
+        }
+
+        const profile = await response.json();
+        console.log('ProfileCreator: Profile created/fetched successfully:', profile);
+        return true;
+      } catch (fetchError) {
+        console.error('ProfileCreator: Fetch error:', {
+          error: fetchError,
+          message: fetchError instanceof Error ? fetchError.message : 'Unknown error',
+          stack: fetchError instanceof Error ? fetchError.stack : undefined,
+          currentPathname: typeof window !== 'undefined' ? window.location.pathname : 'server-side'
         });
         return false;
       }
-
-      const profile = await response.json();
-      console.log('ProfileCreator: Profile created/fetched successfully:', profile);
-      return true;
     } catch (error) {
-      console.error('ProfileCreator: Error creating/fetching profile:', error);
+      console.error('ProfileCreator: Error creating/fetching profile:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        currentPathname: typeof window !== 'undefined' ? window.location.pathname : 'server-side'
+      });
       return false;
     }
   }, [isLoaded, isSignedIn, userId, session, isSessionLoaded]);
@@ -70,21 +96,33 @@ export function ProfileCreator() {
   useEffect(() => {
     const attemptProfileCreation = async () => {
       if (retryCount >= MAX_RETRIES) {
-        console.log('ProfileCreator: Max retries reached');
+        console.log('ProfileCreator: Max retries reached', {
+          retryCount,
+          currentPathname: typeof window !== 'undefined' ? window.location.pathname : 'server-side'
+        });
         return;
       }
 
       const success = await createProfile();
       
       if (!success && isSignedIn) {
-        console.log('ProfileCreator: Auth not ready yet, will retry in 3 seconds');
+        console.log('ProfileCreator: Auth not ready yet, will retry in 3 seconds', {
+          retryCount: retryCount + 1,
+          currentPathname: typeof window !== 'undefined' ? window.location.pathname : 'server-side'
+        });
         setTimeout(() => {
           setRetryCount(prev => prev + 1);
         }, 3000);
       }
     };
 
+    // Only attempt to create a profile when user is signed in
     if (isSignedIn && userId) {
+      console.log('ProfileCreator: User is signed in, attempting profile creation', {
+        userId,
+        retryCount,
+        currentPathname: typeof window !== 'undefined' ? window.location.pathname : 'server-side'
+      });
       attemptProfileCreation();
     }
   }, [createProfile, retryCount, isSignedIn, userId]);

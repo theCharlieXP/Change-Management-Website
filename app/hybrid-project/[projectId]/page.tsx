@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { useAuth } from '@clerk/nextjs'
 import type { Project, ProjectTask, ProjectNote } from '@/types/projects'
 import { HybridDebug } from '../debug'
+import { NavigationDiagnostic } from './diagnostic'
 
 export default function HybridProjectPage() {
   const params = useParams()
@@ -27,11 +28,53 @@ export default function HybridProjectPage() {
   useEffect(() => {
     console.log('HybridProjectPage mounted for projectId:', projectId);
     
+    // Track if we're in the process of intentional navigation
+    let isIntentionalNavigation = false;
+    
+    // Track if component is still mounted
+    let isMounted = true;
+    
+    // Debug router usage
+    const logRouterEvent = (event: string, data?: any) => {
+      if (isMounted) {
+        console.log(`HybridProjectPage router event [${event}]:`, {
+          projectId,
+          currentPath: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
+          ...data
+        });
+      }
+    };
+    
+    // Monitor for URL changes that might cause a reload/remount
+    const handleRouteChange = (url: string) => {
+      isIntentionalNavigation = true;
+      logRouterEvent('routeChangeStart', { url });
+    };
+    
+    // Add an event listener for URL changes
+    if (typeof window !== 'undefined') {
+      // For Next.js router events
+      (window as any).addEventListener?.('routeChangeStart', handleRouteChange);
+    }
+    
     // Return a cleanup function that logs when the component unmounts
     return () => {
-      console.log('HybridProjectPage unmounted for projectId:', projectId);
+      console.log('HybridProjectPage UNMOUNTING for projectId:', projectId, {
+        isIntentionalNavigation,
+        currentPathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
+        documentReadyState: typeof document !== 'undefined' ? document.readyState : 'unknown',
+        hasRouterObject: !!router,
+        timestamp: new Date().toISOString()
+      });
+      
+      isMounted = false;
+      
+      // Remove the event listener
+      if (typeof window !== 'undefined') {
+        (window as any).removeEventListener?.('routeChangeStart', handleRouteChange);
+      }
     };
-  }, [projectId]);
+  }, [projectId, router]);
 
   // Load data using our static route
   useEffect(() => {
@@ -147,6 +190,7 @@ export default function HybridProjectPage() {
     return (
       <div className="container mx-auto py-8 px-4">
         <HybridDebug />
+        <NavigationDiagnostic projectId={projectId} />
         <div className="flex items-center justify-center py-16">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
@@ -162,6 +206,7 @@ export default function HybridProjectPage() {
     return (
       <div className="container mx-auto py-8 px-4">
         <HybridDebug />
+        <NavigationDiagnostic projectId={projectId} />
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -186,6 +231,7 @@ export default function HybridProjectPage() {
   return (
     <main className="container mx-auto py-8 px-4">
       <HybridDebug />
+      <NavigationDiagnostic projectId={projectId} />
       <div className="flex items-center gap-4 mb-6">
         <Button variant="outline" size="icon" onClick={() => router.push('/dashboard/projects')}>
           <ArrowLeft className="h-4 w-4" />
