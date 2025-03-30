@@ -97,7 +97,7 @@ export default clerkMiddleware(async (auth, req) => {
   }
   
   // Special handling for project viewer pages 
-  if (req.nextUrl.pathname.match(/^\/project-view\/[^\/]+$/)) {
+  if (req.nextUrl.pathname.match(/^\/project-view\/[^/]+$/)) {
     console.log('Middleware: Project viewer page detected:', req.nextUrl.pathname);
     
     // If user is authenticated, redirect directly to the project page
@@ -119,7 +119,7 @@ export default clerkMiddleware(async (auth, req) => {
   }
   
   // Special handling for project detail pages
-  if (req.nextUrl.pathname.match(/^\/dashboard\/projects\/[^\/]+$/)) {
+  if (req.nextUrl.pathname.match(/^\/dashboard\/projects\/[^/]+$/)) {
     console.log('Middleware: Project details page detected:', req.nextUrl.pathname);
     
     // If user is authenticated, simply allow access
@@ -135,7 +135,7 @@ export default clerkMiddleware(async (auth, req) => {
   }
   
   // Special handling for hybrid project pages 
-  if (req.nextUrl.pathname.match(/^\/hybrid-project\/[^\/]+$/)) {
+  if (req.nextUrl.pathname.match(/^\/hybrid-project\/[^/]+$/)) {
     console.log('Middleware: Hybrid project page detected:', {
       path: req.nextUrl.pathname,
       cookies: req.cookies.getAll().map(c => c.name).join(', '),
@@ -163,13 +163,13 @@ export default clerkMiddleware(async (auth, req) => {
   }
   
   // Special handling for static project data API
-  if (req.nextUrl.pathname.match(/^\/static-project-data\/[^\/]+$/)) {
+  if (req.nextUrl.pathname.match(/^\/static-project-data\/[^/]+$/)) {
     console.log('Middleware: Static project data API request detected:', req.nextUrl.pathname);
     return NextResponse.next();
   }
   
   // Special handling for direct project view pages
-  if (req.nextUrl.pathname.match(/^\/direct-project-view\/[^\/]+$/)) {
+  if (req.nextUrl.pathname.match(/^\/direct-project-view\/[^/]+$/)) {
     console.log('Middleware: Direct project view page detected:', {
       path: req.nextUrl.pathname,
       cookies: req.cookies.getAll().map(c => c.name).join(', '),

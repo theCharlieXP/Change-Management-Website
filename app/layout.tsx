@@ -36,7 +36,7 @@ export default function RootLayout({
                   // Run immediately
                   if (typeof window !== 'undefined') {
                     // Check if we're on a project detail page
-                    const isProjectDetailPage = window.location.pathname.match(/^\/dashboard\/projects\/[^\/]+$/);
+                    const isProjectDetailPage = window.location.pathname.match(/^\/dashboard\/projects\/[^/]+$/);
                     if (isProjectDetailPage) {
                       console.log('Anti-redirect script activated for project detail page');
                       
