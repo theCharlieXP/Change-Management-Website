@@ -35,8 +35,18 @@ export default function RootLayout({
                 (function() {
                   // Run immediately
                   if (typeof window !== 'undefined') {
-                    // Check if we're on a project detail page
-                    const isProjectDetailPage = window.location.pathname.match(/^\/dashboard\/projects\/[^/]+$/);
+                    // Check if we're on a project detail page - direct pattern check to avoid regex issues
+                    const pathname = window.location.pathname;
+                    const isProjectDetailPage = pathname.startsWith('/dashboard/projects/') && 
+                      pathname.split('/').length === 4 && 
+                      !pathname.endsWith('/');
+                      
+                    console.log('Anti-redirect script: pathname check:', {
+                      pathname,
+                      isProjectDetailPage,
+                      splitLength: pathname.split('/').length
+                    });
+                      
                     if (isProjectDetailPage) {
                       console.log('Anti-redirect script activated for project detail page');
                       
@@ -106,10 +116,21 @@ export default function RootLayout({
                         // Find and patch Clerk's redirect functions
                         setTimeout(() => {
                           try {
+                            // Add a direct safeguard against unwanted redirects
+                            const originalLocationAssign = window.location.assign;
+                            window.location.assign = function(url) {
+                              console.log('Location assign intercept:', url);
+                              if (url === '/' || url === '/dashboard') {
+                                console.log('Blocked unwanted redirect to:', url);
+                                return;
+                              }
+                              return originalLocationAssign.call(this, url);
+                            };
+                            
                             // Look through all window properties for any Clerk-related functions
                             Object.keys(window).forEach(key => {
                               if (
-                                key.includes('Clerk') || 
+                                (typeof key === 'string' && key.includes('Clerk')) || 
                                 (typeof window[key] === 'object' && window[key] && window[key].__clerk)
                               ) {
                                 console.log('Found potential Clerk object:', key);
@@ -117,7 +138,7 @@ export default function RootLayout({
                                 // Try to patch Clerk redirect
                                 try {
                                   const clerkObj = window[key];
-                                  if (clerkObj && clerkObj.navigate) {
+                                  if (clerkObj && typeof clerkObj.navigate === 'function') {
                                     const originalNavigate = clerkObj.navigate;
                                     clerkObj.navigate = function(to) {
                                       console.log('Clerk navigate intercepted:', to);

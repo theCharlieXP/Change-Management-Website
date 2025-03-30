@@ -12,6 +12,26 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
+  // Add navigation event listeners for debugging
+  useEffect(() => {
+    // Debug navigation
+    const handlePopState = () => {
+      console.log('Navigation detected: popstate to', window.location.pathname);
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    
+    console.log('Project detail page mounted:', {
+      projectId,
+      pathname: window.location.pathname,
+      userAuthenticated: !!user
+    });
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [projectId, user]);
+  
   useEffect(() => {
     console.log('PROJECT DETAIL PAGE LOADED', projectId);
     
