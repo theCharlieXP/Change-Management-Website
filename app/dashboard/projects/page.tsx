@@ -182,47 +182,37 @@ export default function ProjectsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map((project) => (
-            <Card 
+            <a 
               key={project.id}
-              className="h-full cursor-pointer hover:shadow-md transition-shadow hover:scale-[1.02]"
+              href={`/dashboard/projects/${project.id}`} 
+              className="block no-underline"
               onClick={(e) => {
-                e.preventDefault();
-                console.log('Projects: Navigating to project:', project.id);
-                const projectPath = `/dashboard/projects/${project.id}`;
-                console.log('Projects: Navigation path:', projectPath);
-                
-                // Use direct browser navigation instead of Next.js router
-                window.location.href = projectPath;
-                
-                // Prevent any immediate redirect
-                setTimeout(() => {
-                  if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
-                    console.log('Navigation failed, forcing redirect back to project');
-                    window.location.replace(projectPath);
-                  }
-                }, 100);
+                // Log the navigation
+                console.log('Projects: Using direct navigation to project:', project.id);
               }}
             >
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium line-clamp-2">
-                  {project.title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <div className="space-y-1">
-                    <div>Created {format(new Date(project.created_at), 'MMM d, yyyy')}</div>
-                    <div>Last updated {format(new Date(project.updated_at), 'MMM d, yyyy')}</div>
+              <Card className="h-full hover:shadow-md transition-shadow hover:scale-[1.02]">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg font-medium line-clamp-2">
+                    {project.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <div className="space-y-1">
+                      <div>Created {format(new Date(project.created_at), 'MMM d, yyyy')}</div>
+                      <div>Last updated {format(new Date(project.updated_at), 'MMM d, yyyy')}</div>
+                    </div>
+                    <ArrowRight className="h-4 w-4" />
                   </div>
-                  <ArrowRight className="h-4 w-4" />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Badge className={`${STATUS_COLORS[project.status]} text-xs px-2 py-0.5 whitespace-nowrap`}>
-                    {STATUS_LABELS[project.status]}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="flex items-center justify-between">
+                    <Badge className={`${STATUS_COLORS[project.status]} text-xs px-2 py-0.5 whitespace-nowrap`}>
+                      {STATUS_LABELS[project.status]}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            </a>
           ))}
         </div>
       )}

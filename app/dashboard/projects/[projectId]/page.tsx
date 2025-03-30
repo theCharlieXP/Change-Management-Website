@@ -107,16 +107,12 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
         <h1 className="text-2xl font-bold mb-4 text-red-600">Error Loading Project</h1>
         <p className="mb-4">There was a problem loading the project details:</p>
         <p className="p-4 bg-red-50 border border-red-200 rounded">{error || 'Project not found'}</p>
-        <button 
-          className="mt-6 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          onClick={(e) => {
-            e.preventDefault();
-            console.log('Project detail: Navigating back to projects list');
-            router.push('/dashboard/projects');
-          }}
+        <a 
+          href="/dashboard/projects"
+          className="mt-6 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 inline-block no-underline"
         >
           Back to Projects
-        </button>
+        </a>
       </div>
     );
   }
@@ -129,16 +125,12 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
     <div className="p-8 bg-white rounded-lg shadow">
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-bold">{project.title}</h1>
-        <button 
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          onClick={(e) => {
-            e.preventDefault();
-            console.log('Project detail: Navigating back to projects list');
-            router.push('/dashboard/projects');
-          }}
+        <a 
+          href="/dashboard/projects"
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 inline-block no-underline"
         >
           Back to Projects
-        </button>
+        </a>
       </div>
       
       {project.description && (

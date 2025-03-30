@@ -97,13 +97,35 @@ export function ProfileCreator() {
     const attemptProfileCreation = async () => {
       // Check for project detail page to protect against redirects
       const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-      const isProjectDetailPage = pathname.startsWith('/dashboard/projects/') && 
-                               pathname.split('/').length === 4;
+      
+      // More aggressive project detail detection
+      const isProjectDetailPage = (
+        // Check basic pattern
+        (pathname.startsWith('/dashboard/projects/') && pathname.split('/').length === 4) ||
+        // Check for URL containing a UUID pattern
+        /\/dashboard\/projects\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/.test(pathname) ||
+        // Check for project ID in URL (any format)
+        /\/dashboard\/projects\/[^/]+$/.test(pathname)
+      );
 
       // Completely skip profile creation on project detail pages to avoid any redirects
       if (isProjectDetailPage) {
-        console.log('ProfileCreator: Project detail page detected, SKIPPING profile creation');
-        return;
+        console.log('ProfileCreator: Project detail page detected, SKIPPING profile creation and adding protection');
+        
+        // Add constant protection against redirects
+        const projectId = pathname.split('/').pop();
+        const projectPath = `/dashboard/projects/${projectId}`;
+        
+        const protectInterval = setInterval(() => {
+          const currentPath = window.location.pathname;
+          if (currentPath === '/' || currentPath === '/dashboard') {
+            console.log('ProfileCreator: Detected redirect to root, forcing back to project');
+            window.location.replace(projectPath);
+          }
+        }, 50);
+        
+        // Clean up on unmount
+        return () => clearInterval(protectInterval);
       }
       
       if (retryCount >= MAX_RETRIES) {

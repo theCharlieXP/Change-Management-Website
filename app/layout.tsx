@@ -101,12 +101,20 @@ export default function RootLayout({
                       };
                       
                       // Periodically check if we're still on the right page
-                      setInterval(() => {
-                        if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
+                      const antiRedirectInterval = setInterval(() => {
+                        // Store this in a variable to avoid race conditions
+                        const currentUrl = window.location.pathname;
+                        if (currentUrl === '/' || currentUrl === '/dashboard') {
                           console.log('Anti-redirect script: Detected redirect to root, redirecting back');
+                          // Use more aggressive replace method instead of href
                           window.location.replace(currentPath);
                         }
-                      }, 100);
+                      }, 50); // Check more frequently for faster response
+                      
+                      // Make sure to clean up the interval if the user navigates away
+                      window.addEventListener('beforeunload', () => {
+                        clearInterval(antiRedirectInterval);
+                      });
                       
                       // Additional anti-clerk redirect code - more aggressive
                       // This will run after the page has loaded
