@@ -104,7 +104,7 @@ export default function RootLayout({
                       setInterval(() => {
                         if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
                           console.log('Anti-redirect script: Detected redirect to root, redirecting back');
-                          window.location.href = currentPath;
+                          window.location.replace(currentPath);
                         }
                       }, 100);
                       

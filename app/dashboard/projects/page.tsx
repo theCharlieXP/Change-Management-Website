@@ -190,7 +190,17 @@ export default function ProjectsPage() {
                 console.log('Projects: Navigating to project:', project.id);
                 const projectPath = `/dashboard/projects/${project.id}`;
                 console.log('Projects: Navigation path:', projectPath);
-                router.push(projectPath);
+                
+                // Use direct browser navigation instead of Next.js router
+                window.location.href = projectPath;
+                
+                // Prevent any immediate redirect
+                setTimeout(() => {
+                  if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
+                    console.log('Navigation failed, forcing redirect back to project');
+                    window.location.replace(projectPath);
+                  }
+                }, 100);
               }}
             >
               <CardHeader className="pb-2">

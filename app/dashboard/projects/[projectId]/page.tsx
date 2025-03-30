@@ -27,8 +27,18 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
       userAuthenticated: !!user
     });
     
+    // Anti-redirect safeguard
+    const safeguardInterval = setInterval(() => {
+      const currentPath = window.location.pathname;
+      if (currentPath === '/' || currentPath === '/dashboard') {
+        console.log('Project detail: Detected unwanted redirect, forcing back to project page');
+        window.location.replace(`/dashboard/projects/${projectId}`);
+      }
+    }, 100);
+    
     return () => {
       window.removeEventListener('popstate', handlePopState);
+      clearInterval(safeguardInterval);
     };
   }, [projectId, user]);
   

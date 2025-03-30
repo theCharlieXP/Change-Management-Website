@@ -95,6 +95,17 @@ export function ProfileCreator() {
 
   useEffect(() => {
     const attemptProfileCreation = async () => {
+      // Check for project detail page to protect against redirects
+      const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+      const isProjectDetailPage = pathname.startsWith('/dashboard/projects/') && 
+                               pathname.split('/').length === 4;
+
+      // Completely skip profile creation on project detail pages to avoid any redirects
+      if (isProjectDetailPage) {
+        console.log('ProfileCreator: Project detail page detected, SKIPPING profile creation');
+        return;
+      }
+      
       if (retryCount >= MAX_RETRIES) {
         console.log('ProfileCreator: Max retries reached', {
           retryCount,
@@ -103,14 +114,32 @@ export function ProfileCreator() {
         return;
       }
 
+      // If on a project detail page, add redirect protection
+      if (isProjectDetailPage && typeof window !== 'undefined') {
+        console.log('ProfileCreator: Project detail page detected, adding redirect protection');
+        const projectId = pathname.split('/').pop();
+        const projectPath = `/dashboard/projects/${projectId}`;
+        
+        // Add a protection against any redirects away from this page
+        const redirectProtection = (e: BeforeUnloadEvent) => {
+          const currentPath = window.location.pathname;
+          if (currentPath === '/' || currentPath === '/dashboard') {
+            console.log('ProfileCreator: Prevented redirect from project page');
+            window.location.replace(projectPath);
+          }
+        };
+        
+        window.addEventListener('beforeunload', redirectProtection);
+        
+        // Cleanup function
+        return () => {
+          window.removeEventListener('beforeunload', redirectProtection);
+        };
+      }
+
       const success = await createProfile();
       
       // Special handling for project detail pages to avoid mid-creation redirects
-      const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-      const isProjectDetailPage = pathname.startsWith('/dashboard/projects/') && 
-                                 pathname.split('/').length === 4;
-
-      // IMPORTANT: Don't retry for project detail pages to avoid potential redirects
       const isProjectPage = pathname.startsWith('/dashboard/projects/') && 
                           pathname.split('/').length === 4;
       
