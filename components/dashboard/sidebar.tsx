@@ -77,7 +77,7 @@ export default function Sidebar() {
           const Icon = item.icon
           const isActive = item.matchPaths.some(path => {
             if (path.includes('[')) {
-              const pattern = path.replace(/\[.*?\]/g, '[^/]+')
+              const pattern = path.replace(/\[.*?\]/g, '([^/]+)')
               return new RegExp(`^${pattern}$`).test(pathname)
             }
             return pathname === path

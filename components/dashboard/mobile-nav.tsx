@@ -1,6 +1,8 @@
+'use client'
+
 import Link from "next/link"
-import { usePathname } from 'next/navigation'
 import { FolderKanban, Brain, MessageSquare, UserCircle, Sparkles, Wrench } from "lucide-react"
+import { usePathname } from 'next/navigation'
 
 export default function MobileNav() {
   const pathname = usePathname() || ''
@@ -44,7 +46,7 @@ export default function MobileNav() {
         const Icon = item.icon
         const isActive = item.matchPaths.some(path => {
           if (path.includes('[')) {
-            const pattern = path.replace(/\[.*?\]/g, '[^/]+')
+            const pattern = path.replace(/\[.*?\]/g, '([^/]+)')
             return new RegExp(`^${pattern}$`).test(pathname)
           }
           return pathname === path
