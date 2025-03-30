@@ -184,6 +184,13 @@ export default function ProjectsV2Page() {
               key={project.id}
               href={`/dashboard/projects-v2/${project.id}`}
               className="block transition-transform hover:scale-[1.02]"
+              onClick={(e) => {
+                e.preventDefault();
+                console.log('Projects V2: Custom navigation to project:', project.id);
+                
+                // Use a more direct method of navigation to prevent any interference
+                window.location.href = `/dashboard/projects-v2/${project.id}`;
+              }}
             >
               <Card className="h-full cursor-pointer hover:shadow-md transition-shadow">
                 <CardHeader className="pb-2">

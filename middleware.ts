@@ -174,6 +174,11 @@ export default clerkMiddleware(async (auth, req) => {
       );
       
       return response;
+    } else {
+      // If user is not authenticated, redirect to sign-in
+      console.log('Middleware: Unauthenticated access to projects v2 details, redirecting to sign-in');
+      const signInUrl = new URL("/sign-in", req.url);
+      return NextResponse.redirect(signInUrl);
     }
   }
   

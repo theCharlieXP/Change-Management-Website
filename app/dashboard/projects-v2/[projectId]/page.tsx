@@ -58,6 +58,41 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('overview')
 
+  // Protection against unwanted redirects
+  useEffect(() => {
+    console.log('Projects V2 Detail: Component mounted for project:', projectId)
+    
+    // This will help detect if redirects are happening
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+    
+    // Override pushState to log when it happens
+    history.pushState = function(data: any, unused: string, url?: string | URL | null) {
+      console.log('Projects V2 Detail: Navigation detected via pushState:', url);
+      return originalPushState.call(this, data, unused, url);
+    };
+    
+    // Override replaceState to log when it happens
+    history.replaceState = function(data: any, unused: string, url?: string | URL | null) {
+      console.log('Projects V2 Detail: Navigation detected via replaceState:', url);
+      return originalReplaceState.call(this, data, unused, url);
+    };
+    
+    // Add a popstate listener
+    const handlePopState = () => {
+      console.log('Projects V2 Detail: Navigation detected via popstate, current path:', window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    
+    // Cleanup
+    return () => {
+      history.pushState = originalPushState;
+      history.replaceState = originalReplaceState;
+      window.removeEventListener('popstate', handlePopState);
+      console.log('Projects V2 Detail: Component unmounting for project:', projectId);
+    };
+  }, [projectId]);
+
   // Load project data
   useEffect(() => {
     async function loadProjectData() {
