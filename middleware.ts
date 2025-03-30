@@ -149,7 +149,13 @@ export default clerkMiddleware(async (auth, req) => {
   
   // Special handling for project-v2 detail pages
   if (req.nextUrl.pathname.match(/^\/dashboard\/projects-v2\/[^\/]+$/)) {
-    console.log('Middleware: Projects V2 details page detected:', req.nextUrl.pathname);
+    console.log('Middleware: Projects V2 details page detected:', req.nextUrl.pathname, {
+      url: req.url,
+      method: req.method,
+      headers: Object.fromEntries(req.headers),
+      cookies: req.cookies.getAll().map(c => c.name),
+      isRedirectRequest: req.headers.get('sec-fetch-mode') === 'navigate'
+    });
     
     // If user is authenticated, let them through with special handling
     if (userId) {
@@ -166,6 +172,11 @@ export default clerkMiddleware(async (auth, req) => {
       response.headers.set('X-Project-V2-Access', 'allowed');
       response.headers.set('X-Project-V2-ID', projectId || '');
       response.headers.set('X-No-Redirect', 'true');
+      
+      // Additional headers to prevent redirects
+      response.headers.set('Cache-Control', 'no-store');
+      response.headers.set('X-Special-No-Redirect-Header', 'true');
+      response.headers.set('X-Clerk-No-Redirect', 'true');
       
       // Add Content Security Policy
       response.headers.set(

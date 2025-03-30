@@ -2,463 +2,195 @@
 
 import React, { useEffect, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
-import { useRouter } from 'next/navigation'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Loader2, ListTodo, FileText, Edit, Calendar } from 'lucide-react'
-import { format } from 'date-fns'
-import Link from 'next/link'
-import type { Project, ProjectTask, ProjectNote } from '@/types/projects'
-import { getProject, getProjectTasks, getProjectNotes } from '@/lib/supabase'
-
-// Status display mapping
-const STATUS_COLORS = {
-  'planning': 'bg-blue-100 text-blue-800 border-blue-200',
-  'inprogress': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  'onhold': 'bg-orange-100 text-orange-800 border-orange-200',
-  'completed': 'bg-green-100 text-green-800 border-green-200',
-  'cancelled': 'bg-red-100 text-red-800 border-red-200'
-} as const
-
-const STATUS_LABELS = {
-  'planning': 'Planning',
-  'inprogress': 'In Progress',
-  'onhold': 'On Hold',
-  'completed': 'Completed',
-  'cancelled': 'Cancelled'
-} as const
-
-// Task status display mapping
-const TASK_STATUS_COLORS = {
-  'todo': 'bg-gray-100 text-gray-800 border-gray-200',
-  'in-progress': 'bg-blue-100 text-blue-800 border-blue-200',
-  'blocked': 'bg-red-100 text-red-800 border-red-200',
-  'completed': 'bg-green-100 text-green-800 border-green-200'
-} as const
-
-const TASK_STATUS_LABELS = {
-  'todo': 'To Do',
-  'in-progress': 'In Progress',
-  'blocked': 'Blocked',
-  'completed': 'Completed'
-} as const
 
 export default function ProjectDetailPage({ params }: { params: { projectId: string } }) {
-  const router = useRouter()
   const { user } = useUser()
   const projectId = params.projectId
-  
-  // State
+  const [projectData, setProjectData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [project, setProject] = useState<Project | null>(null)
-  const [tasks, setTasks] = useState<ProjectTask[]>([])
-  const [notes, setNotes] = useState<ProjectNote[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState('overview')
-
-  // Protection against unwanted redirects
+  
+  // Ultra-strong anti-redirect protection
   useEffect(() => {
-    console.log('Projects V2 Detail: Component mounted for project:', projectId)
+    console.log('MINIMAL PROJECT DETAIL PAGE LOADED', projectId);
     
-    // This will help detect if redirects are happening
+    // Override navigation methods to prevent any redirects
     const originalPushState = history.pushState;
     const originalReplaceState = history.replaceState;
     
-    // Override pushState to log when it happens
-    history.pushState = function(data: any, unused: string, url?: string | URL | null) {
-      console.log('Projects V2 Detail: Navigation detected via pushState:', url);
-      
-      // Prevent navigation to root
+    // Protect against navigation attempts
+    history.pushState = function(data, title, url) {
+      console.log('pushState intercepted:', url);
       if (url === '/' || url === '/dashboard') {
-        console.log('Projects V2 Detail: PREVENTED navigation to root');
-        return originalPushState.call(this, data, unused, `/dashboard/projects-v2/${projectId}`);
+        console.log('BLOCKED pushState redirect to root');
+        return originalPushState.call(this, data, title, window.location.pathname);
       }
-      
-      return originalPushState.call(this, data, unused, url);
+      return originalPushState.call(this, data, title, url);
     };
     
-    // Override replaceState to log when it happens
-    history.replaceState = function(data: any, unused: string, url?: string | URL | null) {
-      console.log('Projects V2 Detail: Navigation detected via replaceState:', url);
-      
-      // Prevent navigation to root
+    history.replaceState = function(data, title, url) {
+      console.log('replaceState intercepted:', url);
       if (url === '/' || url === '/dashboard') {
-        console.log('Projects V2 Detail: PREVENTED replaceState to root');
-        return originalReplaceState.call(this, data, unused, `/dashboard/projects-v2/${projectId}`);
+        console.log('BLOCKED replaceState redirect to root');
+        return originalReplaceState.call(this, data, title, window.location.pathname);
       }
-      
-      return originalReplaceState.call(this, data, unused, url);
+      return originalReplaceState.call(this, data, title, url);
     };
     
-    // Override window.location methods
-    const originalHref = Object.getOwnPropertyDescriptor(window.Location.prototype, 'href');
-    if (originalHref && originalHref.set) {
+    // Block location changes directly
+    const originalDescriptor = Object.getOwnPropertyDescriptor(window.Location.prototype, 'href');
+    if (originalDescriptor && originalDescriptor.set) {
       Object.defineProperty(window.Location.prototype, 'href', {
         set(url) {
-          console.log('Projects V2 Detail: setting window.location.href to:', url);
-          
-          // Prevent navigation to root
+          console.log('Location.href setter intercepted:', url);
           if (url === '/' || url === '/dashboard') {
-            console.log('Projects V2 Detail: PREVENTED setting location.href to root');
-            return originalHref.set?.call(this, `/dashboard/projects-v2/${projectId}`);
+            console.log('BLOCKED location.href change to root');
+            return;
           }
-          
-          return originalHref.set?.call(this, url);
+          if (originalDescriptor.set) {
+            originalDescriptor.set.call(this, url);
+          }
         },
-        get: originalHref.get,
+        get: originalDescriptor.get,
         configurable: true
       });
     }
     
-    // Add a popstate listener
-    const handlePopState = () => {
-      console.log('Projects V2 Detail: Navigation detected via popstate, current path:', window.location.pathname);
-      
-      // If we detect we've somehow navigated to the root, immediately go back to project
+    // Redirect guard - check if we somehow got redirected to the root and redirect back
+    const redirectGuard = setInterval(() => {
       if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
-        console.log('Projects V2 Detail: PREVENTED popstate to root, redirecting back to project');
+        console.log('REDIRECT GUARD: Caught unwanted navigation to root!');
         window.location.replace(`/dashboard/projects-v2/${projectId}`);
+      }
+    }, 100);
+    
+    // Load project data
+    const fetchData = async () => {
+      try {
+        const url = `/static-project-data/${projectId}`;
+        console.log('Fetching project data from:', url);
+        
+        const response = await fetch(url, { 
+          cache: 'no-store',
+          headers: { 'x-no-redirect': 'true' }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to load project: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Project data loaded:', data.project?.title);
+        setProjectData(data);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error loading project:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error');
+        setLoading(false);
       }
     };
-    window.addEventListener('popstate', handlePopState);
     
-    // Add a check that runs periodically to ensure we're on the right page
-    const locationCheck = setInterval(() => {
-      if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
-        console.log('Projects V2 Detail: DETECTED unauthorized redirect to root, redirecting back to project');
-        window.location.replace(`/dashboard/projects-v2/${projectId}`);
-      }
-    }, 200);
+    fetchData();
     
     // Cleanup
     return () => {
       history.pushState = originalPushState;
       history.replaceState = originalReplaceState;
       
-      if (originalHref && originalHref.set) {
-        Object.defineProperty(window.Location.prototype, 'href', originalHref);
+      if (originalDescriptor) {
+        Object.defineProperty(window.Location.prototype, 'href', originalDescriptor);
       }
       
-      window.removeEventListener('popstate', handlePopState);
-      clearInterval(locationCheck);
+      clearInterval(redirectGuard);
       
-      console.log('Projects V2 Detail: Component unmounting for project:', projectId);
+      console.log('MINIMAL PROJECT DETAIL PAGE UNMOUNTED');
     };
   }, [projectId]);
-
-  // Load project data
-  useEffect(() => {
-    async function loadProjectData() {
-      if (!user) return
-      
-      setLoading(true)
-      console.log('Project V2 details: Loading data for project:', projectId)
-      
-      try {
-        // Load project
-        const projectData = await getProject(projectId)
-        if (!projectData) {
-          setError('Project not found')
-          return
-        }
-        setProject(projectData)
-        
-        // Load tasks
-        const tasksData = await getProjectTasks(projectId)
-        setTasks(tasksData || [])
-        
-        // Load notes
-        const notesData = await getProjectNotes(projectId)
-        setNotes(notesData || [])
-        
-        console.log('Project V2 details: Successfully loaded project data', {
-          project: projectData.title,
-          tasksCount: tasksData?.length || 0,
-          notesCount: notesData?.length || 0
-        })
-      } catch (err) {
-        console.error('Error loading project data:', err)
-        setError('Failed to load project data')
-      } finally {
-        setLoading(false)
-      }
-    }
-    
-    loadProjectData()
-  }, [projectId, user])
   
-  // Loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[300px]">
-        <div className="text-center">
-          <Loader2 className="h-10 w-10 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading project details...</p>
-        </div>
+      <div className="p-8 bg-white rounded-lg shadow">
+        <h1 className="text-2xl font-bold mb-4">Loading Project...</h1>
+        <p>Project ID: {projectId}</p>
+        <div className="mt-4 h-6 w-full bg-gray-200 animate-pulse rounded"></div>
+        <div className="mt-2 h-4 w-3/4 bg-gray-200 animate-pulse rounded"></div>
       </div>
-    )
+    );
   }
   
-  // Error state
-  if (error || !project) {
+  if (error || !projectData?.project) {
     return (
-      <div className="bg-white border rounded-lg">
-        <div className="flex flex-col items-center justify-center p-8 text-center">
-          <div className="rounded-full bg-red-100 p-3 mb-4">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 8V12M12 16H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <h2 className="text-xl font-semibold text-red-700 mb-2">Error Loading Project</h2>
-          <p className="text-gray-600 mb-4">{error || "Project not found"}</p>
-          <Button onClick={() => window.location.href = '/dashboard/projects-v2'}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Projects
-          </Button>
-        </div>
+      <div className="p-8 bg-white rounded-lg shadow">
+        <h1 className="text-2xl font-bold mb-4 text-red-600">Error Loading Project</h1>
+        <p className="mb-4">There was a problem loading the project details:</p>
+        <p className="p-4 bg-red-50 border border-red-200 rounded">{error || 'Project not found'}</p>
+        <button 
+          className="mt-6 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          onClick={() => window.location.href = '/dashboard/projects-v2'}
+        >
+          Back to Projects
+        </button>
       </div>
-    )
+    );
   }
+  
+  const project = projectData.project;
+  const tasks = projectData.tasks || [];
+  const notes = projectData.notes || [];
   
   return (
-    <div className="space-y-6">
-      {/* Project header */}
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            size="icon"
-            onClick={(e) => {
-              e.preventDefault();
-              console.log('Projects V2 Detail: Manual navigation to projects list');
-              window.location.href = '/dashboard/projects-v2';
-            }}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">{project.title}</h1>
-            <div className="flex items-center mt-1">
-              <Badge className={`${STATUS_COLORS[project.status]} mr-2`}>
-                {STATUS_LABELS[project.status]}
-              </Badge>
-              <span className="text-sm text-muted-foreground">
-                Last updated {format(new Date(project.updated_at), 'MMM d, yyyy')}
-              </span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex gap-2">
-          <Button variant="outline">
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Project
-          </Button>
-        </div>
+    <div className="p-8 bg-white rounded-lg shadow">
+      <div className="mb-6 flex justify-between items-center">
+        <h1 className="text-2xl font-bold">{project.title}</h1>
+        <button 
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          onClick={() => window.location.href = '/dashboard/projects-v2'}
+        >
+          Back to Projects
+        </button>
       </div>
       
-      {/* Project description */}
       {project.description && (
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-muted-foreground">{project.description}</p>
-          </CardContent>
-        </Card>
+        <div className="mb-6 p-4 bg-gray-50 rounded border">
+          <h2 className="text-lg font-medium mb-2">Description</h2>
+          <p className="text-gray-700">{project.description}</p>
+        </div>
       )}
       
-      {/* Project tabs */}
-      <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="tasks">Tasks ({tasks.length})</TabsTrigger>
-          <TabsTrigger value="notes">Notes ({notes.length})</TabsTrigger>
-        </TabsList>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h2 className="text-lg font-medium mb-3">Tasks ({tasks.length})</h2>
+          {tasks.length > 0 ? (
+            <div className="space-y-2">
+              {tasks.map((task: any) => (
+                <div key={task.id} className="p-3 border rounded">
+                  <p className="font-medium">{task.title}</p>
+                  <p className="text-sm text-gray-500">
+                    Status: {task.status}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500">No tasks yet</p>
+          )}
+        </div>
         
-        <TabsContent value="overview" className="mt-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Recent tasks */}
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg flex items-center">
-                    <ListTodo className="mr-2 h-5 w-5 text-muted-foreground" />
-                    Recent Tasks
-                  </CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => setActiveTab('tasks')}>
-                    View All
-                  </Button>
+        <div>
+          <h2 className="text-lg font-medium mb-3">Notes ({notes.length})</h2>
+          {notes.length > 0 ? (
+            <div className="space-y-2">
+              {notes.map((note: any) => (
+                <div key={note.id} className="p-3 border rounded">
+                  <p>{note.content}</p>
                 </div>
-              </CardHeader>
-              <CardContent>
-                {tasks.length > 0 ? (
-                  <div className="space-y-4">
-                    {tasks.slice(0, 3).map((task) => (
-                      <div key={task.id} className="flex items-start gap-2 pb-3 border-b last:border-0 last:pb-0">
-                        <input
-                          type="checkbox"
-                          className="mt-1"
-                          checked={task.status === 'completed'}
-                          readOnly
-                        />
-                        <div className="flex-1">
-                          <p className="font-medium">{task.title}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge className={`${TASK_STATUS_COLORS[task.status]} text-xs px-2 py-0.5`}>
-                              {TASK_STATUS_LABELS[task.status]}
-                            </Badge>
-                            {task.due_date && (
-                              <span className="text-xs text-muted-foreground flex items-center">
-                                <Calendar className="h-3 w-3 mr-1" />
-                                {format(new Date(task.due_date), 'MMM d, yyyy')}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-muted-foreground">
-                    <p>No tasks yet</p>
-                    <Button variant="link" size="sm" className="mt-2" onClick={() => setActiveTab('tasks')}>
-                      Add your first task
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            
-            {/* Recent notes */}
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg flex items-center">
-                    <FileText className="mr-2 h-5 w-5 text-muted-foreground" />
-                    Recent Notes
-                  </CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => setActiveTab('notes')}>
-                    View All
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {notes.length > 0 ? (
-                  <div className="space-y-4">
-                    {notes.slice(0, 2).map((note) => (
-                      <div key={note.id} className="pb-3 border-b last:border-0 last:pb-0">
-                        <p className="line-clamp-3 text-sm">{note.content}</p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {format(new Date(note.created_at), 'MMM d, yyyy')}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-muted-foreground">
-                    <p>No notes yet</p>
-                    <Button variant="link" size="sm" className="mt-2" onClick={() => setActiveTab('notes')}>
-                      Add your first note
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="tasks" className="mt-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Tasks</CardTitle>
-                <Button size="sm">
-                  Add Task
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {tasks.length > 0 ? (
-                <div className="space-y-4">
-                  {tasks.map((task) => (
-                    <div key={task.id} className="flex items-start gap-3 p-3 border rounded-md hover:bg-gray-50">
-                      <input
-                        type="checkbox"
-                        className="mt-1"
-                        checked={task.status === 'completed'}
-                        readOnly
-                      />
-                      <div className="flex-1">
-                        <p className="font-medium">{task.title}</p>
-                        {task.description && (
-                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{task.description}</p>
-                        )}
-                        <div className="flex items-center gap-2 mt-2">
-                          <Badge className={`${TASK_STATUS_COLORS[task.status]} text-xs px-2 py-0.5`}>
-                            {TASK_STATUS_LABELS[task.status]}
-                          </Badge>
-                          {task.due_date && (
-                            <span className="text-xs text-muted-foreground flex items-center">
-                              <Calendar className="h-3 w-3 mr-1" />
-                              {format(new Date(task.due_date), 'MMM d, yyyy')}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="sm">
-                        Edit
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">No tasks have been added to this project yet.</p>
-                  <Button>Add your first task</Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="notes" className="mt-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Notes</CardTitle>
-                <Button size="sm">
-                  Add Note
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {notes.length > 0 ? (
-                <div className="space-y-6">
-                  {notes.map((note) => (
-                    <div key={note.id} className="border rounded-md p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm text-muted-foreground">
-                          {format(new Date(note.created_at), 'MMM d, yyyy')}
-                        </span>
-                        <Button variant="ghost" size="sm">
-                          Edit
-                        </Button>
-                      </div>
-                      <p className="whitespace-pre-wrap">{note.content}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">No notes have been added to this project yet.</p>
-                  <Button>Add your first note</Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500">No notes yet</p>
+          )}
+        </div>
+      </div>
     </div>
-  )
+  );
 } 
