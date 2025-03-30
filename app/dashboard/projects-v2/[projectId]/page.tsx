@@ -69,26 +69,81 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
     // Override pushState to log when it happens
     history.pushState = function(data: any, unused: string, url?: string | URL | null) {
       console.log('Projects V2 Detail: Navigation detected via pushState:', url);
+      
+      // Prevent navigation to root
+      if (url === '/' || url === '/dashboard') {
+        console.log('Projects V2 Detail: PREVENTED navigation to root');
+        return originalPushState.call(this, data, unused, `/dashboard/projects-v2/${projectId}`);
+      }
+      
       return originalPushState.call(this, data, unused, url);
     };
     
     // Override replaceState to log when it happens
     history.replaceState = function(data: any, unused: string, url?: string | URL | null) {
       console.log('Projects V2 Detail: Navigation detected via replaceState:', url);
+      
+      // Prevent navigation to root
+      if (url === '/' || url === '/dashboard') {
+        console.log('Projects V2 Detail: PREVENTED replaceState to root');
+        return originalReplaceState.call(this, data, unused, `/dashboard/projects-v2/${projectId}`);
+      }
+      
       return originalReplaceState.call(this, data, unused, url);
     };
+    
+    // Override window.location methods
+    const originalHref = Object.getOwnPropertyDescriptor(window.Location.prototype, 'href');
+    if (originalHref && originalHref.set) {
+      Object.defineProperty(window.Location.prototype, 'href', {
+        set(url) {
+          console.log('Projects V2 Detail: setting window.location.href to:', url);
+          
+          // Prevent navigation to root
+          if (url === '/' || url === '/dashboard') {
+            console.log('Projects V2 Detail: PREVENTED setting location.href to root');
+            return originalHref.set?.call(this, `/dashboard/projects-v2/${projectId}`);
+          }
+          
+          return originalHref.set?.call(this, url);
+        },
+        get: originalHref.get,
+        configurable: true
+      });
+    }
     
     // Add a popstate listener
     const handlePopState = () => {
       console.log('Projects V2 Detail: Navigation detected via popstate, current path:', window.location.pathname);
+      
+      // If we detect we've somehow navigated to the root, immediately go back to project
+      if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
+        console.log('Projects V2 Detail: PREVENTED popstate to root, redirecting back to project');
+        window.location.replace(`/dashboard/projects-v2/${projectId}`);
+      }
     };
     window.addEventListener('popstate', handlePopState);
+    
+    // Add a check that runs periodically to ensure we're on the right page
+    const locationCheck = setInterval(() => {
+      if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
+        console.log('Projects V2 Detail: DETECTED unauthorized redirect to root, redirecting back to project');
+        window.location.replace(`/dashboard/projects-v2/${projectId}`);
+      }
+    }, 200);
     
     // Cleanup
     return () => {
       history.pushState = originalPushState;
       history.replaceState = originalReplaceState;
+      
+      if (originalHref && originalHref.set) {
+        Object.defineProperty(window.Location.prototype, 'href', originalHref);
+      }
+      
       window.removeEventListener('popstate', handlePopState);
+      clearInterval(locationCheck);
+      
       console.log('Projects V2 Detail: Component unmounting for project:', projectId);
     };
   }, [projectId]);
@@ -158,12 +213,10 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
           </div>
           <h2 className="text-xl font-semibold text-red-700 mb-2">Error Loading Project</h2>
           <p className="text-gray-600 mb-4">{error || "Project not found"}</p>
-          <Link href="/dashboard/projects-v2">
-            <Button>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Projects
-            </Button>
-          </Link>
+          <Button onClick={() => window.location.href = '/dashboard/projects-v2'}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Projects
+          </Button>
         </div>
       </div>
     )
@@ -174,11 +227,17 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
       {/* Project header */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/projects-v2">
-            <Button variant="outline" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={(e) => {
+              e.preventDefault();
+              console.log('Projects V2 Detail: Manual navigation to projects list');
+              window.location.href = '/dashboard/projects-v2';
+            }}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
           <div>
             <h1 className="text-2xl font-bold">{project.title}</h1>
             <div className="flex items-center mt-1">
