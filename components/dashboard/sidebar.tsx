@@ -15,12 +15,6 @@ export default function Sidebar() {
       matchPaths: ['/dashboard/projects', '/dashboard/projects/[projectId]']
     },
     {
-      name: "Projects V2",
-      href: "/dashboard/projects-v2",
-      icon: FolderKanban,
-      matchPaths: ['/dashboard/projects-v2', '/dashboard/projects-v2/[projectId]']
-    },
-    {
       name: "Insights",
       href: "/dashboard/insights",
       icon: Brain,

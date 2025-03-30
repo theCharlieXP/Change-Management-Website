@@ -35,10 +35,10 @@ export default function RootLayout({
                 (function() {
                   // Run immediately
                   if (typeof window !== 'undefined') {
-                    // Check if we're on a projects-v2 detail page
-                    const isProjectV2Page = window.location.pathname.match(/^\\/dashboard\\/projects-v2\\/[^\\/]+$/);
-                    if (isProjectV2Page) {
-                      console.log('Anti-redirect script activated for projects-v2 detail page');
+                    // Check if we're on a project detail page
+                    const isProjectDetailPage = window.location.pathname.match(/^\/dashboard\/projects\/[^\/]+$/);
+                    if (isProjectDetailPage) {
+                      console.log('Anti-redirect script activated for project detail page');
                       
                       // Store the current pathname
                       const currentPath = window.location.pathname;

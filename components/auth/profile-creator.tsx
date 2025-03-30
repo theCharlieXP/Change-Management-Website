@@ -105,13 +105,17 @@ export function ProfileCreator() {
 
       const success = await createProfile();
       
+      // Special handling for project v2 detail pages to avoid mid-creation redirects
+      const isProjectV2DetailPage = typeof window !== 'undefined' && 
+        window.location.pathname.match(/^\/dashboard\/projects\/[^\/]+$/)
+
       // IMPORTANT: Don't retry for project detail pages to avoid potential redirects
       const isProjectPage = typeof window !== 'undefined' && (
         window.location.pathname.match(/^\/dashboard\/projects\/[^\/]+$/) ||
         window.location.pathname.match(/^\/dashboard\/projects-v2\/[^\/]+$/)
       );
       
-      if (!success && isSignedIn && !isProjectPage) {
+      if (!success && isSignedIn && !isProjectPage && !isProjectV2DetailPage) {
         console.log('ProfileCreator: Auth not ready yet, will retry in 3 seconds', {
           retryCount: retryCount + 1,
           currentPathname: typeof window !== 'undefined' ? window.location.pathname : 'server-side'

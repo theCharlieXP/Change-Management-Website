@@ -122,72 +122,13 @@ export default clerkMiddleware(async (auth, req) => {
   if (req.nextUrl.pathname.match(/^\/dashboard\/projects\/[^\/]+$/)) {
     console.log('Middleware: Project details page detected:', req.nextUrl.pathname);
     
-    // If user is authenticated, let them through with special handling
+    // If user is authenticated, simply allow access
     if (userId) {
-      console.log('Middleware: Authenticated access to project details');
-      
-      // Extract the project ID from the URL
-      const projectId = req.nextUrl.pathname.split('/').pop();
-      console.log('Middleware: Project ID extracted:', projectId);
-      
-      // Use Next Response to ensure proper handling
-      const response = NextResponse.next();
-      
-      // Add special header to help with debugging
-      response.headers.set('X-Project-Access', 'allowed');
-      response.headers.set('X-Project-ID', projectId || '');
-      
-      // Add Content Security Policy
-      response.headers.set(
-        'Content-Security-Policy',
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://gc.zgo.at https://*.goatcounter.com; connect-src 'self' https://api.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://*.supabase.co https://*.goatcounter.com; img-src 'self' data: https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://*.goatcounter.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com; worker-src 'self' blob:; child-src 'self' blob:; object-src 'self' data:;"
-      );
-      
-      return response;
-    }
-  }
-  
-  // Special handling for project-v2 detail pages
-  if (req.nextUrl.pathname.match(/^\/dashboard\/projects-v2\/[^\/]+$/)) {
-    console.log('Middleware: Projects V2 details page detected:', req.nextUrl.pathname, {
-      url: req.url,
-      method: req.method,
-      headers: Object.fromEntries(req.headers),
-      cookies: req.cookies.getAll().map(c => c.name),
-      isRedirectRequest: req.headers.get('sec-fetch-mode') === 'navigate'
-    });
-    
-    // If user is authenticated, let them through with special handling
-    if (userId) {
-      console.log('Middleware: Authenticated access to projects v2 details');
-      
-      // Extract the project ID from the URL
-      const projectId = req.nextUrl.pathname.split('/').pop();
-      console.log('Middleware: Project ID extracted for Projects V2:', projectId);
-      
-      // Use Next Response to ensure proper handling
-      const response = NextResponse.next();
-      
-      // Add special header to help with debugging
-      response.headers.set('X-Project-V2-Access', 'allowed');
-      response.headers.set('X-Project-V2-ID', projectId || '');
-      response.headers.set('X-No-Redirect', 'true');
-      
-      // Additional headers to prevent redirects
-      response.headers.set('Cache-Control', 'no-store');
-      response.headers.set('X-Special-No-Redirect-Header', 'true');
-      response.headers.set('X-Clerk-No-Redirect', 'true');
-      
-      // Add Content Security Policy
-      response.headers.set(
-        'Content-Security-Policy',
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://gc.zgo.at https://*.goatcounter.com; connect-src 'self' https://api.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://*.supabase.co https://*.goatcounter.com; img-src 'self' data: https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com https://*.goatcounter.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src https://js.stripe.com https://clerk.changeamigo.com https://*.clerk.accounts.dev https://*.clerk.com; worker-src 'self' blob:; child-src 'self' blob:; object-src 'self' data:;"
-      );
-      
-      return response;
+      console.log('Middleware: Authenticated access to project details - proceeding normally');
+      return NextResponse.next();
     } else {
       // If user is not authenticated, redirect to sign-in
-      console.log('Middleware: Unauthenticated access to projects v2 details, redirecting to sign-in');
+      console.log('Middleware: Unauthenticated access to project details, redirecting to sign-in');
       const signInUrl = new URL("/sign-in", req.url);
       return NextResponse.redirect(signInUrl);
     }
