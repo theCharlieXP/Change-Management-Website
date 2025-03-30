@@ -120,12 +120,28 @@ export default clerkMiddleware(async (auth, req) => {
   
   // Special handling for project detail pages
   if (req.nextUrl.pathname.match(/^\/dashboard\/projects\/[^/]+$/)) {
-    console.log('Middleware: Project details page detected:', req.nextUrl.pathname);
+    console.log('Middleware: Project details page detected:', {
+      path: req.nextUrl.pathname,
+      cookies: req.cookies.getAll().map(c => c.name).join(', '),
+      headers: Object.fromEntries([...req.headers].filter(([key]) => 
+        key.startsWith('x-') || 
+        key === 'user-agent' || 
+        key === 'referer'
+      )),
+      url: req.url
+    });
     
-    // If user is authenticated, simply allow access
+    // If user is authenticated, simply allow access with special headers
     if (userId) {
       console.log('Middleware: Authenticated access to project details - proceeding normally');
-      return NextResponse.next();
+      const response = NextResponse.next();
+      
+      // Add critical headers to prevent redirection
+      response.headers.set('X-Project-Access', 'allowed');
+      response.headers.set('X-No-Redirect', 'true');
+      response.headers.set('X-Project-Id', req.nextUrl.pathname.split('/').pop() || '');
+      
+      return response;
     } else {
       // If user is not authenticated, redirect to sign-in
       console.log('Middleware: Unauthenticated access to project details, redirecting to sign-in');

@@ -110,7 +110,9 @@ export async function GET(
         debug: {
           timestamp: new Date().toISOString(),
           userId,
-          serviceKeyAvailable: !!supabaseServiceKey
+          serviceKeyAvailable: !!supabaseServiceKey,
+          projectId: params.projectId,
+          requestUrl: request.url
         }
       }),
       { 
@@ -118,7 +120,11 @@ export async function GET(
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-store, must-revalidate',
-          'X-Static-Project-Data': 'true'
+          'X-Static-Project-Data': 'true',
+          'X-Project-Id': params.projectId,
+          'X-No-Redirect': 'true',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'X-No-Redirect, X-Project-Id, Content-Type'
         }
       }
     )

@@ -21,17 +21,23 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
         const url = `/static-project-data/${projectId}`;
         console.log('Fetching project data from:', url);
         
+        // Set specific headers to prevent redirects
         const response = await fetch(url, { 
           cache: 'no-store',
-          headers: { 'x-no-redirect': 'true' }
+          headers: { 
+            'x-no-redirect': 'true',
+            'x-project-id': projectId
+          }
         });
+        
+        console.log('Project data fetch response status:', response.status);
         
         if (!response.ok) {
           throw new Error(`Failed to load project: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log('Project data loaded:', data.project?.title);
+        console.log('Project data loaded successfully:', data.project?.title);
         setProjectData(data);
         setLoading(false);
       } catch (err) {
@@ -41,7 +47,13 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
       }
     };
     
-    fetchData();
+    if (projectId) {
+      fetchData();
+    } else {
+      console.error('No project ID provided');
+      setError('No project ID provided');
+      setLoading(false);
+    }
     
     return () => {
       console.log('PROJECT DETAIL PAGE UNMOUNTED');
@@ -67,7 +79,11 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
         <p className="p-4 bg-red-50 border border-red-200 rounded">{error || 'Project not found'}</p>
         <button 
           className="mt-6 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          onClick={() => router.push('/dashboard/projects')}
+          onClick={(e) => {
+            e.preventDefault();
+            console.log('Project detail: Navigating back to projects list');
+            router.push('/dashboard/projects');
+          }}
         >
           Back to Projects
         </button>
@@ -85,7 +101,11 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
         <h1 className="text-2xl font-bold">{project.title}</h1>
         <button 
           className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          onClick={() => router.push('/dashboard/projects')}
+          onClick={(e) => {
+            e.preventDefault();
+            console.log('Project detail: Navigating back to projects list');
+            router.push('/dashboard/projects');
+          }}
         >
           Back to Projects
         </button>

@@ -52,6 +52,7 @@ export default function RootLayout({
                       
                       // Intercept pushState
                       history.pushState = function() {
+                        console.log('pushState called with:', JSON.stringify(arguments));
                         if (arguments[2] === '/' || arguments[2] === '/dashboard') {
                           console.log('PREVENTED pushState redirect to root');
                           return originalPushState.call(this, arguments[0], arguments[1], currentPath);
@@ -61,6 +62,7 @@ export default function RootLayout({
                       
                       // Intercept replaceState
                       history.replaceState = function() {
+                        console.log('replaceState called with:', JSON.stringify(arguments));
                         if (arguments[2] === '/' || arguments[2] === '/dashboard') {
                           console.log('PREVENTED replaceState redirect to root');
                           return originalReplaceState.call(this, arguments[0], arguments[1], currentPath);
@@ -70,6 +72,7 @@ export default function RootLayout({
                       
                       // Intercept window.location.assign
                       window.location.assign = function(url) {
+                        console.log('location.assign called with:', url);
                         if (url === '/' || url === '/dashboard') {
                           console.log('PREVENTED location.assign redirect to root');
                           return;
@@ -79,6 +82,7 @@ export default function RootLayout({
                       
                       // Intercept window.location.replace
                       window.location.replace = function(url) {
+                        console.log('location.replace called with:', url);
                         if (url === '/' || url === '/dashboard') {
                           console.log('PREVENTED location.replace redirect to root');
                           return;

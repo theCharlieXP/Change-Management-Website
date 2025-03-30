@@ -185,9 +185,12 @@ export default function ProjectsPage() {
             <Card 
               key={project.id}
               className="h-full cursor-pointer hover:shadow-md transition-shadow hover:scale-[1.02]"
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
                 console.log('Projects: Navigating to project:', project.id);
-                router.push(`/dashboard/projects/${project.id}`);
+                const projectPath = `/dashboard/projects/${project.id}`;
+                console.log('Projects: Navigation path:', projectPath);
+                router.push(projectPath);
               }}
             >
               <CardHeader className="pb-2">
