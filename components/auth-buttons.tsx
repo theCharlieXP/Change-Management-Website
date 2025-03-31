@@ -9,7 +9,7 @@ export function GetStartedButton() {
 
   if (isSignedIn) {
     return (
-      <Link href="/dashboard/projects">
+      <Link href="/dashboard">
         <Button 
           size="lg" 
           className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-8 py-6 text-lg shadow-lg transition-all duration-200 transform hover:scale-105 hover:shadow-xl"
@@ -21,7 +21,7 @@ export function GetStartedButton() {
   }
 
   return (
-    <SignInButton forceRedirectUrl="/dashboard/projects" mode="modal">
+    <SignInButton forceRedirectUrl="/dashboard" mode="modal">
       <Button 
         size="lg" 
         className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-8 py-6 text-lg shadow-lg transition-all duration-200 transform hover:scale-105 hover:shadow-xl"
