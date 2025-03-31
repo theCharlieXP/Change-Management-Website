@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Loader2, Send, RefreshCw, CheckCircle2, XCircle, AlertCircle } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { supabase } from "@/lib/supabase"
+import supabase from "@/lib/supabase"
 import { useAuth } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 
