@@ -1,1351 +1,449 @@
-/* eslint-disable react/no-unescaped-entities */
-'use client'
+"use client"
 
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
-import { Loader2, MessageSquare, FileText, Send, ArrowLeft, ArrowRight, Maximize2, X, Highlighter, RefreshCw, Wand2, Trash2, AlertCircle } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
-import { useAuth } from '@clerk/nextjs'
-import type { Project } from '@/types/projects'
-import type { InsightSummary } from '@/types/insights'
-import { CreateProjectDialog } from '@/components/projects/create-project-dialog'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
-import { INSIGHT_FOCUS_AREAS, InsightFocusArea } from '@/types/insights'
-import { InsightSelection } from '@/components/communications/insight-selection'
-import { CommunicationTypeSelection, CommunicationType, CommunicationTypeOption } from '@/components/communications/communication-type-selection'
-import { CommunicationCustomization } from '@/components/communications/communication-customization'
-import { ReviewConfirmation } from '@/components/communications/review-confirmation'
-import { HighlightText } from '@/components/communications/highlight-text'
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { format } from 'date-fns'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import DeepSeekUsageTracker from '@/app/components/DeepSeekUsageTracker'
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Loader2, Send, RefreshCw, CheckCircle2, XCircle, AlertCircle } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/lib/auth"
+import { cn } from "@/lib/utils"
 
-// Import the communicationTypes array
-import { communicationTypes } from '@/components/communications/communication-type-selection'
-
-// Define the SavedCommunication interface
-interface SavedCommunication {
+interface Communication {
   id: string
   title: string
   content: string
-  communication_type: string | null
+  status: 'draft' | 'scheduled' | 'sent' | 'failed'
+  scheduled_for: string | null
+  created_at: string
+  updated_at: string
+  sent_at: string | null
+  error_message: string | null
+}
+
+interface CommunicationTemplate {
+  id: string
+  name: string
+  content: string
   created_at: string
   updated_at: string
 }
 
-// Add this type definition for the DeepSeekTracker
-interface DeepSeekTracker {
-  incrementUsage: () => Promise<boolean>;
-  usageCount: number;
-  usageLimit: number;
-  remainingUses: number;
-  isLimitReached: boolean;
-  isNearLimit: boolean;
-}
-
 export default function CommunicationsPage() {
-  const { isLoaded, isSignedIn } = useAuth()
   const router = useRouter()
-  const [projects, setProjects] = useState<Project[]>([])
-  const [selectedProject, setSelectedProject] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [projectsLoading, setProjectsLoading] = useState(true)
   const { toast } = useToast()
-  const { userId } = useAuth()
-  
-  // Add state for client-side detection
-  const [isClient, setIsClient] = useState(false)
-  
-  // Add state for viewing insight
-  const [viewingInsight, setViewingInsight] = useState<InsightSummary | null>(null)
-  
-  // Communication workflow states
-  const [step, setStep] = useState<number>(1)
-  const [selectedInsights, setSelectedInsights] = useState<string[]>([])
-  const [projectInsights, setProjectInsights] = useState<InsightSummary[]>([])
-  const [communicationType, setCommunicationType] = useState<CommunicationType | null>(null)
-  const [mandatoryPoints, setMandatoryPoints] = useState<string>('')
-  const [audience, setAudience] = useState<'all-employees' | 'management' | 'specific-team'>('all-employees')
-  const [tone, setTone] = useState<'formal' | 'casual' | 'motivational'>('formal')
-  const [additionalContext, setAdditionalContext] = useState<string>('')
-  const [generatedCommunication, setGeneratedCommunication] = useState<string | null>(null)
-  
-  // Add separate loading state for communication generation
-  const [generatingCommunication, setGeneratingCommunication] = useState(false)
-  
-  // Add state for saved communications pagination
-  const [savedCommunicationsPage, setSavedCommunicationsPage] = useState(1)
-  const COMMUNICATIONS_PER_PAGE = 5
-  
-  // New state variables for enhanced customization
-  const [title, setTitle] = useState<string>('')
-  const [style, setStyle] = useState<'narrative' | 'bullet-points' | 'mixed'>('mixed')
-  const [detailLevel, setDetailLevel] = useState<number>(50)
-  const [formatting, setFormatting] = useState<'paragraphs' | 'bullets' | 'numbered' | 'mixed'>('mixed')
-  const [callToAction, setCallToAction] = useState<string>('')
-  const [customTerminology, setCustomTerminology] = useState<string>('')
-  const [additionalInstructions, setAdditionalInstructions] = useState<string>('')
-  
-  // State for reference documents
-  const [referenceDocuments, setReferenceDocuments] = useState<File[]>([])
-
-  // Add state for highlighted text if it&apos;s doesn't exist
-  const [highlightedTextMap, setHighlightedTextMap] = useState<Record<string, string[]>>({})
-  
-  // Add state for DeepSeek tracker
-  const [trackerValues, setTrackerValues] = useState<DeepSeekTracker | null>(null);
-  
-  // Add state for saved communications
-  const [savedCommunications, setSavedCommunications] = useState<SavedCommunication[]>([])
-  const [loadingSaved, setLoadingSaved] = useState(false)
-  const [selectedSavedCommunication, setSelectedSavedCommunication] = useState<SavedCommunication | null>(null)
-  
-  // Add state for delete confirmation
-  const [communicationToDelete, setCommunicationToDelete] = useState<SavedCommunication | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  
-  // Add selectedInsightsData if it&apos;s doesn't exist
-  const selectedInsightsData = selectedInsights.map(id => {
-    return projectInsights.find(insight => insight.id === id) || { id, title: "Unknown Insight" };
+  const { user } = useAuth()
+  const [communications, setCommunications] = useState<Communication[]>([])
+  const [templates, setTemplates] = useState<CommunicationTemplate[]>([])
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [selectedTab, setSelectedTab] = useState("drafts")
+  const [newCommunication, setNewCommunication] = useState({
+    title: "",
+    content: "",
+    scheduled_for: "",
   })
-  
-  // Add the hasHighlightedInsights function if it&apos;s doesn't exist
-  const hasHighlightedInsights = () => {
-    return Object.values(highlightedTextMap).some(highlights => highlights.length > 0);
-  }
-  
-  // Add the handleHighlightsChange function if it&apos;s doesn't exist
-  const handleHighlightsChange = (insightId: string, highlights: string[]) => {
-    setHighlightedTextMap(prev => ({
-      ...prev,
-      [insightId]: highlights
-    }));
-  }
+  const [newTemplate, setNewTemplate] = useState({
+    name: "",
+    content: "",
+  })
+  const [showNewTemplateDialog, setShowNewTemplateDialog] = useState(false)
 
-  // Function to handle insight selection/deselection
-  const handleInsightSelect = (insightId: string) => {
-    // Check if we're unselecting an insight with highlights
-    if (selectedInsights.includes(insightId) && highlightedTextMap[insightId]?.length > 0) {
-      // Show confirmation dialog
-      if (!confirm("This insight has highlighted text. Unselecting it will not include these highlights in your communication. Continue?")) {
-        return; // User cancelled the unselection
-      }
-    }
-    
-    setSelectedInsights(prev => 
-      prev.includes(insightId) 
-        ? prev.filter(id => id !== insightId)
-        : [...prev, insightId]
-    );
-  };
-
-  // Function to reset layout issues
-  const resetLayout = () => {
-    setTimeout(() => {
-      // Reset right panel scroll and width
-      const rightPanel = document.getElementById('right-panel');
-      if (rightPanel) {
-        rightPanel.scrollLeft = 0;
-        rightPanel.style.width = '75%'; // Updated from 66.67% to 75%
-        
-        // Reset any overflow issues with insight containers
-        const insightContainers = document.querySelectorAll('.insight-container');
-        insightContainers.forEach(container => {
-          if (container instanceof HTMLElement) {
-            container.style.maxWidth = '100%';
-            container.style.width = '100%';
-            container.style.overflow = 'hidden';
-          }
-        });
-        
-        // Reset the main selection container
-        const selectionContainer = document.querySelector('.insight-selection-container');
-        if (selectionContainer instanceof HTMLElement) {
-          selectionContainer.style.maxWidth = '100%';
-          selectionContainer.style.width = '100%';
-          selectionContainer.style.overflow = 'hidden';
-        }
-      }
-      
-      // Reset any dialog content overflow issues
-      const dialogContent = document.querySelector('.dialog-content');
-      if (dialogContent instanceof HTMLElement) {
-        dialogContent.style.overflowX = 'hidden';
-        dialogContent.style.wordBreak = 'break-word';
-      }
-    }, 100);
-  };
-
-  // Effect to prevent body scrolling when dialog is open
   useEffect(() => {
-    if (viewingInsight) {
-      // Prevent body scrolling when dialog is open
-      document.body.style.overflow = 'hidden';
-    }else {
-      // Restore body scrolling when dialog is closed
-      document.body.style.overflow = '';
+    if (user) {
+      loadCommunications()
+      loadTemplates()
     }
-    
-    // Cleanup
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [viewingInsight]);
+  }, [user])
 
-  // Effect to reset layout when dialog state changes
-  useEffect(() => {
-    if (!viewingInsight) {
-      // Reset layout when dialog closes
-      resetLayout();
-    }
-  }, [viewingInsight]);
-
-  // Effect to reset selected insights when project changes
-  useEffect(() => {
-    if (selectedProject) {
-      // Clear selected insights when project changes
-      setSelectedInsights([]);
-    }
-  }, [selectedProject]);
-
-  // Fetch projects when component mounts
-  useEffect(() => {
-    if (!isSignedIn) return;
-    
-    const fetchProjects = async () => {
-      setProjectsLoading(true);
-      try {
-        const response = await fetch('/api/projects');
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch projects');
-        }
-        
-        const data = await response.json();
-        setProjects(data);
-      } catch (error) {
-        console.error('Error fetching projects:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load projects. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setProjectsLoading(false);
-      }
-    };
-    
-    fetchProjects();
-  }, [isSignedIn, toast]);
-
-  const handleProjectChange = (value: string) => {
-    setSelectedProject(value);
-    resetPagination();
-    // Reset workflow
-    setStep(1);
-    setSelectedInsights([]);
-    setCommunicationType(null);
-    setMandatoryPoints('');
-    setAdditionalContext('');
-    setTitle('');
-    setStyle('mixed');
-    setDetailLevel(50);
-    setFormatting('mixed');
-    setCallToAction('');
-    setCustomTerminology('');
-    setAdditionalInstructions('');
-    setReferenceDocuments([]);
-    // Close any open insight dialog
-    setViewingInsight(null);
-    
-    // First try to fetch real insights from the API
-    const fetchInsightsForProject = async () => {
-      try {
-        setLoading(true)
-        const response = await fetch(`/api/projects/${value}/summaries`)
-        
-        if (response.ok) {
-          const data = await response.json()
-          if (data && Array.isArray(data)) {
-            setProjectInsights(data)
-            setLoading(false)
-            return
-          }
-        }
-        
-        // If API call fails or returns empty, set empty insights array
-        // No longer falling back to mock data
-        setProjectInsights([]);
-        setLoading(false);
-      }catch (error) {
-        console.error('Error fetching insights:', error)
-        // No longer falling back to mock data
-        setProjectInsights([]);
-        setLoading(false);
-      }
-    }
-    
-    // Function to provide mock insights for any project ID - only used for testing
-    const provideMockInsights = (projectId: string) => {
-      // Create mock insights for the selected project
-      const mockInsights: InsightSummary[] = [
-        {
-          id: `${projectId}-1`,
-          title: 'Key Stakeholder Concerns',
-          content: 'Stakeholders have expressed concerns about:\n• Timeline feasibility\n• Budget constraints\n• Resource allocation',
-          focus_area: 'challenges-barriers' as InsightFocusArea,
-          notes: 'Based on interviews with department heads.',
-          project_id: projectId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          query: 'stakeholder concerns change management',
-          industries: ['Healthcare', 'Technology & IT']
-        },
-        {
-          id: `${projectId}-2`,
-          title: 'Implementation Strategy',
-          content: 'Recommended approach:\n• Phased rollout\n• Weekly check-ins\n• Dedicated support team',
-          focus_area: 'strategies-solutions' as InsightFocusArea,
-          notes: 'Developed with the project management team.',
-          project_id: projectId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          query: 'implementation strategy phased rollout',
-          industries: ['Finance & Banking', 'Manufacturing']
-        },
-        {
-          id: `${projectId}-3`,
-          title: 'Expected Outcomes',
-          content: 'This initiative aims to achieve:\n• 20% increase in efficiency\n• Improved employee satisfaction\n• Standardized processes',
-          focus_area: 'outcomes-results' as InsightFocusArea,
-          notes: 'Based on similar implementations in other departments.',
-          project_id: projectId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          query: 'change management outcomes efficiency',
-          industries: ['Government & Public Sector', 'Education']
-        }
-      ];
-      
-      setProjectInsights(mockInsights);
-      setLoading(false);
-    }
-    
-    // Start the fetch process
-    fetchInsightsForProject();
-  }
-
-  const handleViewInsight = (insight: InsightSummary) => {
-    // First, ensure the layout is preserved by setting fixed widths
-    const rightPanel = document.getElementById('right-panel');
-    if (rightPanel) {
-      const currentWidth = rightPanel.offsetWidth;
-      rightPanel.style.width = `${currentWidth}px`;
-    }
-    
-    // Then set the insight to view
-    setViewingInsight(insight);
-  }
-
-  const handleNextStep = () => {
-    setStep(prev => prev + 1)
-  }
-
-  const handlePreviousStep = () => {
-    // Simply decrement the step without resetting any state
-    setStep(prev => prev - 1)
-  }
-
-  const handleGenerateCommunication = async () => {
-    // Check if we can use Deep Seek
-    if (trackerValues) {
-      const canUseDeepSeek = await trackerValues.incrementUsage();
-      if (!canUseDeepSeek) {
-        toast({
-          title: "Usage Limit Reached",
-          description: "You&apos;ve reached your daily limit for Deep Seek operations.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // If approaching limit, show warning
-      if (trackerValues.isNearLimit) {
-        toast({
-          title: "Approaching Usage Limit",
-          description: `You have ${trackerValues.remainingUses} Deep Seek operations remaining today.`,
-          variant: "default",
-        });
-      }
-    }
-
-    setLoading(true)
-    
-    // Move to step 4 immediately to show the loading screen
-    setStep(4)
-    
-    // Get the selected insights data
-    const insightsData = selectedInsights.map(id => {
-      return projectInsights.find(insight => insight.id === id)
-    }).filter(Boolean) as InsightSummary[]
-    
-    // Get the communication type details and label
-    const communicationTypeDetails = communicationTypes.find(type => type.id === communicationType)
-    const communicationTypeLabel = communicationTypeDetails?.label || 'Unknown Type'
-    
-    if (!communicationTypeDetails) {
-      toast({
-        title: "Error",
-        description: "Please select a communication type.",
-        variant: "destructive"
-      })
-      setLoading(false)
-      return
-    }
-    
-    // Get the project details
-    const project = projects.find(p => p.id === selectedProject)
-    if (!project) {
-      toast({
-        title: "Error",
-        description: "Project not found.",
-        variant: "destructive"
-      })
-      setLoading(false)
-      return
-    }
-    
-    // Prepare the prompt
-    const basePrompt = communicationTypeDetails.aiPrompt
-    
-    // Add insights content with highlighted text prioritised
-    let insightsContent = "";
-    
-    if (insightsData.length > 0) {
-      insightsContent = insightsData.map(insight => {
-        const highlights = highlightedTextMap[insight.id] || [];
-        let highlightedContent = "";
-        
-        if (highlights.length > 0) {
-          highlightedContent = `\nHIGHLIGHTED KEY POINTS:\n${highlights.map(h => `• ${h}`).join('\n')}`;
-        }
-        
-        return `${insight.title}: ${insight.content}${highlightedContent}`;
-      }).join('\n\n');
-    } else {
-      insightsContent = "No insights selected. Create communication based on project details and customization options.";
-    }
-    
-    // Add customization options
-    const customizationOptions = `
-COMMUNICATION DETAILS:
-- Type: ${communicationTypeLabel}
-- Title/Subject: ${title || 'Not specified'}
-- Target Audience: ${audience === 'all-employees' ? 'All Employees' : audience === 'management' ? 'Management Team' : 'Specific Team/Department'}
-- Tone: ${tone === 'formal' ? 'Formal and Professional' : tone === 'casual' ? 'Friendly and Engaging' : 'Concise and Direct'}
-- Style: ${style === 'narrative' ? 'Narrative (flowing paragraphs)' : style === 'bullet-points' ? 'Bullet Points (concise lists)' : 'Mixed (combination of both)'}
-- Detail Level: ${detailLevel < 33 ? 'Brief' : detailLevel < 66 ? 'Standard' : 'Detailed'}
-- Formatting: ${formatting === 'paragraphs' ? 'Primarily Paragraphs' : formatting === 'bullets' ? 'Primarily Bullet Points' : formatting === 'numbered' ? 'Primarily Numbered Lists' : 'Mixed Format'}
-
-CONTENT REQUIREMENTS:
-${mandatoryPoints ? `- Key Points: ${mandatoryPoints}` : ''}
-${callToAction ? `- Call to Action: ${callToAction}` : ''}
-${additionalContext ? `- Context/Background: ${additionalContext}` : ''}
-${customTerminology ? `- Custom Terminology: ${customTerminology}` : ''}
-${additionalInstructions ? `- Additional Instructions: ${additionalInstructions}` : ''}
-`
-    
-    // Combine everything into the final prompt
-    const finalPrompt = `${basePrompt}\n\nINSIGHTS TO INCLUDE:\n${insightsContent}\n\n${customizationOptions}`
-    
+  const loadCommunications = async () => {
     try {
-      // Use the existing API endpoint
-      const response = await fetch('/api/communications/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: finalPrompt,
-          communicationType: communicationType,
-          title: title,
-        }),
-      })
-      
-      if (!response.ok) {
-        throw new Error('Failed to generate communication')
-      }
-      
-      const data = await response.json()
-      setGeneratedCommunication(data.content)
-      
-      // Move directly to the generated communication view
-      setStep(4)
+      const { data, error } = await supabase
+        .from('communications')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setCommunications(data || [])
     } catch (error) {
-      console.error('Error generating communication:', error)
+      console.error('Error loading communications:', error)
       toast({
         title: "Error",
-        description: "Failed to generate communication. Please try again.",
-        variant: "destructive"
+        description: "Failed to load communications",
+        variant: "destructive",
       })
-      
-      // Set some mock content for testing
-      setGeneratedCommunication(`# ${title || 'Change Management Communication'}\n\nDear Team,\n\nWe are excited to announce the upcoming changes to our project management system. These changes are designed to improve efficiency and collaboration across all departments.\n\n## Key Changes\n\n- New dashboard interface for better visibility\n- Streamlined approval process\n- Enhanced reporting capabilities\n\n## Timeline\n\nThe changes will be rolled out in phases starting next month. Training sessions will be scheduled for all team members.\n\n## Next Steps\n\nPlease review the attached documentation and reach out to your department lead with any questions.\n\nBest regards,\nThe Change Management Team`)
-      
-      // Move directly to the generated communication view
-      setStep(4)
     } finally {
       setLoading(false)
     }
   }
 
-  // Get selected project name
-  const selectedProjectName = selectedProject 
-    ? projects.find(p => p.id === selectedProject)?.title || 'Selected Project'
-    : ''
-
-  // Function to navigate to Communications Amigo
-  const handleOpenAmigo = () => {
+  const loadTemplates = async () => {
     try {
-      // Ensure we're on the client side
-      if (typeof window === 'undefined') {
-        return;
-      }
-      
-      // Prepare the data for Amigo
-      const communicationData = {
-        communication: generatedCommunication,
-        title: title,
-        projectId: selectedProject,
-        communicationType: communicationType,
-      };
-      
-      // Store the data in sessionStorage
-      sessionStorage.setItem('communicationAmigoData', JSON.stringify(communicationData));
-      
-      // Navigate to the Communications Amigo page
-      router.push('/communications-amigo');
+      const { data, error } = await supabase
+        .from('communication_templates')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setTemplates(data || [])
     } catch (error) {
-      console.error('Error navigating to Communications Amigo:', error);
+      console.error('Error loading templates:', error)
       toast({
         title: "Error",
-        description: "Failed to open Communications Amigo. Please try again.",
-        variant: "destructive"
-      });
+        description: "Failed to load templates",
+        variant: "destructive",
+      })
     }
   }
 
-  // Function to populate test data
-  const handlePopulateTestData = () => {
-    // Set predefined values for customization options
-    setTitle("Q3 2023 Organizational Changes");
-    setAudience("all-employees");
-    setTone("formal");
-    setStyle("mixed");
-    setDetailLevel(3);
-    setFormatting("mixed");
-    setMandatoryPoints("Restructuring of the marketing department\nNew leadership appointments\nOffice relocation plans");
-    setCallToAction("Please review the changes and attend the town hall meeting on Friday");
-    setCustomTerminology("OKRs, KPIs, Agile methodology");
-    setAdditionalContext("These changes are part of our 5-year growth strategy");
-    setAdditionalInstructions("Include a brief timeline of implementation");
-    
-    toast({
-      title: "Test data populated",
-      description: "Customization options have been filled with test data",
-    });
-  };
-
-  // Check for updated communication from Communications Amigo
-  useEffect(() => {
-    // Set isClient to true when component mounts on client
-    setIsClient(true)
-    
-    // Only run on client side
-    if (typeof window === 'undefined') return
-    
-    try {
-      // Check if we're returning from Communications Amigo
-      const returningFromAmigo = sessionStorage.getItem('returningFromAmigo')
-      
-      if (returningFromAmigo === 'true') {
-        console.log('Returning from Communications Amigo')
-        
-        // Reset the process to step 1
-        resetLayout()
-        
-        // Clear the sessionStorage items
-        sessionStorage.removeItem('returningFromAmigo')
-        sessionStorage.removeItem('updatedCommunication')
-        sessionStorage.removeItem('selectedProjectId')
-        sessionStorage.removeItem('selectedCommunicationType')
-        sessionStorage.removeItem('communicationTitle')
-        sessionStorage.removeItem('preserveCustomizationOptions')
-        sessionStorage.removeItem('communicationAmigoData')
-        
-        // Show a toast notification
-        toast({
-          title: "Process Reset",
-          description: "You can start creating a new communication.",
-        })
-      }
-    } catch (error) {
-      console.error('Error handling return from Amigo:', error)
-    }
-  }, [isClient, toast, step, setStep, setGeneratedCommunication])
-
-  // Add useEffect to fetch saved communications when a project is selected
-  useEffect(() => {
-    if (!selectedProject || !isSignedIn) return;
-    
-    const fetchSavedCommunications = async () => {
-      setLoadingSaved(true);
-      try {
-        const response = await fetch(`/api/communications/save?projectId=${selectedProject}`);
-        
-        if (!response.ok) {
-          // Try to get the error message from the response
-          let errorMessage = 'Failed to fetch saved communications';
-          try {
-            const errorData = await response.json();
-            if (errorData.message) {
-              errorMessage = errorData.message;
-            }
-          } catch (parseError) {
-            // If we can&apos;t parse the JSON, just use the default error message
-            console.error('Error parsing error response:', parseError);
-          }
-          
-          throw new Error(errorMessage);
-        }
-        
-        const data = await response.json();
-        // Sort communications by updated_at date, most recent first
-        const sortedData = data.sort((a: SavedCommunication, b: SavedCommunication) => 
-          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-        );
-        setSavedCommunications(sortedData);
-      } catch (error) {
-        console.error('Error fetching saved communications:', error);
-        
-        // Check if the error is related to the table not existing
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        const isTableNotExistError = errorMessage.includes('table not ready') || 
-                                    errorMessage.includes('does not exist');
-        
-        if (isTableNotExistError) {
-          // If the table doesn&apos;t exist, just set an empty array and don&apos;t show an error
-          console.log('Table does not exist yet, setting empty saved communications');
-          setSavedCommunications([]);
-        } else {
-          // For other errors, show a toast
-          toast({
-            title: "Error",
-            description: "Failed to load saved communications.",
-            variant: "destructive"
-          });
-        }
-      } finally {
-        setLoadingSaved(false);
-      }
-    };
-    
-    fetchSavedCommunications();
-  }, [selectedProject, isSignedIn, toast]);
-  
-  // Function to view a saved communication
-  const handleViewSavedCommunication = (communication: SavedCommunication) => {
-    setSelectedSavedCommunication(communication);
-  }
-  
-  // Function to edit a saved communication with Amigo
-  const handleEditWithAmigo = async (communication: SavedCommunication) => {
-    // Check if we can use Deep Seek
-    if (trackerValues) {
-      const canUseDeepSeek = await trackerValues.incrementUsage();
-      if (!canUseDeepSeek) {
-        toast({
-          title: "Usage Limit Reached",
-          description: "You&apos;ve reached your daily limit for Deep Seek operations.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // If approaching limit, show warning
-      if (trackerValues.isNearLimit) {
-        toast({
-          title: "Approaching Usage Limit",
-          description: `You have ${trackerValues.remainingUses} Deep Seek operations remaining today.`,
-          variant: "default",
-        });
-      }
-    }
-
-    try {
-      // Ensure we're on the client side
-      if (typeof window === 'undefined') {
-        return;
-      }
-      
-      // Prepare the data for Amigo
-      const communicationData = {
-        communication: communication.content,
-        title: communication.title,
-        projectId: selectedProject,
-        communicationType: communication.communication_type,
-      };
-      
-      // Store the data in sessionStorage
-      sessionStorage.setItem('communicationAmigoData', JSON.stringify(communicationData));
-      
-      // Navigate to the Communications Amigo page
-      router.push('/communications-amigo');
-    } catch (error) {
-      console.error('Error navigating to Communications Amigo:', error);
+  const handleSendCommunication = async () => {
+    if (!newCommunication.title || !newCommunication.content) {
       toast({
         title: "Error",
-        description: "Failed to open Communications Amigo. Please try again.",
-        variant: "destructive"
-      });
+        description: "Please fill in all fields",
+        variant: "destructive",
+      })
+      return
     }
-  }
 
-  // Function to handle deleting a saved communication
-  const handleDeleteCommunication = async (communication: SavedCommunication) => {
-    setCommunicationToDelete(communication);
-  }
-  
-  // Function to confirm deletion
-  const confirmDelete = async () => {
-    if (!communicationToDelete) return;
-    
-    setIsDeleting(true);
-    
+    setSending(true)
     try {
-      const response = await fetch(`/api/communications/delete?id=${communicationToDelete.id}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete communication');
-      }
-      
-      // Remove the deleted communication from the state
-      setSavedCommunications(prev => 
-        prev.filter(comm => comm.id !== communicationToDelete.id)
-      );
-      
-      // If the deleted communication was being viewed, clear it
-      if (selectedSavedCommunication?.id === communicationToDelete.id) {
-        setSelectedSavedCommunication(null);
-      }
-      
+      const { data, error } = await supabase
+        .from('communications')
+        .insert([
+          {
+            user_id: user?.id,
+            title: newCommunication.title,
+            content: newCommunication.content,
+            status: 'sent',
+            sent_at: new Date().toISOString(),
+          },
+        ])
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setCommunications([data, ...communications])
+      setNewCommunication({ title: "", content: "", scheduled_for: "" })
       toast({
         title: "Success",
-        description: "Communication deleted successfully.",
-      });
+        description: "Communication sent successfully",
+      })
     } catch (error) {
-      console.error('Error deleting communication:', error);
+      console.error('Error sending communication:', error)
       toast({
         title: "Error",
-        description: "Failed to delete communication. Please try again.",
-        variant: "destructive"
-      });
+        description: "Failed to send communication",
+        variant: "destructive",
+      })
     } finally {
-      setIsDeleting(false);
-      setCommunicationToDelete(null);
+      setSending(false)
     }
   }
 
-  // Function to get paginated saved communications
-  const getPaginatedSavedCommunications = () => {
-    const startIndex = (savedCommunicationsPage - 1) * COMMUNICATIONS_PER_PAGE;
-    const endIndex = startIndex + COMMUNICATIONS_PER_PAGE;
-    return savedCommunications.slice(startIndex, endIndex);
-  }
-  
-  // Function to handle loading more saved communications
-  const handleLoadMoreCommunications = () => {
-    setSavedCommunicationsPage(prev => prev + 1);
-  }
-  
-  // Function to reset pagination when changing projects
-  const resetPagination = () => {
-    setSavedCommunicationsPage(1);
+  const handleSaveTemplate = async () => {
+    if (!newTemplate.name || !newTemplate.content) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('communication_templates')
+        .insert([
+          {
+            user_id: user?.id,
+            name: newTemplate.name,
+            content: newTemplate.content,
+          },
+        ])
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setTemplates([data, ...templates])
+      setNewTemplate({ name: "", content: "" })
+      setShowNewTemplateDialog(false)
+      toast({
+        title: "Success",
+        description: "Template saved successfully",
+      })
+    } catch (error) {
+      console.error('Error saving template:', error)
+      toast({
+        title: "Error",
+        description: "Failed to save template",
+        variant: "destructive",
+      })
+    }
   }
 
-  // Render the appropriate step content
-  const renderStepContent = () => {
-    switch (step) {
-      case 1:
-        return (
-          <div className="space-y-4 w-full">
-            <div className="flex justify-between items-center flex-wrap gap-2">
-              <h2 className="text-2xl font-bold">Select Insights</h2>
-              <Button 
-                onClick={handleNextStep}
-                disabled={selectedProject === null}
-                className="flex-shrink-0"
-              >
-                Next Step
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-muted-foreground">
-              {projectInsights.length === 0 && selectedProject 
-                ? "This project doesn't have any saved insights, but you can still proceed to create a communication."
-                : "Select content to include in your communication."}
-              {hasHighlightedInsights() && (
-                <span className="ml-1 text-yellow-600 inline-flex items-center">
-                  <Highlighter className="h-3.5 w-3.5 mr-1" />
-                  Some insights have highlighted key points that will be prioritised.
-                </span>
-              )}
-            </p>
-            <InsightSelection
-              insights={projectInsights}
-              selectedInsights={selectedInsights}
-              onInsightSelect={handleInsightSelect}
-              onViewInsight={handleViewInsight}
-              loading={loading}
-              highlightedTextMap={highlightedTextMap}
-              selectedProject={selectedProject}
-            />
-          </div>
-        )
-      
-      case 2:
-        return (
-          <div className="space-y-6 w-full">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Communication Details</h2>
-              <div className="flex space-x-2">
-                <Button variant="outline" onClick={handlePreviousStep}>
-                  <ArrowLeft className="mr-2 h-4 w-4" /> Back
-                </Button>
-                <Button 
-                  onClick={handleNextStep}
-                  disabled={!communicationType}
-                >
-                  Next <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            
-            {selectedInsights.length === 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm text-amber-800 font-medium">No insights selected</p>
-                    <p className="text-sm text-amber-700">
-                      You haven't selected any insights to include in your communication. 
-                      Your communication will be created based on the project details and options you provide.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            <CommunicationTypeSelection
-              selectedType={communicationType}
-              onTypeSelect={(type) => setCommunicationType(type)}
-            />
-          </div>
-        )
-      
-      case 3:
-        // Get the communication type label for display
-        const selectedTypeLabel = communicationTypes.find(type => type.id === communicationType)?.label || 'Unknown Type'
-        
-        return (
-          <div className="space-y-6 w-full">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Customise Communication ({selectedTypeLabel})</h2>
-              <div className="flex space-x-2">
-                <Button variant="outline" onClick={handlePreviousStep}>
-                  <ArrowLeft className="mr-2 h-4 w-4" /> Back
-                </Button>
-              </div>
-            </div>
-            
-            {hasHighlightedInsights() && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 flex items-start gap-2">
-                <Highlighter className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm text-yellow-800 font-medium">Highlighted Key Points</p>
-                  <p className="text-xs text-yellow-700 mb-2">
-                    You&apos;ve highlighted key points in {Object.keys(highlightedTextMap).filter(id => highlightedTextMap[id].length > 0).length} insight(s). 
-                    These points will be prioritised in the generated communication.
-                  </p>
-                </div>
-              </div>
-            )}
-            
-            <CommunicationCustomization
-              communicationType={communicationType as CommunicationType}
-              title={title}
-              setTitle={setTitle}
-              audience={audience}
-              setAudience={setAudience}
-              tone={tone}
-              setTone={setTone}
-              style={style}
-              setStyle={setStyle}
-              detailLevel={detailLevel}
-              setDetailLevel={setDetailLevel}
-              formatting={formatting}
-              setFormatting={setFormatting}
-              mandatoryPoints={mandatoryPoints}
-              setMandatoryPoints={setMandatoryPoints}
-              callToAction={callToAction}
-              setCallToAction={setCallToAction}
-              customTerminology={customTerminology}
-              setCustomTerminology={setCustomTerminology}
-              additionalContext={additionalContext}
-              setAdditionalContext={setAdditionalContext}
-              additionalInstructions={additionalInstructions}
-              setAdditionalInstructions={setAdditionalInstructions}
-              referenceDocuments={referenceDocuments}
-              setReferenceDocuments={setReferenceDocuments}
-            />
-            
-            <div className="flex justify-between items-center mt-6">
-              <Button 
-                variant="secondary" 
-                onClick={handlePopulateTestData}
-              >
-                <Wand2 className="mr-2 h-4 w-4" /> Populate Test Data
-              </Button>
-              <Button 
-                onClick={handleGenerateCommunication}
-                disabled={generatingCommunication}
-              >
-                {generatingCommunication ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...
-                  </>
-                ) : (
-                  <>
-                    Generate Communication <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        )
-      
-      case 4:
-        return (
-          <div className="space-y-6 w-full">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-20 space-y-6">
-                <Loader2 className="h-16 w-16 animate-spin text-primary" />
-                <div className="text-center">
-                  <h3 className="text-xl font-medium mb-2">Generating Your Communication</h3>
-                  <p className="text-muted-foreground">
-                    Please wait while we craft your communication based on the selected insights and customisation options.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold">Generated Communication</h2>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" onClick={resetLayout}>
-                      <RefreshCw className="mr-2 h-4 w-4" /> Start Over
-                    </Button>
-                  </div>
-                </div>
-                
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="space-y-6">
-                      <div className="bg-white border rounded-md p-6 whitespace-pre-line">
-                        {generatedCommunication}
-                      </div>
-                      
-                      <div className="flex flex-wrap gap-2 justify-end">
-                        <Button variant="outline" onClick={resetLayout}>
-                          <RefreshCw className="mr-2 h-4 w-4" /> Start Over
-                        </Button>
-                        <Button 
-                          onClick={handleOpenAmigo}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                        >
-                          <Wand2 className="mr-2 h-4 w-4" /> Edit with Amigo
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-          </div>
-        )
-      
+  const handleUseTemplate = (template: CommunicationTemplate) => {
+    setNewCommunication({
+      title: template.name,
+      content: template.content,
+      scheduled_for: "",
+    })
+  }
+
+  const handleDeleteTemplate = async (templateId: string) => {
+    try {
+      const { error } = await supabase
+        .from('communication_templates')
+        .delete()
+        .eq('id', templateId)
+
+      if (error) throw error
+
+      setTemplates(templates.filter(t => t.id !== templateId))
+      toast({
+        title: "Success",
+        description: "Template deleted successfully",
+      })
+    } catch (error) {
+      console.error('Error deleting template:', error)
+      toast({
+        title: "Error",
+        description: "Failed to delete template",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const filteredCommunications = communications.filter(comm => {
+    switch (selectedTab) {
+      case "drafts":
+        return comm.status === 'draft'
+      case "scheduled":
+        return comm.status === 'scheduled'
+      case "sent":
+        return comm.status === 'sent'
+      case "failed":
+        return comm.status === 'failed'
       default:
-        return (
-          <div className="text-center">
-            <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground opacity-50 mb-4" />
-            <h3 className="text-xl font-medium mb-2">Communications</h3>
-            <p className="text-muted-foreground mb-6">
-              Select a project from the left panel to get started.
-              Our AI will help you craft effective communications for your change management initiatives.
-            </p>
-          </div>
-        )
+        return true
     }
+  })
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
   }
 
   return (
-    <DeepSeekUsageTracker>
-      {(tracker: DeepSeekTracker) => {
-        // Update trackerValues instead of directly updating state
-        if (!trackerValues || 
-            trackerValues.usageCount !== tracker.usageCount || 
-            trackerValues.usageLimit !== tracker.usageLimit || 
-            trackerValues.remainingUses !== tracker.remainingUses || 
-            trackerValues.isLimitReached !== tracker.isLimitReached || 
-            trackerValues.isNearLimit !== tracker.isNearLimit) {
-          setTrackerValues(tracker);
-        }
-        
-        return (
-          <div className="h-full">
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold tracking-tight">Communications</h1>
-              <p className="text-muted-foreground">
-                Create and manage communications for your change management projects
-              </p>
-            </div>
+    <div className="container mx-auto py-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Communications</h1>
+        <Button onClick={() => setShowNewTemplateDialog(true)}>
+          New Template
+        </Button>
+      </div>
 
-            <div className="flex flex-col md:flex-row h-[calc(100vh-12rem)] overflow-hidden rounded-lg border w-full">
-              {/* Left panel - white background */}
-              <div className="w-full md:w-1/4 bg-white p-4 md:p-6 border-b md:border-b-0 md:border-r overflow-y-auto flex-shrink-0">
-                <div className="mb-6">
-                  <h2 className="text-xl font-semibold mb-2">Select a Project</h2>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Choose a project to create communications for
-                  </p>
-                  
-                  {projectsLoading ? (
-                    <div className="flex items-center justify-center h-20">
-                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : projects.length > 0 ? (
-                    <Select onValueChange={handleProjectChange} value={selectedProject || undefined}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a project" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {projects.map((project) => (
-                          <SelectItem key={project.id} value={project.id}>
-                            {project.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <div className="text-center py-6">
-                      <p className="text-muted-foreground mb-4">No projects available</p>
-                      <CreateProjectDialog 
-                        onProjectCreated={(newProject) => {
-                          setProjects(prev => [newProject, ...prev])
-                          setSelectedProject(newProject.id)
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
+      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+        <TabsList>
+          <TabsTrigger value="drafts">Drafts</TabsTrigger>
+          <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
+          <TabsTrigger value="sent">Sent</TabsTrigger>
+          <TabsTrigger value="failed">Failed</TabsTrigger>
+        </TabsList>
 
-                {selectedProject && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Communications</h3>
-                    
-                    <div className="space-y-2 mt-2">
-                      {loadingSaved ? (
-                        <div className="flex items-center justify-center h-20">
-                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                        </div>
-                      ) : savedCommunications.length > 0 ? (
-                        <div className="space-y-1">
-                          {getPaginatedSavedCommunications().map((comm) => {
-                            // Find the communication type details
-                            const typeDetails = communicationTypes.find(
-                              type => type.id === comm.communication_type
-                            );
-                            
-                            return (
-                              <div 
-                                key={comm.id}
-                                className="w-full border rounded-md hover:border-primary hover:shadow-sm transition-all cursor-pointer overflow-hidden group relative"
-                                onClick={() => handleViewSavedCommunication(comm)}
-                              >
-                                <div className="py-2 px-3">
-                                  <h3 className="font-medium text-xs line-clamp-1 group-hover:line-clamp-none group-hover:whitespace-normal" title={comm.title}>{comm.title}</h3>
-                                  <div className="flex justify-between items-center text-[10px] text-muted-foreground mt-1">
-                                    <span className="bg-muted px-1.5 py-0.5 rounded-sm">{typeDetails?.label || 'Unknown type'}</span>
-                                    <span>{format(new Date(comm.updated_at), 'MMM d, yyyy')}</span>
-                                  </div>
-                                </div>
-                                <div className="absolute inset-0 bg-background opacity-0 group-hover:opacity-95 transition-opacity z-10 pointer-events-none overflow-y-auto p-3">
-                                  <p className="text-xs font-medium">{comm.title}</p>
-                                </div>
-                              </div>
-                            );
-                          })}
-                          
-                          {savedCommunications.length > COMMUNICATIONS_PER_PAGE * savedCommunicationsPage && (
-                            <Button 
-                              variant="ghost" 
-                              className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
-                              onClick={handleLoadMoreCommunications}
-                            >
-                              Show More ({savedCommunications.length - COMMUNICATIONS_PER_PAGE * savedCommunicationsPage} remaining)
-                            </Button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-center py-6">
-                          <p className="text-muted-foreground mb-2">No saved communications</p>
-                          <p className="text-xs text-muted-foreground">
-                            Create a communication and finalise it to save it here.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+        <TabsContent value={selectedTab}>
+          <Card>
+            <CardHeader>
+              <CardTitle>New Communication</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">Title</Label>
+                <Input
+                  id="title"
+                  value={newCommunication.title}
+                  onChange={(e) => setNewCommunication({
+                    ...newCommunication,
+                    title: e.target.value
+                  })}
+                  placeholder="Enter communication title"
+                />
               </div>
-
-              {/* Right panel - gray background */}
-              <div className="w-full md:w-3/4 bg-gray-50 p-4 md:p-6 overflow-y-auto">
-                {/* If we're viewing a saved communication */}
-                {selectedSavedCommunication ? (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-2xl font-bold">{selectedSavedCommunication.title}</h2>
-                      <div className="space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setSelectedSavedCommunication(null)}
-                        >
-                          <ArrowLeft className="mr-2 h-4 w-4" />
-                          Back
-                        </Button>
-                        <Button 
-                          size="sm"
-                          onClick={() => handleEditWithAmigo(selectedSavedCommunication)}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                        >
-                          <Wand2 className="mr-2 h-4 w-4" />
-                          Edit with Amigo
-                        </Button>
-                        <Button 
-                          variant="outline"
-                          size="sm"
-                          className="text-red-500 hover:text-red-700 border-red-200 hover:bg-red-50"
-                          onClick={() => handleDeleteCommunication(selectedSavedCommunication)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Saved Communication</CardTitle>
-                        <CardDescription>
-                          Created on {format(new Date(selectedSavedCommunication.created_at), 'MMMM d, yyyy')}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="bg-white border rounded-md p-6 whitespace-pre-line">
-                          {selectedSavedCommunication.content}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                ) : (
-                  // Otherwise show the regular step content
-                  renderStepContent()
-                )}
+              <div className="space-y-2">
+                <Label htmlFor="content">Content</Label>
+                <Textarea
+                  id="content"
+                  value={newCommunication.content}
+                  onChange={(e) => setNewCommunication({
+                    ...newCommunication,
+                    content: e.target.value
+                  })}
+                  placeholder="Enter communication content"
+                  rows={5}
+                />
               </div>
-            </div>
-
-            {/* 
-              The Dialog component from shadcn/ui already uses a portal by default,
-              which renders the dialog outside the DOM hierarchy of the parent component.
-              This prevents layout shifts when the dialog opens/closes.
-            */}
-            {viewingInsight && (
-              <Dialog 
-                open={!!viewingInsight}
-                onOpenChange={(open) => {
-                  if (!open) {
-                    setViewingInsight(null);
-                    resetLayout();
-                  }
-                }}
-              >
-                <DialogContent 
-                  className="max-w-4xl overflow-hidden dialog-content" 
-                  style={{ 
-                    width: "min(calc(100vw - 40px), 56rem)",
-                    maxWidth: "min(calc(100vw - 40px), 56rem)",
-                    maxHeight: "90vh",
-                    position: "fixed",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    zIndex: 100,
-                    display: "flex",
-                    flexDirection: "column"
-                  }}
+              <div className="flex justify-end space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setNewCommunication({
+                    title: "",
+                    content: "",
+                    scheduled_for: ""
+                  })}
                 >
-                  <div className="w-full overflow-hidden flex flex-col max-h-[90vh]">
-                    <DialogHeader className="pr-6 flex-shrink-0">
-                      <div className="flex items-start justify-between gap-4 flex-wrap w-full">
-                        <DialogTitle className="break-words mr-4 max-w-full">{viewingInsight.title}</DialogTitle>
-                        {viewingInsight.focus_area && (
-                          <Badge className={cn("shrink-0", viewingInsight.focus_area && INSIGHT_FOCUS_AREAS[viewingInsight.focus_area as InsightFocusArea]?.color)}>
-                            {viewingInsight.focus_area && INSIGHT_FOCUS_AREAS[viewingInsight.focus_area as InsightFocusArea]?.label}
-                          </Badge>
+                  Clear
+                </Button>
+                <Button
+                  onClick={handleSendCommunication}
+                  disabled={sending}
+                >
+                  {sending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-4 w-4" />
+                      Send
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="mt-6 space-y-4">
+            <h2 className="text-2xl font-semibold">Recent Communications</h2>
+            <ScrollArea className="h-[400px]">
+              {filteredCommunications.map((comm) => (
+                <Card key={comm.id} className="mb-4">
+                  <CardContent className="pt-6">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-semibold">{comm.title}</h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {new Date(comm.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {comm.status === 'sent' && (
+                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        )}
+                        {comm.status === 'failed' && (
+                          <XCircle className="h-5 w-5 text-red-500" />
+                        )}
+                        {comm.status === 'scheduled' && (
+                          <AlertCircle className="h-5 w-5 text-yellow-500" />
                         )}
                       </div>
-                    </DialogHeader>
-
-                    <div className="grid gap-4 mt-2 w-full overflow-y-auto pr-1 pb-4 flex-grow" style={{ overflowX: 'hidden' }}>
-                      {/* Content */}
-                      <div className="space-y-4 w-full">
-                        <h4 className="text-sm font-medium text-foreground border-b pb-1">Summary</h4>
-                        <div className="w-full">
-                          <HighlightText 
-                            text={viewingInsight.content}
-                            insightId={viewingInsight.id}
-                            onHighlightsChange={handleHighlightsChange}
-                            existingHighlights={highlightedTextMap[viewingInsight.id] || []}
-                            preserveFormatting={true}
-                          />
-                        </div>
-                      </div>
-                      
-                      {/* Notes */}
-                      {viewingInsight.notes && (
-                        <div className="space-y-2 w-full">
-                          <h4 className="text-sm font-medium text-foreground border-b pb-1">Notes</h4>
-                          <div className="w-full">
-                            <HighlightText 
-                              text={viewingInsight.notes}
-                              insightId={`${viewingInsight.id}-notes`}
-                              onHighlightsChange={(_, highlights) => {
-                                // When notes are highlighted, add them to the main insight's highlights
-                                const currentHighlights = highlightedTextMap[viewingInsight.id] || [];
-                                handleHighlightsChange(viewingInsight.id, [...currentHighlights, ...highlights]);
-                              }}
-                              existingHighlights={[]}
-                              preserveFormatting={true}
-                            />
-                          </div>
-                        </div>
-                      )}
                     </div>
-                    
-                    <DialogFooter className="mt-4 pt-3 border-t flex-shrink-0">
-                      <div className="flex flex-wrap justify-between w-full gap-2">
-                        <div>
-                          {!selectedInsights.includes(viewingInsight.id) ? (
-                            <Button 
-                              onClick={() => {
-                                handleInsightSelect(viewingInsight.id);
-                                toast({
-                                  title: "Insight added",
-                                  description: "This insight has been added to your communication.",
-                                });
-                              }}
-                              size="sm"
-                            >
-                              Add to Communication
-                            </Button>
-                          ) : (
-                            <Button 
-                              variant="outline"
-                              onClick={() => {
-                                handleInsightSelect(viewingInsight.id);
-                                toast({
-                                  title: "Insight removed",
-                                  description: "This insight has been removed from your communication.",
-                                });
-                              }}
-                              size="sm"
-                            >
-                              Remove from Communication
-                            </Button>
-                          )}
-                        </div>
-                        
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => {
-                            setViewingInsight(null);
-                            resetLayout();
-                          }}
-                        >
-                          Close
-                        </Button>
-                      </div>
-                    </DialogFooter>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
-
-            {/* Delete confirmation dialog */}
-            <AlertDialog open={!!communicationToDelete} onOpenChange={(open: boolean) => !open && setCommunicationToDelete(null)}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Communication</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete &quot;{communicationToDelete?.title}&quot;? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                      e.preventDefault();
-                      confirmDelete();
-                    }}
-                    disabled={isDeleting}
-                    className="bg-red-500 hover:bg-red-600 text-white"
-                  >
-                    {isDeleting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Deleting...
-                      </>
-                    ) : (
-                      <>Delete</>
-                    )}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    <p className="mt-2 text-gray-700">{comm.content}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </ScrollArea>
           </div>
-        );
-      }}
-    </DeepSeekUsageTracker>
+        </TabsContent>
+      </Tabs>
+
+      {showNewTemplateDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+          <Card className="w-[500px]">
+            <CardHeader>
+              <CardTitle>New Template</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="template-name">Template Name</Label>
+                <Input
+                  id="template-name"
+                  value={newTemplate.name}
+                  onChange={(e) => setNewTemplate({
+                    ...newTemplate,
+                    name: e.target.value
+                  })}
+                  placeholder="Enter template name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="template-content">Template Content</Label>
+                <Textarea
+                  id="template-content"
+                  value={newTemplate.content}
+                  onChange={(e) => setNewTemplate({
+                    ...newTemplate,
+                    content: e.target.value
+                  })}
+                  placeholder="Enter template content"
+                  rows={5}
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowNewTemplateDialog(false)}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveTemplate}>
+                  Save Template
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Saved Templates</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {templates.map((template) => (
+              <Card key={template.id}>
+                <CardContent className="pt-6">
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-semibold">{template.name}</h3>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleUseTemplate(template)}
+                      >
+                        Use
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteTemplate(template.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-500">{template.content}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
