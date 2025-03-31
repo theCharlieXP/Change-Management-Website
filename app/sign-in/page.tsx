@@ -5,30 +5,25 @@ import Link from "next/link"
 
 export default function SignInPage() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4 py-8">
-      <SignIn 
-        redirectUrl="/dashboard"
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <SignIn
         appearance={{
           elements: {
             rootBox: "mx-auto",
-            card: "bg-white shadow-xl",
-            headerTitle: "Sign in to Change Amigo",
-            headerSubtitle: ""
-          }
+            card: "shadow-none",
+          },
         }}
+        fallbackRedirectUrl="/dashboard"
       />
-      
-      <div className="mt-4 text-center text-sm text-muted-foreground max-w-md">
-        <p>
-          By signing in, you agree to our{" "}
-          <Link href="/terms-of-service" className="text-emerald-600 hover:underline" target="_blank">
-            Terms of Service
-          </Link>{" "}
-          and{" "}
-          <Link href="/privacy-policy" className="text-emerald-600 hover:underline" target="_blank">
-            Privacy Policy
-          </Link>
-        </p>
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 text-sm text-gray-500">
+        By continuing, you agree to our{" "}
+        <a href="/terms" className="text-emerald-600 hover:underline">
+          Terms of Service
+        </a>{" "}
+        and{" "}
+        <a href="/privacy" className="text-emerald-600 hover:underline">
+          Privacy Policy
+        </a>
       </div>
     </div>
   )
