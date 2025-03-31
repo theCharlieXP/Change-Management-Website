@@ -1,19 +1,13 @@
 'use client'
 
 import Link from "next/link"
-import { FolderKanban, Brain, MessageSquare, UserCircle, Sparkles, Wrench } from "lucide-react"
+import { Brain, MessageSquare, UserCircle, Sparkles, Wrench } from "lucide-react"
 import { usePathname } from 'next/navigation'
 
 export default function MobileNav() {
   const pathname = usePathname() || ''
   
   const navItems = [
-    {
-      name: "Projects",
-      href: "/dashboard/projects",
-      icon: FolderKanban,
-      matchPaths: ['/dashboard/projects', '/dashboard/projects/[projectId]']
-    },
     {
       name: "Insights",
       href: "/dashboard/insights",

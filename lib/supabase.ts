@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js'
-import type { Project, ProjectStatus, ProjectTask } from '@/types/projects'
 import './supabase/config-check' // Import the configuration check
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -21,31 +20,28 @@ const createDummyClient = () => {
   } as any
 }
 
-// Create a single supabase client for interacting with your database
-export const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false
-      }
-    })
+// Create the Supabase client
+const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey)
   : createDummyClient()
+
+export default supabase
 
 // Helper function to check if Supabase is properly configured
 export function isSupabaseConfigured(): boolean {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  
-  if (!url || !key) {
-    console.error('Missing Supabase environment variables:', {
-      hasUrl: !!url,
-      hasAnonKey: !!key
-    })
-    return false
+  return !!(supabaseUrl && supabaseAnonKey)
+}
+
+// Helper function to test database connection
+export async function testDatabaseConnection() {
+  try {
+    const { data, error } = await supabase.from('profiles').select('count').limit(1)
+    if (error) throw error
+    return { ok: true }
+  } catch (error) {
+    console.error('Database connection test failed:', error)
+    return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' }
   }
-  
-  return true
 }
 
 // Helper function to get the current session
@@ -95,7 +91,7 @@ export async function checkSupabaseConnection() {
   try {
     console.log('Testing Supabase connection...')
     const { data, error } = await supabase
-      .from('projects')
+      .from('profiles')
       .select('count')
       .limit(1)
     
@@ -117,305 +113,5 @@ export async function checkSupabaseConnection() {
       stack: error instanceof Error ? error.stack : undefined
     })
     return false
-  }
-}
-
-// Project related database functions
-export async function getProjects(userId: string) {
-  try {
-    const response = await fetch('/api/projects')
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.details || 'Failed to fetch projects')
-    }
-    const data = await response.json()
-    return data
-  } catch (error) {
-    console.error('Error in getProjects:', error)
-    throw error
-  }
-}
-
-export async function getProject(projectId: string) {
-  try {
-    const response = await fetch(`/api/projects/${projectId}`)
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null
-      }
-      throw new Error('Failed to fetch project')
-    }
-    return await response.json()
-  } catch (error) {
-    console.error('Error in getProject:', error)
-    throw error
-  }
-}
-
-export async function createProject(userId: string, title: string) {
-  try {
-    console.log('Creating project:', {
-      userId,
-      title,
-      supabaseConfig: {
-        isConfigured: isSupabaseConfigured(),
-        hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-        hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      }
-    })
-
-    const response = await fetch('/api/projects', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ title })
-    })
-    
-    const data = await response.json()
-    
-    if (!response.ok) {
-      console.error('Failed to create project:', {
-        status: response.status,
-        statusText: response.statusText,
-        data
-      })
-      throw new Error(data.message || data.error || 'Failed to create project')
-    }
-    
-    console.log('Project created successfully:', data)
-    return data
-  } catch (error) {
-    console.error('Error in createProject:', {
-      error: error instanceof Error ? {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      } : error,
-      userId,
-      title
-    })
-    throw error
-  }
-}
-
-export async function updateProject(projectId: string, updates: Partial<{
-  title: string
-  description: string
-  status: ProjectStatus
-}>) {
-  try {
-    const response = await fetch(`/api/projects/${projectId}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updates)
-    })
-    
-    if (!response.ok) {
-      throw new Error('Failed to update project')
-    }
-    
-    return await response.json()
-  } catch (error) {
-    console.error('Error in updateProject:', error)
-    throw error
-  }
-}
-
-export async function deleteProject(projectId: string) {
-  try {
-    const response = await fetch(`/api/projects/${projectId}`, {
-      method: 'DELETE'
-    })
-    
-    if (!response.ok) {
-      throw new Error('Failed to delete project')
-    }
-  } catch (error) {
-    console.error('Error in deleteProject:', error)
-    throw error
-  }
-}
-
-// Task related database functions
-export async function getProjectTasks(projectId: string) {
-  try {
-    const response = await fetch(`/api/projects/${projectId}/tasks`)
-    if (!response.ok) {
-      throw new Error('Failed to fetch tasks')
-    }
-    return await response.json()
-  } catch (error) {
-    console.error('Error in getProjectTasks:', error)
-    throw error
-  }
-}
-
-export async function createProjectTask(projectId: string, task: Omit<ProjectTask, 'id' | 'created_at' | 'updated_at'>) {
-  try {
-    console.log('Creating task:', { projectId, task })
-    
-    const response = await fetch(`/api/projects/${projectId}/tasks`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(task)
-    })
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      console.error('Error response from create task API:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorData
-      })
-      throw new Error(errorData.details || 'Failed to create task')
-    }
-    
-    return await response.json()
-  } catch (error) {
-    console.error('Error in createProjectTask:', error)
-    throw error
-  }
-}
-
-export async function updateProjectTask(taskId: string, updates: Partial<ProjectTask>) {
-  try {
-    const projectId = updates.project_id || (await getProjectTaskDetails(taskId))?.project_id
-    if (!projectId) {
-      throw new Error('Project ID is required for updating task')
-    }
-
-    const response = await fetch(`/api/projects/${projectId}/tasks`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id: taskId, ...updates })
-    })
-    
-    if (!response.ok) {
-      throw new Error('Failed to update task')
-    }
-    
-    return await response.json()
-  } catch (error) {
-    console.error('Error in updateProjectTask:', error)
-    throw error
-  }
-}
-
-export async function deleteProjectTask(taskId: string) {
-  try {
-    const task = await getProjectTaskDetails(taskId)
-    if (!task?.project_id) {
-      throw new Error('Project ID not found for task')
-    }
-
-    const response = await fetch(`/api/projects/${task.project_id}/tasks?taskId=${taskId}`, {
-      method: 'DELETE'
-    })
-    
-    if (!response.ok) {
-      throw new Error('Failed to delete task')
-    }
-  } catch (error) {
-    console.error('Error in deleteProjectTask:', error)
-    throw error
-  }
-}
-
-// Helper function to get task details
-async function getProjectTaskDetails(taskId: string): Promise<ProjectTask | null> {
-  try {
-    const { data, error } = await supabase
-      .from('project_tasks')
-      .select('*')
-      .eq('id', taskId)
-      .single()
-
-    if (error) {
-      console.error('Error fetching task details:', error)
-      return null
-    }
-
-    return data as ProjectTask
-  } catch (error) {
-    console.error('Error in getProjectTaskDetails:', error)
-    return null
-  }
-}
-
-// Note related database functions
-export async function getProjectNotes(projectId: string) {
-  try {
-    const response = await fetch(`/api/projects/${projectId}/notes`)
-    if (!response.ok) {
-      throw new Error('Failed to fetch notes')
-    }
-    return await response.json()
-  } catch (error) {
-    console.error('Error in getProjectNotes:', error)
-    throw error
-  }
-}
-
-export async function createProjectNote(projectId: string, note: { content: string }) {
-  try {
-    const response = await fetch(`/api/projects/${projectId}/notes`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(note)
-    })
-    
-    if (!response.ok) {
-      throw new Error('Failed to create note')
-    }
-    
-    return await response.json()
-  } catch (error) {
-    console.error('Error in createProjectNote:', error)
-    throw error
-  }
-}
-
-export async function updateProjectNote(projectId: string, noteId: string, updates: { content: string }) {
-  try {
-    const response = await fetch(`/api/projects/${projectId}/notes`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id: noteId, ...updates })
-    })
-    
-    if (!response.ok) {
-      throw new Error('Failed to update note')
-    }
-    
-    return await response.json()
-  } catch (error) {
-    console.error('Error in updateProjectNote:', error)
-    throw error
-  }
-}
-
-export async function deleteProjectNote(projectId: string, noteId: string) {
-  try {
-    const response = await fetch(`/api/projects/${projectId}/notes?noteId=${noteId}`, {
-      method: 'DELETE'
-    })
-    
-    if (!response.ok) {
-      throw new Error('Failed to delete note')
-    }
-  } catch (error) {
-    console.error('Error in deleteProjectNote:', error)
-    throw error
   }
 } 
