@@ -13,8 +13,8 @@ export default function SignUpPage() {
             card: "bg-white shadow-xl",
           }
         }}
-        afterSignUpUrl="/dashboard/projects"
-        redirectUrl="/dashboard/projects"
+        afterSignUpUrl="/dashboard"
+        redirectUrl="/dashboard"
       />
       
       <div className="mt-4 text-center text-sm text-muted-foreground max-w-md">

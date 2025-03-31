@@ -76,8 +76,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
         baseTheme: undefined,
         variables: { colorPrimary: '#10b981' }
       }}
-      afterSignInUrl="/dashboard/projects"
-      afterSignUpUrl="/dashboard/projects"
+      afterSignInUrl="/dashboard"
+      afterSignUpUrl="/dashboard"
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
     >

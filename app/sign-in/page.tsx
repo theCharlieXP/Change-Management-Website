@@ -7,7 +7,7 @@ export default function SignInPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4 py-8">
       <SignIn 
-        afterSignInUrl="/dashboard/projects"
+        afterSignInUrl="/dashboard"
         appearance={{
           elements: {
             rootBox: "mx-auto",
