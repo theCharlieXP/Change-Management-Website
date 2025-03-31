@@ -76,8 +76,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
         baseTheme: undefined,
         variables: { colorPrimary: '#10b981' }
       }}
-      signInFallbackRedirectUrl="/dashboard"
-      signUpFallbackRedirectUrl="/dashboard"
+      signInFallbackRedirectUrl="/dashboard/projects"
+      signUpFallbackRedirectUrl="/dashboard/projects"
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
     >

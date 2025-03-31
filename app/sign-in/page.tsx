@@ -13,7 +13,7 @@ export default function SignInPage() {
             card: "shadow-none",
           },
         }}
-        fallbackRedirectUrl="/dashboard"
+        fallbackRedirectUrl="/dashboard/projects"
       />
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 text-sm text-gray-500">
         By continuing, you agree to our{" "}
