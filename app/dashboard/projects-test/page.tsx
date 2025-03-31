@@ -99,6 +99,7 @@ export default function ProjectsTestPage() {
                 <Link 
                   href={`/dashboard/projects/${project.id}`}
                   className="flex items-center text-primary hover:text-primary/80"
+                  prefetch={false}
                 >
                   View Project
                   <ArrowRight className="ml-2 h-4 w-4" />
