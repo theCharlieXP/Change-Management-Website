@@ -13,7 +13,6 @@ export default function SignUpPage() {
             card: "bg-white shadow-xl",
           }
         }}
-        afterSignUpUrl="/dashboard"
         redirectUrl="/dashboard"
       />
       
